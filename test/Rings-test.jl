@@ -1,6 +1,6 @@
 module Test
 
-using Base.Test, Nemo
+using Base.Test, Nemo, Cxx
 
 export test_all
 
@@ -12,6 +12,8 @@ include("nmod_mat-test.jl")
 include("nmod_poly-test.jl")
 
 include("Fields-test.jl")
+
+include("singular-test.jl")
 
 function test_rings()
    test_zz()
@@ -25,6 +27,7 @@ end
 function test_all()
    test_rings()
    test_fields()
+#   test_singular()
 end
 
 end # module

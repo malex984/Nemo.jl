@@ -181,6 +181,9 @@ else
    run(`make install`)
 end
 
+include("buildSingular.jl")
+install_singular()
+
 cd(wdir)
 
 if on_windows
