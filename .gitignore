@@ -4,4 +4,5 @@
 /deps/arb
 /deps/antic
 /deps/Singular
+/deps/ntl-9.3.0*
 /local/
