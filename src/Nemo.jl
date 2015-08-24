@@ -38,9 +38,12 @@ else
          push!(Libdl.DL_LOAD_PATH, "/usr/local/lib")
       elseif on_linux
          push!(Libdl.DL_LOAD_PATH, "$pkgdir/local/lib")
-         Libdl.dlopen("$pkgdir/local/lib/libgmp")
-         Libdl.dlopen("$pkgdir/local/lib/libmpfr")
-         Libdl.dlopen("$pkgdir/local/lib/libflint")
+         ENV["LD_LIBRARY_PATH"] = "$pkgdir/local/lib"
+
+         Libdl.dlopen("$pkgdir/local/lib/libgmp.so")
+         Libdl.dlopen("$pkgdir/local/lib/libmpfr.so")
+         Libdl.dlopen("$pkgdir/local/lib/libflint.so")
+         libpari = Libdl.dlopen("$pkgdir/local/lib/libpari.so")
       else
          push!(Libdl.DL_LOAD_PATH, "$pkgdir/local/lib")
       end

@@ -173,10 +173,11 @@ else
    cd("$wdir/pari")
    env_copy = copy(ENV)
    env_copy["LD_LIBRARY_PATH"] = "$vdir/lib"
+   env_copy["DLCFLAGS"] = " -fPIC -Wl,-rpath,$vdir/lib "
    config_str = `./Configure --prefix=$vdir --with-gmp=$vdir --mt=pthread`
    config_str = setenv(config_str, env_copy)
    run(config_str)
-   run(`make -j4 gp`)
+   run(`make -j4 gp DLCFLAGS="-fPIC -Wl,-rpath,$vdir/lib"`)
    run(`make doc`)
    run(`make install`)
 end
