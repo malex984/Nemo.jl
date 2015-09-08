@@ -1,7 +1,5 @@
 using Base.Test, Nemo
 
-# write your own tests here
-
 pkgdir = Pkg.dir("Nemo")
 
 # pwd = "$pkgdir/src"
