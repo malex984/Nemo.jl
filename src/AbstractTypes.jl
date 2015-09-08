@@ -10,6 +10,8 @@ abstract Pari
 
 abstract Flint
 
+abstract Singular
+
 abstract Antic
 
 abstract Generic

@@ -10,7 +10,7 @@ import Base: abs, asin, asinh, atan, atanh, base, bin, call, convert, cmp,
              trace, trailing_zeros, transpose, transpose!, truncate, var, zero
 
 export Collection, Ring, Field, CollectionElem, RingElem, FieldElem, Pari,
-       Flint, Antic, Generic
+       Flint, Antic, Singular, Generic
 
 export PolyElem, SeriesElem, ResidueElem, FractionElem, MatElem
 
@@ -29,8 +29,16 @@ include("AbstractTypes.jl")
 
 pkgdir = Pkg.dir("Nemo")
 
-on_windows = @windows ? true : false
-on_linux = @linux ? true : false
+const on_windows = @windows ? true : false
+const on_linux = @linux ? true : false
+
+function test_pkg_status(pkg)
+   tempiobuffer = IOBuffer(); 
+   Pkg.status(pkg, tempiobuffer);
+   return (tempiobuffer.size != 0);
+end
+   
+const with_cxx = test_pkg_status("Cxx")
 
 if on_windows
    push!(Libdl.DL_LOAD_PATH, "$pkgdir\\local\\lib")
@@ -71,6 +79,10 @@ include("antic/AnticTypes.jl")
 include("pari/PariTypes.jl")
 
 include("Rings.jl")
+
+if with_cxx
+   include("singular/Types.jl")
+end
 
 ###########################################################
 #

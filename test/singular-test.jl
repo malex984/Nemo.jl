@@ -4,66 +4,9 @@ using Cxx
 function test_singular()
    println()
 
-   print("libSingular loading...")  
-
-on_windows = @windows ? true : false
-pkgdir = Pkg.dir("Nemo") 
-if on_windows
-   wdir = "$pkgdir\\deps"
-   vdir = "$pkgdir\\local"
-   wdir2 = split(wdir, "\\")
-   s = lowercase(shift!(wdir2)[1])
-   unshift!(wdir2, string(s))
-   unshift!(wdir2, "")
-   wdir2 = join(wdir2, "/") 
-   vdir2 = split(vdir, "\\")
-   s = lowercase(shift!(vdir2)[1])
-   unshift!(vdir2, string(s))
-   unshift!(vdir2, "")
-   vdir2 = join(vdir2, "/") 
-else
-   wdir = joinpath(pkgdir, "deps")
-   vdir = joinpath(pkgdir, "local")
-end
-
-const singdir = vdir
-const singbinpath = joinpath( singdir, "bin", "Singular" )
-ENV["SINGULAR_EXECUTABLE"] = singbinpath
-
-libSingular = Libdl.dlopen(joinpath(singdir, "lib", "libSingular.so"), Libdl.RTLD_GLOBAL)
-
-   println("PASS")
-
-   print("including Singular headers with Cxx...")  
-
-   addHeaderDir(joinpath(singdir, "include"), kind = C_System)
-   addHeaderDir(joinpath(singdir, "include", "singular"), kind = C_System)
-
-   cxxinclude("Singular/libsingular.h", isAngled=false)
-   cxxinclude("coeffs/coeffs.h", isAngled=false)
-
-   cxx"""
-   #include "Singular/libsingular.h"
-   #include "coeffs/coeffs.h"
-   """
-
-   println("PASS")
-
-   println("Calling siInit via Cxx...")  
-
-   @cxx siInit(pointer(singbinpath))
-
-   println("PASS")
-
    print("Printing Singular resources pathes...\n")  
-@cxx StringSetS(pointer("Path info:"))
-@cxx feStringAppendResources(0)
-s = @cxx StringEndS()
-# @cxx PrintS(s)  # BUG: PrintS is a C function
-# icxx" PrintS($s); "   # quick and dirty shortcut
 
-PrintS(m) = ccall( Libdl.dlsym(libSingular, :PrintS), Void, (Ptr{Uint8},), m) # another workaround
-PrintS(s)
+   Nemo.PrintResources("Singular Resources info: ")
 
    println("PASS")
 
@@ -93,6 +36,8 @@ void test_contruct_ring()
 #BOOLEAN myInitChar(coeffs n, void*){
 #n->cfCoeffWrite  = (???)$dummy_c; return FALSE; } 
 #"""
+
+#######################################################
                 
 #function jlInit(cf::Ptr{Void}, ::Ptr{Void})
 #  println("jlInit: new coeffs: $cf"); return convert( Cint, 1);
@@ -107,7 +52,7 @@ cxx"""
 void test_coeffs(n_coeffType t, void *p, long i)
 {
    Print("Singular coeffs output: ");
-   coeffs C = nInitChar( t, p ); 
+   coeffs C = nInitChar(t, p); 
    n_CoeffWrite(C, 1);
 
    Print("Singular number output: ");
@@ -120,74 +65,63 @@ void test_coeffs(n_coeffType t, void *p, long i)
 }
 """
 
-   function jtest_coeffs(n::Cxx.CppEnum{:n_coeffType}, p, i::Int)
+   function jtest_coeffs(n :: Nemo.n_coeffType, p :: Ptr{Void}, i::Int)
 
         print("Test embedding (Int)$i into Singular coeffs: $n ($p) via Cxx:\n")  
-        @cxx test_coeffs(n, Ptr{Void}(p), i)
+        @cxx test_coeffs(n, p, i)
         println("\n...PASS")
 
 
 	print("Test embedding (Int)$i into Singular coeffs: $n ($p) via iCxx:\n")  
 
-   	nInitChar(n, p) = icxx" return nInitChar( $n, (void*)($p) ); "
-	n_CoeffWrite(cf, details::Bool = true) = icxx" n_CoeffWrite($cf, ($details? 1 : 0)); "
-	n_Init(i::Int, cf) = icxx" return n_Init($i, $cf ); "
-	n_Int(n, cf) = icxx" return n_Int($n, $cf); "
-	n_Delete(n, cf) = icxx" n_Delete(& $n, $cf); "
-	n_Print(n, cf) = icxx" n_Print( $n, $cf); "
-	n_GetChar(cf) = icxx" return n_GetChar($cf); "
-	nKillChar(cf) = icxx" nKillChar($cf); "
+	C = Nemo.Coeffs( n, p )
+
+	print("coeffs: ")
+	println(C.ptr)
+
+	print("Singular coeffs output: ")
+	Nemo.n_CoeffWrite(C.ptr)
+
+ 	const ch = Nemo.n_GetChar(C.ptr)
+
+	print("Char coeffs: ")
+	println(ch)
 
 	print("Coeffs: ")
-	C = nInitChar( n, p )
-	println(C);
-	print("Singular coeffs output: ")
-	n_CoeffWrite(C)
+	println(C)
 
-	z = n_Init(i, C )
+	z = Nemo.Number(C, i)
 	print("Number out of $i: ")
-	println(z);
+	println(z.ptr)
 
 	print("Singular number output: ")
-	n_Print(z, C)
+	Nemo.n_Print(z.ptr, C.ptr)
 	println();
 
-	ii = n_Int(z, C)
- 	ch = n_GetChar(C)
+	const ii = Nemo.n_Int(z.ptr, C.ptr)
 
 	@test ((ch == 0) && (i == ii)) || ((ch > 0) && ((i - ii) % ch == 0))
 
-	n_Delete(z, C)
-
-	print("Deleted number: ")
-	println(z);
+##	Nemo.n_Delete(z, C.ptr)
+#	print("Deleted number: ")
+#	println(z);
 		
         println("\n...PASS")
    end	  
 
    println("PASS")
 
-cxx"""
-static n_coeffType get_Q() { return n_Q; };
-static n_coeffType get_Z() { return n_Z; };
-static n_coeffType get_Zp(){ return n_Zp; }; // n_coeffType.
-"""
-
-   const n_Zp = @cxx get_Zp() #  # get_Zp() = icxx" return n_Zp; "
-   const n_Q  = @cxx get_Q() # Cxx.CppEnum{:n_coeffType}(2) # icxx" return n_Q; "
-   const n_Z  = @cxx get_Z() # Cxx.CppEnum{:n_coeffType}(9) # icxx" return n_Z; "
-
-   @test n_Zp == Cxx.CppEnum{:n_coeffType}(1)
-   @test n_Q == Cxx.CppEnum{:n_coeffType}(2)
-   @test n_Z == Cxx.CppEnum{:n_coeffType}(9)
+   @test Nemo.n_Zp == Nemo.n_coeffType(1)
+   @test Nemo.n_Q == Nemo.n_coeffType(2)
+   @test Nemo.n_Z == Nemo.n_coeffType(9)
 
    # q = 66 in QQ
-   jtest_coeffs( n_Q, 0, 66)#   @cxx test_coeffs( n_Q, Ptr{Void}(0), 66) 
+   jtest_coeffs( Nemo.n_Q, Ptr{Void}(0), 66)#   @cxx test_coeffs( n_Q, Ptr{Void}(0), 66) 
 
    ## z = 666 in ZZ
-   jtest_coeffs( n_Z, 0, 666) #   @cxx test_coeffs( n_Z, Ptr{Void}(0), 666) 
+   jtest_coeffs( Nemo.n_Z, Ptr{Void}(0), 666) #   @cxx test_coeffs( n_Z, Ptr{Void}(0), 666) 
 
    ## zz = 6 in Zp{11}
-   jtest_coeffs( n_Zp, 11, 11*3 + 6) #   @cxx test_coeffs( n_Zp, Ptr{Void}(11), 11*3 + 6) 
+   jtest_coeffs( Nemo.n_Zp, Ptr{Void}(11), 11*3 + 6) #   @cxx test_coeffs( n_Zp, Ptr{Void}(11), 11*3 + 6) 
 
 end
