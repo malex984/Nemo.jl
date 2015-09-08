@@ -50,10 +50,10 @@ else
          push!(Libdl.DL_LOAD_PATH, "$pkgdir/local/lib")
          ENV["LD_LIBRARY_PATH"] = "$pkgdir/local/lib"
 
-         Libdl.dlopen("$pkgdir/local/lib/libgmp.so")
-         Libdl.dlopen("$pkgdir/local/lib/libmpfr.so")
-         Libdl.dlopen("$pkgdir/local/lib/libflint.so")
-         libpari = Libdl.dlopen("$pkgdir/local/lib/libpari.so")
+         Libdl.dlopen("$pkgdir/local/lib/libgmp")
+         Libdl.dlopen("$pkgdir/local/lib/libmpfr")
+         Libdl.dlopen("$pkgdir/local/lib/libflint")
+         libpari = Libdl.dlopen("$pkgdir/local/lib/libpari")
       else
          push!(Libdl.DL_LOAD_PATH, "$pkgdir/local/lib")
       end

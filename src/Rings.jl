@@ -248,3 +248,5 @@ include("pari/PariIdeal.jl")
 
 include("Factor.jl")
 
+# include("singular/coeff.jl")
+# include("singular/poly.jl")

@@ -36,9 +36,9 @@ function test_rings()
 end
 
 function test_all()
+   test_singular()
    test_rings()
    test_fields()
-   test_singular()
 end
 
 end # module
