@@ -77,28 +77,29 @@ void test_coeffs(n_coeffType t, void *p, long i)
 	C = Nemo.Coeffs( n, p )
 
 	print("coeffs: ")
-	println(C.ptr)
+	println( Nemo.get_raw_ptr(C) )
 
 	print("Singular coeffs output: ")
-	Nemo.n_CoeffWrite(C.ptr)
+	Nemo.n_CoeffWrite( Nemo.get_raw_ptr(C), false )
 
- 	const ch = Nemo.n_GetChar(C.ptr)
+ 	const ch = Nemo.n_GetChar( Nemo.get_raw_ptr(C) )
 
-	print("Char coeffs: ")
-	println(ch)
+	println("Char coeffs: ", ch)
 
-	print("Coeffs: ")
-	println(C)
+	println("C: ", C)
 
 	z = Nemo.Number(C, i)
 	print("Number out of $i: ")
-	println(z.ptr)
+	println( Nemo.get_raw_ptr(z) )
 
 	print("Singular number output: ")
-	Nemo.n_Print(z.ptr, C.ptr)
+        r = Nemo.get_raw_ptr(z)
+	Nemo.n_Print(r, Nemo.get_raw_ptr( Nemo.parent(z)) )
 	println();
 
-	const ii = Nemo.n_Int(z.ptr, C.ptr)
+	println("z: ", z)
+
+	const ii = Nemo.n_Int( Nemo.get_raw_ptr(z), Nemo.get_raw_ptr( Nemo.parent(z)) )
 
 	@test ((ch == 0) && (i == ii)) || ((ch > 0) && ((i - ii) % ch == 0))
 
@@ -115,6 +116,9 @@ void test_coeffs(n_coeffType t, void *p, long i)
    @test Nemo.n_Q == Nemo.n_coeffType(2)
    @test Nemo.n_Z == Nemo.n_coeffType(9)
 
+### TODO: separate creation for Coeffs & pass them into jtest_coeffs instead!
+   println("SingularZZ: ", Nemo.SingularZZ)
+
    # q = 66 in QQ
    jtest_coeffs( Nemo.n_Q, Ptr{Void}(0), 66)#   @cxx test_coeffs( n_Q, Ptr{Void}(0), 66) 
 
@@ -123,5 +127,7 @@ void test_coeffs(n_coeffType t, void *p, long i)
 
    ## zz = 6 in Zp{11}
    jtest_coeffs( Nemo.n_Zp, Ptr{Void}(11), 11*3 + 6) #   @cxx test_coeffs( n_Zp, Ptr{Void}(11), 11*3 + 6) 
+
+   println("SingularQQ: ", Nemo.SingularQQ)
 
 end

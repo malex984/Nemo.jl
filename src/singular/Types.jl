@@ -23,11 +23,20 @@ cxxinclude("coeffs/coeffs.h", isAngled=false)
 cxx"""
     #include "Singular/libsingular.h"
     #include "coeffs/coeffs.h"
+
+static void _omFree(void* p){ omFree(p); }
+static void _PrintS(const void *p){ PrintS((const char*)(p)); } 
 """
 
 # @cxx PrintS(s)  # BUG: PrintS is a C function
 # icxx" PrintS($s); "   # quick and dirty shortcut
-PrintS(m) = ccall( Libdl.dlsym(Nemo.libSingular, :PrintS), Void, (Ptr{Uint8},), m) # workaround for C function
+# PrintS(m) = ccall( Libdl.dlsym(Nemo.libSingular, :PrintS), Void, (Ptr{Uint8},), m) # workaround for C function
+function PrintS(m)
+   @cxx _PrintS(m)
+end 
+function omFree(m)
+   @cxx _omFree(m)
+end 
 
 function StringSetS(m) 
    @cxx StringSetS(pointer(m))
@@ -49,10 +58,11 @@ end
 siInit(singular_binary_path) # Initialize Singular!
 
 function PrintResources(s)
-   Nemo.StringSetS(s)
-   Nemo.feStringAppendResources(0)
-   m = Nemo.StringEndS()
-   Nemo.PrintS(m)
+   StringSetS(s)
+   feStringAppendResources(0)
+   m = StringEndS()
+   PrintS(m)
+   omFree(m)
 end
 
 
@@ -92,6 +102,8 @@ typealias coeffs Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,f
 typealias number Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)}
 # Ptr{Void}
 
+typealias number_ptr Ptr{number}
+
 # include("cxx_singular_lowlevel.jl") # TODO: move most wrappers there from around here!
 
 function nInitChar(n :: n_coeffType, p :: Ptr{Void})
@@ -123,7 +135,13 @@ function n_Print(n :: number, cf :: coeffs)
    @cxx n_Print(n, cf)
 end
 
-function n_Delete(n_ptr :: Ptr{number}, cf :: coeffs)
+# n_Write(number& n,  const coeffs r, const BOOLEAN bShortOut = TRUE)
+function n_Write(n :: number, cf :: coeffs, bShortOut::Bool = true)
+   d :: Int = (bShortOut? 1 : 0) 
+   @cxx n_Write(n, cf, d)
+end
+
+function n_Delete(n_ptr :: number_ptr, cf :: coeffs)
    @cxx n_Delete(n_ptr, cf)
 end
 
@@ -153,39 +171,64 @@ type Coeffs <: SingularField
    end
 end
 
+get_raw_ptr( cf::Coeffs ) = cf.ptr
+
 function _Coeffs_clear_fn(cf::Coeffs)
-   nKillChar(cf.ptr)
+   nKillChar( get_raw_ptr(cf) )
+end
+
+function show(io::IO, cf::Coeffs)
+   print(io, "Singular.Coeffs( ")
+
+   StringSetS("")
+   n_CoeffWrite(get_raw_ptr(cf), true) # false?
+   m = StringEndS()
+
+   print(io, bytestring(m), " )")
+   omFree(m)
 end
 
 type Number <: SingularFieldElem
-    ptr    :: number
-    parent :: Coeffs
+    ptr :: number
+    ctx :: Coeffs
 
-    function Number(ctx::Coeffs, x::Int = 0)
-        z = new()
-	cf = ctx.ptr
-	ptr = @cxx n_Init(x, cf) 
-	z.ptr = ptr
-	z.parent = ctx
+    function Number(c::Coeffs, x::Int = 0)
+        p = n_Init(x, get_raw_ptr(c))
+
+        z = new(p, c)
         finalizer(z, _Number_clear_fn)
         return z
     end
 
     function Number(x::Number)
-        z = new()
-	ptr = x.ptr
-        cf = x.ctx.ptr
-	ptr = @cxx n_Copy(ptr, cf) 
-	z.ptr = ptr
-	z.parent = x.parent
+        c = parent(x) 
+	p = n_Copy(get_raw_ptr(x), get_raw_ptr(c)) 
+
+        z = new(p, c)
         finalizer(z, _Number_clear_fn)
         return z
     end
 end
 
+get_raw_ptr( n::Number ) = n.ptr
+parent( n::Number ) = n.ctx
+
 function _Number_clear_fn(n::Number)
-   cf = n.ctx.ptr
-   @cxx n_Delete(&(n.ptr), cf)
+#   p = &n
+   n_Delete(pointer(n), get_raw_ptr(parent(n)))
+#   n.ptr = p ## not necessary?
+end
+
+
+function show(io::IO, n::Number)
+   print(io, "Singular.Number( ")
+
+   StringSetS("")
+   n_Write( get_raw_ptr(n), get_raw_ptr(parent(n)) )
+   m = StringEndS()
+
+   print(io, bytestring(m), " )")
+   omFree(m)
 end
 
 
