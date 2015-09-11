@@ -22,10 +22,15 @@ cxxinclude("coeffs/coeffs.h", isAngled=false)
 
 cxx"""
     #include "Singular/libsingular.h"
+
+    #include "omalloc/omalloc.h"
+    #include "reporter/reporter.h"
+
     #include "coeffs/coeffs.h"
 
-static void _omFree(void* p){ omFree(p); }
-static void _PrintS(const void *p){ PrintS((const char*)(p)); } 
+    static void _omFree(void* p){ omFree(p); }
+    static void _PrintLn(){ PrintLn(); } 
+    static void _PrintS(const void *p){ PrintS((const char*)(p)); } 
 """
 
 # @cxx PrintS(s)  # BUG: PrintS is a C function
@@ -33,6 +38,9 @@ static void _PrintS(const void *p){ PrintS((const char*)(p)); }
 # PrintS(m) = ccall( Libdl.dlsym(Nemo.libSingular, :PrintS), Void, (Ptr{Uint8},), m) # workaround for C function
 function PrintS(m)
    @cxx _PrintS(m)
+end 
+function PrintLn()
+   @cxx _PrintLn()
 end 
 function omFree(m)
    @cxx _omFree(m)
@@ -141,7 +149,7 @@ function n_Write(n :: number, cf :: coeffs, bShortOut::Bool = true)
    @cxx n_Write(n, cf, d)
 end
 
-function n_Delete(n_ptr :: number_ptr, cf :: coeffs)
+function n_Delete(n_ptr, cf :: coeffs)
    @cxx n_Delete(n_ptr, cf)
 end
 
@@ -178,14 +186,17 @@ function _Coeffs_clear_fn(cf::Coeffs)
 end
 
 function show(io::IO, cf::Coeffs)
-   print(io, "Singular.Coeffs( ")
+#   print(io, "Singular.Coeffs( ")
 
-   StringSetS("")
-   n_CoeffWrite(get_raw_ptr(cf), true) # false?
-   m = StringEndS()
+#   StringSetS("")
 
-   print(io, bytestring(m), " )")
-   omFree(m)
+   PrintS(pointer("Singular.Coeffs: "))
+   n_CoeffWrite(get_raw_ptr(cf), true) # false? ### TODO: Does not write to StringBuffer:(
+#   PrintLn();
+#   m = StringEndS()
+
+#  print(io, bytestring(m), " )")
+#   omFree(m)
 end
 
 type Number <: SingularFieldElem
@@ -214,8 +225,11 @@ get_raw_ptr( n::Number ) = n.ptr
 parent( n::Number ) = n.ctx
 
 function _Number_clear_fn(n::Number)
+   cf = get_raw_ptr(parent(n))
 #   p = &n
-   n_Delete(pointer(n), get_raw_ptr(parent(n)))
+#   n_Delete(Ptr{number}(pointer(n)), cf)
+   @cxx n_Delete(&(n.ptr), cf)
+
 #   n.ptr = p ## not necessary?
 end
 

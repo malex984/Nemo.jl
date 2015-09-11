@@ -51,11 +51,11 @@ void test_contruct_ring()
 cxx"""
 void test_coeffs(n_coeffType t, void *p, long i)
 {
-   Print("Singular coeffs output: ");
+   PrintS("Singular coeffs output: ");
    coeffs C = nInitChar(t, p); 
    n_CoeffWrite(C, 1);
 
-   Print("Singular number output: ");
+   PrintS("Singular number output: ");
    number nn = n_Init(i, C);
    n_Print(nn, C);
    PrintLn();
