@@ -33,8 +33,6 @@ end
 
 function test_rings()
    test_fmpz()
-   test_fmpz_poly()
-   test_fmpz_mod_poly()
    test_nmod_poly()
    test_fmpq_poly()
    test_fq_poly()
@@ -50,12 +48,24 @@ function test_rings()
    test_series()
 
    test_nmod_mat()
+
+   test_fmpz_poly()
+   test_fmpz_mod_poly()
+
+
+   test_fmpz_poly_manipulation()
+
+#test_fmpz_mod_poly_manipulation()#bug in PARI/GP (Segmentation Fault), please report.  ***   Error in the PARI system. End of program.
+#test_fmpz_mod_poly_comparison()  #bug in PARI/GP (Segmentation Fault), please report.  ***   Error in the PARI system. End of program
+#test_fmpz_mod_poly_truncation()  #bug in PARI/GP (Segmentation Fault), please report.  ***   Error in the PARI system. End of program
+#test_fmpz_mod_poly_factor()     #ERROR: LoadError: ccall: could not find function fmpz_mod_poly_factor_get_fmpz_mod_poly in library libflint
+
 end
 
 function test_all()
    test_singular()
-   test_rings()
    test_fields()
+   test_rings()
 end
 
 end # module
