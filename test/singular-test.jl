@@ -82,13 +82,13 @@ void test_coeffs(n_coeffType t, void *p, long i)
 	print("Singular coeffs output: ")
 	Nemo.n_CoeffWrite( Nemo.get_raw_ptr(C), false )
 
- 	const ch = Nemo.n_GetChar( Nemo.get_raw_ptr(C) )
+ 	const ch = Nemo.characteristic(C)
 
 	println("Char coeffs: ", ch)
 
 	println("C: ", C)
 
-	z = Nemo.Number(C, i)
+	z = C(i)
 	print("Number out of $i: ")
 	println( Nemo.get_raw_ptr(z) )
 
@@ -120,9 +120,12 @@ void test_coeffs(n_coeffType t, void *p, long i)
    println("SingularZZ: ", Nemo.SingularZZ)
 
    # q = 66 in QQ
+   @test Nemo.SingularQQ == Nemo.Coeffs( Nemo.n_Q, Ptr{Void}(0) )
+
    jtest_coeffs( Nemo.n_Q, Ptr{Void}(0), 66)#   @cxx test_coeffs( n_Q, Ptr{Void}(0), 66) 
 
    ## z = 666 in ZZ
+   @test Nemo.SingularZZ == Nemo.Coeffs( Nemo.n_Z, Ptr{Void}(0) )
    jtest_coeffs( Nemo.n_Z, Ptr{Void}(0), 666) #   @cxx test_coeffs( n_Z, Ptr{Void}(0), 666) 
 
    ## zz = 6 in Zp{11}
