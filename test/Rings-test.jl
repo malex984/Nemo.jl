@@ -16,12 +16,13 @@ include("flint/fmpq_series-test.jl")
 include("flint/fmpz_mod_series-test.jl")
 include("flint/fq_series-test.jl")
 include("flint/fq_nmod_series-test.jl")
+include("flint/nmod_mat-test.jl")
+include("flint/fmpz_mat-test.jl")
 
 include("generic/Poly-test.jl")
 include("generic/Residue-test.jl")
 include("generic/PowerSeries-test.jl")
-
-include("nmod_mat-test.jl")
+include("generic/Matrix-test.jl")
 
 include("Fields-test.jl")
 
@@ -46,20 +47,20 @@ function test_rings()
    test_poly()
    test_residue()
    test_series()
-
+   test_matrix()
    test_nmod_mat()
 
    test_fmpz_poly()
    test_fmpz_mod_poly()
 
 
-   test_fmpz_poly_manipulation()
-
-#test_fmpz_mod_poly_manipulation()#bug in PARI/GP (Segmentation Fault), please report.  ***   Error in the PARI system. End of program.
+#   test_fmpz_poly_manipulation()
+#test_fmpz_mod_poly_manipulation()#bug in PARI/GP (Segmentation Fault), please report.  ***   Error in the PARI system. End of program
 #test_fmpz_mod_poly_comparison()  #bug in PARI/GP (Segmentation Fault), please report.  ***   Error in the PARI system. End of program
 #test_fmpz_mod_poly_truncation()  #bug in PARI/GP (Segmentation Fault), please report.  ***   Error in the PARI system. End of program
-#test_fmpz_mod_poly_factor()     #ERROR: LoadError: ccall: could not find function fmpz_mod_poly_factor_get_fmpz_mod_poly in library libflint
+#test_fmpz_mod_poly_factor()    #ERROR: LoadError: ccall: could not find function fmpz_mod_poly_factor_get_fmpz_mod_poly in library libflint
 
+   test_fmpz_mat()
 end
 
 function test_all()
