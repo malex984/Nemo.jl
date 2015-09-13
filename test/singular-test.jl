@@ -49,19 +49,48 @@ void test_contruct_ring()
    print("Wrapping libSingular constants/functions with Cxx...\n")  
 
 cxx"""
-void test_coeffs(n_coeffType t, void *p, long i)
+void test_coeffs(n_coeffType t, void *p, long v)
 {
+   int seed = siSeed;
+
    PrintS("Singular coeffs output: ");
    coeffs C = nInitChar(t, p); 
    n_CoeffWrite(C, 1);
 
-   PrintS("Singular number output: ");
-   number nn = n_Init(i, C);
-   n_Print(nn, C);
-   PrintLn();
+   number nn = n_Init(v, C);
+
+//   const int h = n_GetChar(C);
+   const int P = n_NumberOfParameters(C);
+
+   for (int i = 1; i <= P; i++) 
+   {
+      number k = NULL;
+
+      while( n_IsZero(k, C) )
+         k = n_Init(siRand(), C);
+
+      number p = n_Param(i, C);
+      n_InpMult(p, k, C);
+      n_InpAdd(nn, p, C);
+      n_Delete(&k, C);
+      n_Delete(&p, C);
+   }
+ 
+   for (int i = 0; i <= 4 + P ; i++) 
+   {
+     number n;
+     n_Power(nn, i, &n, C);
+
+     PrintS("Singular number output: ");
+     n_Print(n, C);
+     PrintLn();
+
+     n_Delete(&n, C);
+   }
 
    n_Delete(&nn, C);
    nKillChar(C);
+   siSeed = seed;
 }
 """
 
@@ -87,6 +116,34 @@ void test_coeffs(n_coeffType t, void *p, long i)
 	println("Char coeffs: ", ch)
 
 	println("C: ", C)
+        
+        zr = zero(C)
+	println("C(0): ", zr)
+
+        id = one(C)
+	println("C(1): ", id)
+        mid = C(-1)
+	println("C(-1): ", mid)
+
+        @test (!Nemo.isone(zr)) && (Nemo.iszero(zr)) && (!Nemo.ispositive(zr)) && (!Nemo.isnegative(zr))
+        @test Nemo.isone(id) && (!Nemo.iszero(id)) && Nemo.ispositive(id)
+        @test Nemo.ismone(mid) 
+        @test Nemo.isnegative(mid)
+        @test !Nemo.iszero(mid) 
+        @test !Nemo.ispositive(mid)
+
+        @test (id > zr) && (id != zr)
+        @test (1 > zr) && (1 != zr)
+        @test (id > 0) && (id != 0)
+
+        if (ch == 0)  
+            @test (id > mid)
+            @test (zr > mid)
+            @test (id > -1)
+            @test (zr > -1)
+            @test (1 > mid)
+            @test (0 > mid)
+        end
 
 	z = C(i)
 	print("Number out of $i: ")
@@ -103,6 +160,25 @@ void test_coeffs(n_coeffType t, void *p, long i)
 
 	@test ((ch == 0) && (i == ii)) || ((ch > 0) && ((i - ii) % ch == 0))
 
+
+        const P = Nemo.npars(C)
+
+        for j = 1:P
+           k = C(0)
+
+           while( Nemo.iszero(k) )
+              k = C(Nemo.siRand())
+           end
+
+           p = par(i, C)
+	   muleq!(p, k)
+           addeq!(z, p)
+        end
+
+        for j = 0:(P+4)
+            println("Singular number output: ", z^j);
+        end
+
 ##	Nemo.n_Delete(z, C.ptr)
 #	print("Deleted number: ")
 #	println(z);
@@ -118,10 +194,10 @@ void test_coeffs(n_coeffType t, void *p, long i)
 
 ### TODO: separate creation for Coeffs & pass them into jtest_coeffs instead!
    println("SingularZZ: ", Nemo.SingularZZ)
+   println("SingularQQ: ", Nemo.SingularQQ)
 
    # q = 66 in QQ
    @test Nemo.SingularQQ == Nemo.Coeffs( Nemo.n_Q, Ptr{Void}(0) )
-
    jtest_coeffs( Nemo.n_Q, Ptr{Void}(0), 66)#   @cxx test_coeffs( n_Q, Ptr{Void}(0), 66) 
 
    ## z = 666 in ZZ
@@ -131,6 +207,5 @@ void test_coeffs(n_coeffType t, void *p, long i)
    ## zz = 6 in Zp{11}
    jtest_coeffs( Nemo.n_Zp, Ptr{Void}(11), 11*3 + 6) #   @cxx test_coeffs( n_Zp, Ptr{Void}(11), 11*3 + 6) 
 
-   println("SingularQQ: ", Nemo.SingularQQ)
-
+   println()
 end

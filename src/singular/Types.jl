@@ -36,6 +36,12 @@ cxx"""
     static void _omFree(void* p){ omFree(p); }
     static void _PrintLn(){ PrintLn(); } 
     static void _PrintS(const void *p){ PrintS((const char*)(p)); } 
+    static int  _siRand(){ return siRand(); }
+    static number _n_Power(number a, int b, const coeffs r)
+    {
+      number res; n_Power(a, b, &res, r);
+      return res;
+    }
 """
 
 # @cxx PrintS(s)  # BUG: PrintS is a C function
@@ -50,6 +56,10 @@ end
 function omFree(m)
    @cxx _omFree(m)
 end 
+function siRand()
+   return @cxx siRand()
+end
+
 
 function StringSetS(m) 
    @cxx StringSetS(pointer(m))
@@ -210,6 +220,14 @@ n_Size(x :: number, cf :: coeffs) = @cxx n_Size(x, cf)
 # int n_ParDeg(number n, const coeffs r)
 n_ParDeg(x :: number, cf :: coeffs) = @cxx n_ParDeg(x, cf)
 
+# int n_NumberOfParameters(const coeffs r)
+n_NumberOfParameters(cf :: coeffs) = @cxx n_NumberOfParameters(cf)
+ 
+# number n_Param(const int iParameter, const coeffs r)
+n_Param(i::Int, cf :: coeffs) = @cxx n_Param(i, cf)
+
+
+
 # n_Write(number& n,  const coeffs r, const BOOLEAN bShortOut = TRUE)
 function n_Write(n, cf :: coeffs, bShortOut::Bool = true)
    d :: Int = (bShortOut? 1 : 0) 
@@ -256,6 +274,9 @@ for (f) in ((:n_Add), (:n_Sub), (:n_Div), (:n_Mult), (:n_ExactDiv),
 end
 
 # void   n_Power(number a, int b, number *res, const coeffs r)
+function n_Power(a::number, b::Int, cf::coeffs)
+    return @cxx _n_Power(a, b, cf)
+end
 
 ## number n_ExtGcd(number a, number b, number *s, number *t, const coeffs r)
 ## number n_XExtGcd(number a, number b, number *s, number *t, number *u, number *v, const coeffs r)
@@ -271,12 +292,6 @@ end
 ## number n_ReadFd( s_buff f, const coeffs r)
 ## number n_convFactoryNSingN( const CanonicalForm n, const coeffs r);
 ## CanonicalForm n_convSingNFactoryN( number n, BOOLEAN setChar, const coeffs r );
-
-# int n_NumberOfParameters(const coeffs r)
- 
-# char const * * n_ParameterNames(const coeffs r)
-# number n_Param(const int iParameter, const coeffs r)
-
 
 ## n_coeffType getCoeffType(const coeffs r)
 function getCoeffType(r :: coeffs ) 
@@ -326,6 +341,16 @@ function _Coeffs_clear_fn(cf::Coeffs)
 end
 
 characteristic(c::Coeffs) = n_GetChar( get_raw_ptr(c) )
+
+# char const * * n_ParameterNames(const coeffs r)
+
+npars(c::Coeffs) = n_NumberOfParameters( get_raw_ptr(c) )
+
+function par(i::Int, c::Coeffs) 
+    ((i >= 1) && (i <= npars(c))) && return Number(c, n_Param(i, get_raw_ptr(c)))
+    error("Wrong parameter index")
+end 
+
 
 type Number <: SingularFieldElem
     ptr :: number
@@ -621,12 +646,13 @@ end
 
 function ^(x::Number, y::Int)
     if y < 0; throw(DomainError()); end
-    if x == 1; return x; end
-    if x == -1; return isodd(y) ? x : -x; end
+    if isone(x); return x; end
+    if ismone(x); return isodd(y) ? x : -x; end
     if y > typemax(Uint); throw(DomainError()); end
-    if y == 0; return one(parent(x)); end
+    c = parent(x)
+    if y == 0; return one(c); end
     if y == 1; return x; end
-    return x^Uint(y) ## TODO ?
+    return Number(c, n_Power(get_raw_ptr(x), y, get_raw_ptr(c)))
 end
 
 
