@@ -381,6 +381,7 @@ end
 
 function test_fmpz_poly()
    test_fmpz_poly_constructors()
+   test_fmpz_poly_manipulation() # ?
    test_fmpz_poly_binary_ops()
    test_fmpz_poly_adhoc_binary()
    test_fmpz_poly_comparison()
@@ -403,6 +404,5 @@ function test_fmpz_poly()
    test_fmpz_poly_signature()
    test_fmpz_poly_special()
 
-#   test_fmpz_poly_manipulation()
    println("")
 end
