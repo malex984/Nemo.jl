@@ -23,7 +23,7 @@ import Base: floor, ceil, hypot, sqrt,
              sinpi, cospi, atan2
 
 export SetElem, GroupElem, RingElem, FieldElem, Pari, Flint, Antic,
-       Generic
+       Generic, Singular
 
 export PolyElem, SeriesElem, ResidueElem, FractionElem, MatElem,
        NumberFieldElem, PermElem
@@ -126,6 +126,16 @@ include("antic/AnticTypes.jl")
 include("arb/ArbTypes.jl")
 
 include("pari/PariTypes.jl")
+
+function test_pkg_status(pkg)
+   tempiobuffer = IOBuffer(); 
+   Pkg.status(pkg, tempiobuffer);
+   return (tempiobuffer.size != 0);
+end
+const with_cxx = test_pkg_status("Cxx")
+if with_cxx
+   include("singular/SingularTypes.jl")
+end
 
 include("Groups.jl")
 
