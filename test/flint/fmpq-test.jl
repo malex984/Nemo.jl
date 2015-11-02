@@ -256,13 +256,19 @@ end
 function test_fmpq_modular_arithmetic()
    print("fmpq.modular_arithmetic()...")
 
-   a = -fmpz(2)//3
-   b = fmpz(1)//2
+   R = FractionField(ZZ)
 
-   @test mod(a, 7) == 4
+   a = R(-2, 3)
+   b = R( 1, 2)
 
-   @test mod(b, fmpz(5)) == 3
-   
+   aa = mod(a, 7)
+   println(aa)
+   bb = mod(b, 5)
+   println(bb)
+
+   @test aa == R(19, 3) # mod(-Rational(2, 3), 7)
+   @test bb == R(1, 2) # mod(Rational(1, 2), 5)
+
    println("PASS")
 end
 

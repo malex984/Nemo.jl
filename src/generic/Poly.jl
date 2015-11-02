@@ -621,7 +621,7 @@ function mullow{T <: RingElem}(a::PolyElem{T}, b::PolyElem{T}, n::Int)
       n = 0
    end
 
-   t = T()
+   t = base_ring(a)() # T()
 
    lenz = min(lena + lenb - 1, n)
 
