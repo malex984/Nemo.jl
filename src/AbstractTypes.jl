@@ -16,6 +16,8 @@ abstract Arb
 
 abstract Generic
 
+abstract Singular
+
 # mathematical domains, parameterised by a library
 # these are the type classes of parent objects
 
