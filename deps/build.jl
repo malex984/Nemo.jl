@@ -217,6 +217,10 @@ else
    end
 end
 
+
+include("singular-build.jl")
+install_singular()
+
 cd(wdir)
 
 push!(Libdl.DL_LOAD_PATH, Pkg.dir("Nemo", "local", "lib"))
