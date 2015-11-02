@@ -170,9 +170,10 @@ void test_coeffs(n_coeffType t, void *p, long v)
               k = C(Nemo.siRand())
            end
 
-           p = par(i, C)
-	   muleq!(p, k)
-           addeq!(z, p)
+#           p = par(i, C)
+#	   muleq!(p, k)
+           z = z + par(i, C) * k 
+# addeq!(z, p)
         end
 
         for j = 0:(P+4)
@@ -182,6 +183,33 @@ void test_coeffs(n_coeffType t, void *p, long v)
 ##	Nemo.n_Delete(z, C.ptr)
 #	print("Deleted number: ")
 #	println(z);
+
+
+        R, x = PolynomialRing(C, "x")
+
+        f = x^3 + 3x - 1
+        println("f: ", f)
+
+        g = (f+1)^10 + 1 
+        println("g: ", g)
+
+        S, y = PolynomialRing(R, "y")
+        T, z = PolynomialRing(S, "z")
+        U, t = PolynomialRing(T, "t")
+
+	if !Nemo.isring(C) 
+           println("C is not a RING - Field?")
+
+           println("f*g: ", f * g)
+##	   println("gcd: ", gcd(f, g))
+
+           p = (1+x+y+z+t);
+           println("p: ", p)
+           pp = p^2;
+
+           # println("pp: ", pp)
+           @time ppp = pp*(pp+1);
+        end
 		
         println("\n...PASS")
    end	  
@@ -207,5 +235,14 @@ void test_coeffs(n_coeffType t, void *p, long v)
    ## zz = 6 in Zp{11}
    jtest_coeffs( Nemo.n_Zp, Ptr{Void}(11), 11*3 + 6) #   @cxx test_coeffs( n_Zp, Ptr{Void}(11), 11*3 + 6) 
 
+
    println()
+
+
 end
+
+
+
+##### SingPoly : p * q & gcd 
+
+

@@ -3,13 +3,13 @@
 #   Types.jl : Parent and object types for Singular
 #
 ###############################################################################
-export SingularField, SingularFieldElem, Coeffs, Number, SingularQQ, SingularZZ
-export elem_type, base_ring, check_parent, show
+
+export SingularField, SingularFieldElem, Coeffs, NumberElem, SingularQQ, SingularZZ
+# export elem_type, base_ring, check_parent, show
 export characteristic 
 
 
 using Cxx
-
 
 const prefix = joinpath(Pkg.dir("Nemo"), "local")
 const singular_binary_path = joinpath(prefix, "bin", "Singular")
@@ -41,6 +41,10 @@ cxx"""
     {
       number res; n_Power(a, b, &res, r);
       return res;
+    }
+    static void _n_Delete(number a, const coeffs r)
+    {
+      n_Delete(&a, r);
     }
 """
 
@@ -80,6 +84,7 @@ end
 
 siInit(singular_binary_path) # Initialize Singular!
 
+
 function PrintResources(s)
    StringSetS(s)
    feStringAppendResources(0)
@@ -99,7 +104,18 @@ end
 abstract SingularField <: Field{Singular}
 abstract SingularFieldElem <: FieldElem ### {Singular}?
 
-const CoeffID = ObjectIdDict() # Dict{Ptr{Void}, SingularField}()
+# typealias SingularRing 
+abstract SingularRingElem <: RingElem ### {Singular}?
+
+type SingularPolynomialRing <: Ring{Singular} # SingularRing
+end
+
+type SingularPolynomial <: PolyElem
+end
+
+
+const CoeffID = ObjectIdDict()
+#const SRingID = ObjectIdDict()
 
 # Ring?   
 # todo: add default constructor for QQ, Fp ?! 
@@ -119,13 +135,14 @@ const n_Zp = @cxx get_Zp() #  # get_Zp() = icxx" return n_Zp; "
 const n_Q  = @cxx get_Q() # Cxx.CppEnum{:n_coeffType}(2) # icxx" return n_Q; "
 const n_Z  = @cxx get_Z() # Cxx.CppEnum{:n_coeffType}(9) # icxx" return n_Z; "
 
+### FIXME : Cxx Type?
 typealias coeffs Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}
 # Ptr{Void}
 
 typealias number Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)}
 # Ptr{Void}
 
-typealias number_ptr Ptr{number}
+typealias number_ptr Ptr{number} ### FIXME : Cxx Ptr & Ref ???
 
 # include("cxx_singular_lowlevel.jl") # TODO: move most wrappers there from around here!
 
@@ -160,7 +177,12 @@ function n_Init(i::Int, cf :: coeffs)
    return @cxx n_Init(i, cf)
 end
 
+
+# BigInt ?!
 # number n_InitMPZ(mpz_t n,     const coeffs r) # TODO: BigInt???
+function n_InitMPZ(b :: BigInt, cf :: coeffs)
+   return @cxx n_InitMPZ(b, cf)
+end
 
 ## static FORCE_INLINE void number2mpz(number n, coeffs c, mpz_t m){ n_MPZ(m, n, c); }
 ## static FORCE_INLINE number mpz2number(mpz_t m, coeffs c){ return n_InitMPZ(m, c); }
@@ -174,8 +196,19 @@ function n_Print(n :: number, cf :: coeffs)
    @cxx n_Print(n, cf)
 end
 
-function n_Delete(n_ptr, cf :: coeffs)
+
+function n_Delete(n_ptr :: number_ptr, cf :: coeffs)
    @cxx n_Delete(n_ptr, cf)
+end
+
+#function n_Delete(n :: Ref{number}, cf :: coeffs)
+#   m = number(n)
+#  @cxx _n_Delete(m, cf)
+#   n = number(0)
+#end
+
+function _n_Delete(n :: number, cf :: coeffs)
+   @cxx _n_Delete(n, cf)
 end
 
 ###############################################################################
@@ -199,6 +232,7 @@ for (f) in ((:n_DivBy), (:n_Greater), (:n_Equal))
 end
 
 
+
 #### Metaprogram to define functions :
 # BOOLEAN n_IsOne(number n,  const coeffs r)
 # BOOLEAN n_IsMOne(number n, const coeffs r)
@@ -213,6 +247,20 @@ for (f) in ((:n_IsOne), (:n_IsMOne), (:n_IsZero), (:n_GreaterZero))
         end
     end
 end
+
+
+## BOOLEAN nCoeff_is_Ring(const coeffs r)
+## BOOLEAN nCoeff_is_Domain(const coeffs r)
+## BOOLEAN nCoeff_has_simple_inverse(const coeffs r) nCoeff_has_simple_Alloc
+for (f) in ((:nCoeff_is_Ring), (:nCoeff_is_Domain), (:nCoeff_has_simple_inverse), (:nCoeff_has_simple_Alloc))
+    @eval begin
+        function ($f)(cf :: coeffs)
+            ret = @cxx ($f)(cf)
+            return (ret > 0)
+        end
+    end
+end
+
 
 # int    n_Size(number n,    const coeffs r)
 n_Size(x :: number, cf :: coeffs) = @cxx n_Size(x, cf)
@@ -281,15 +329,14 @@ end
 ## number n_ExtGcd(number a, number b, number *s, number *t, const coeffs r)
 ## number n_XExtGcd(number a, number b, number *s, number *t, number *u, number *v, const coeffs r)
 ## number n_QuotRem(number a, number b, number *q, const coeffs r)
-## number n_ChineseRemainderSym(number *a, number *b, int rl, BOOLEAN sym,CFArray &inv_cache,const coeffs r)
 
-## BOOLEAN nCoeff_is_Ring(const coeffs r)
-## BOOLEAN nCoeff_is_Domain(const coeffs r)
-
+##### number n_ChineseRemainderSym(number *a, number *b, int rl, BOOLEAN sym,CFArray &inv_cache,const coeffs r)
 ## nMapFunc n_SetMap(const coeffs src, const coeffs dst)
 ## number n_Random(siRandProc p, number p1, number p2, const coeffs cf)
-## void n_WriteFd(number a, FILE *f, const coeffs r)
-## number n_ReadFd( s_buff f, const coeffs r)
+
+### void n_WriteFd(number a, FILE *f, const coeffs r)
+### number n_ReadFd( s_buff f, const coeffs r)
+
 ## number n_convFactoryNSingN( const CanonicalForm n, const coeffs r);
 ## CanonicalForm n_convSingNFactoryN( number n, BOOLEAN setChar, const coeffs r );
 
@@ -331,7 +378,6 @@ type Coeffs <: SingularField
          return d
       end
    end
-
 end
 
 get_raw_ptr( cf::Coeffs ) = cf.ptr
@@ -340,60 +386,113 @@ function _Coeffs_clear_fn(cf::Coeffs)
    nKillChar( get_raw_ptr(cf) )
 end
 
-characteristic(c::Coeffs) = n_GetChar( get_raw_ptr(c) )
-
-# char const * * n_ParameterNames(const coeffs r)
-
-npars(c::Coeffs) = n_NumberOfParameters( get_raw_ptr(c) )
-
-function par(i::Int, c::Coeffs) 
-    ((i >= 1) && (i <= npars(c))) && return Number(c, n_Param(i, get_raw_ptr(c)))
-    error("Wrong parameter index")
-end 
-
-
-type Number <: SingularFieldElem
+type NumberElem <: SingularFieldElem
     ptr :: number
     ctx :: Coeffs
 
     # void nNew(number * a) # ?
 
     # Integer?
-    function Number(c::Coeffs, x::Int = 0)
+    function NumberElem(c::Coeffs, x::Int = 0)
         p = n_Init(x, get_raw_ptr(c))
 
         z = new(p, c)
-        finalizer(z, _Number_clear_fn)
+        finalizer(z, _SingularFieldElem_clear_fn)
         return z
     end
 
-    function Number(x::Number)
+    function NumberElem(x::SingularFieldElem)
         c = parent(x) 
 	p = n_Copy(get_raw_ptr(x), get_raw_ptr(c)) 
 
         z = new(p, c)
-        finalizer(z, _Number_clear_fn)
+        finalizer(z, _SingularFieldElem_clear_fn)
         return z
     end
 
-    function Number(c::Coeffs, p::number)
+    function NumberElem(c::Coeffs, p::number)
         z = new(p, c)
-        finalizer(z, _Number_clear_fn)
+        finalizer(z, _SingularFieldElem_clear_fn)
         return z
     end
+
+    function NumberElem(c::Coeffs, b::BigInt)
+        c = parent(x)
+        p = n_InitMPZ(b, get_raw_ptr(c))
+
+        z = new(p, c)
+        finalizer(z, _SingularFieldElem_clear_fn)
+        return z
+    end
+
+
+### TODO: BigInt # mpz_t n
 end
 
-get_raw_ptr( n::Number ) = n.ptr
-parent( n::Number ) = n.ctx
+# {T <: SingularFieldElem}
+get_raw_ptr( n::NumberElem ) = n.ptr
+parent( n::NumberElem ) = n.ctx
 
-function _Number_clear_fn(n::Number)
-   cf = get_raw_ptr(parent(n))
+
+const leftovers = ObjectIdDict()
+
+# dupes_counter = 0
+
+function _SingularFieldElem_clear_fn(n::SingularFieldElem)
+   c = parent(n)
+   cf = get_raw_ptr(c)
+
+   p = get_raw_ptr(n)
 #   p = &n
-#   n_Delete(Ptr{number}(pointer(n)), cf)
-   @cxx n_Delete(&(n.ptr), cf)
 
+   n.ptr = number(0)
+
+   if nCoeff_has_simple_Alloc(cf) # || ( (Int(p) & 255) != 0 )
+      return ;
+   end
+
+
+#   n_Delete(Ptr{number}(pointer(n)), cf)
+
+#   print("\n_SingularFieldElem_clear_fn(n)...")
+ 
+   if !haskey(leftovers, c) 
+       leftovers[c] = Dict([ p => 1 ])
+   else
+       nn = leftovers[c]
+
+       if !haskey(nn, p)
+           nn[p] = 1
+       else ### :(
+       	   nn[p] = nn[p] + 1;
+       end
+   end
+
+###   @cxx _n_Delete(p, cf)
+###    n_Delete(p, cf)
+
+#   println("DONE!")
 #   n.ptr = p ## not necessary?
 end
+
+###############################################################################
+#
+#   Parent object call overloads
+#
+###############################################################################
+
+Base.call(a::Coeffs) = NumberElem(a)
+Base.call(a::Coeffs, b::Int) = NumberElem(a, b)
+Base.call(a::Coeffs, b::Integer) = NumberElem(a, BigInt(b))
+## Base.call(a::Coeffs, b::String) = NumberElem(a, b)
+# Base.call(a::Coeffs, b::number) = NumberElem(a, b)
+
+function Base.call(a::Coeffs, b::SingularFieldElem)
+   a != parent(b) && error("Operations on elements from different field (mappings) are not supported yet!")
+   return b 
+##   return deepcopy(b) # NOTE: fine no need in deepcopy!?? TODO?????
+end
+
 
 ###############################################################################
 #
@@ -401,13 +500,27 @@ end
 #
 ###############################################################################
 
-# Number(c::Coeffs, s::String) = parseint(c, s)
-
-#Number(c::Coeffs, z::Integer) = Number(BigInt(z))
-#Number(c::Coeffs, z::Float16) = Number(Float64(z))
-#Number(z::BigFloat) = Number(BigInt(z))
+#NumberElem(c::Coeffs, s::String) = parseint(c, s)
+NumberElem(c::Coeffs, z::Integer) = c(BigInt(z))
 
 
+###############################################################################
+#
+#   Parameters and characteristic
+#
+###############################################################################
+
+
+characteristic(c::Coeffs) = n_GetChar( get_raw_ptr(c) )
+
+# char const * * n_ParameterNames(const coeffs r)
+
+npars(c::Coeffs) = n_NumberOfParameters( get_raw_ptr(c) )
+
+function par(i::Int, c::Coeffs) 
+    ((i >= 1) && (i <= npars(c))) && return c(n_Param(i, get_raw_ptr(c)))
+    error("Wrong parameter index")
+end 
 
 
 
@@ -422,26 +535,29 @@ function string(c::Coeffs)
    m = nCoeffString(cf)
    mm = nCoeffName(cf)
 
-   return "Singular.Coeffs( " * bytestring(mm) * "|[" * bytestring(m) * "] )"
+   return "Coeffs(" * bytestring(mm) * "|[" * bytestring(m) * "])"
 end
 
-function string(n::Number)
+function string(n::SingularFieldElem)
    StringSetS("")
    n_Write( get_raw_ptr(n), get_raw_ptr(parent(n)) )
    m = StringEndS()
    s = bytestring(m)
    omFree(m)
 
-   return "Singular.Number( " * s * ") "
+   return s
 end
 
-needs_parentheses(x::Number) = true # TODO: is coeffs has parameters?
-is_negative(x::Number) = isnegative(x) 
-show_minus_one(::Type{Number}) = false
+#### TODO: needs considering?
+needs_parentheses(x::SingularFieldElem)   = true # TODO: is coeffs has parameters?
+show_minus_one{T <: SingularFieldElem}(::Type{T}) = true
+is_negative(x::SingularFieldElem) = isnegative(x) 
+
+isring(c::Coeffs) = nCoeff_is_Ring(get_raw_ptr(c))
+isdomain(c::Coeffs) = nCoeff_is_Domain(get_raw_ptr(c))
 
 show(io::IO, c::Coeffs) = print(io, string(c))
-show(io::IO, n::Number) = print(io, string(n))
-
+show(io::IO, n::SingularFieldElem) = print(io, "SingularFieldElem(", string(n), ")")
 
 const SingularQQ = Coeffs(n_Q, Ptr{Void}(0)) # SingularRationalField()
 const SingularZZ = Coeffs(n_Z, Ptr{Void}(0)) # SingularRing()
@@ -456,32 +572,14 @@ const SingularZZ = Coeffs(n_Z, Ptr{Void}(0)) # SingularRing()
 #
 ###############################################################################
 
-elem_type(::Coeffs) = Number
-elem_type(::Number) = Number
+elem_type(::Coeffs) = NumberElem ## TODO:?
 
 base_ring(a::Coeffs) = None
-base_ring(a::Number) = None
+base_ring(a::SingularFieldElem) = None
 
-function check_parent(a::Number, b::Number) 
+function check_parent(a::SingularFieldElem, b::SingularFieldElem) 
    parent(a) != parent(b) && error("Operations on elements from distinct fields are not supported")
 end
-
-###############################################################################
-#
-#   Parent object call overloads
-#
-###############################################################################
-
-Base.call(a::Coeffs) = Number(a)
-Base.call(a::Coeffs, b::Int) = Number(a, b)
-# Base.call(a::Coeffs, b::Integer) = Number(a, b)
-## Base.call(a::Coeffs, b::String) = Number(a, b)
-
-function Base.call(a::Coeffs, b::Number)
-   a != parent(b) && error("Cperations on elements from different field are not supported")
-   return b
-end
-
 
 ###############################################################################
 #
@@ -490,33 +588,29 @@ end
 ###############################################################################
 
 #### For the following we miss a context
-#convert(::Type{Number}, a::Int) = Number(a)
-#convert(::Type{Number}, a::Integer) = Number(a)
+#convert(::Type{NumberElem}, a::Int) = #NumberElem (a)
+#convert(::Type{NumberElem}, a::Integer) = #NumberElem (a)
 
 # convert(::Type{Rational{BigInt}}, a::fmpq) = Rational(a)
-#function convert(::Type{BigInt}, a::Number)
+#function convert(::Type{BigInt}, a::NumberElem)
 #   r = BigInt()
-#   ccall((:Number_get_mpz, :libflint), Void, (Ptr{BigInt}, Ptr{Number}), &r, &a)
+#   ccall((:NumberElem_get_mpz, :libflint), Void, (Ptr{BigInt}, Ptr{NumberElem}), &r, &a)
 #   return r
 #end
 
-#function convert(::Type{Int}, a::Number) 
-#   return ccall((:Number_get_si, :libflint), Int, (Ptr{Number},), &a)
+#function convert(::Type{Int}, a::NumberElem) 
+#   return ccall((:NumberElem_get_si, :libflint), Int, (Ptr{NumberElem},), &a)
 #end
 
-#function convert(::Type{UInt}, x::Number)
-#   return ccall((:Number_get_ui, :libflint), UInt, (Ptr{Number}, ), &x)
+#function convert(::Type{UInt}, x::NumberElem)
+#   return ccall((:NumberElem_get_ui, :libflint), UInt, (Ptr{NumberElem}, ), &x)
 #end
 
-#function convert(::Type{Float64}, n::Number)
+#function convert(::Type{Float64}, n::NumberElem)
 #    # rounds to zero
 #end
 
-#convert(::Type{Float32}, n::Number) = Float32(Float64(n))
-#convert(::Type{Float16}, n::Number) = Float16(Float64(n))
-#convert(::Type{BigFloat}, n::Number) = BigFloat(BigInt(n))
-
-Base.promote_rule{T <: Integer}(::Type{Number}, ::Type{T}) = Number
+Base.promote_rule{S <: SingularFieldElem, T <: Integer}(::Type{S}, ::Type{T}) = NumberElem #TODO: ?!
 
 
 ###############################################################################
@@ -525,20 +619,23 @@ Base.promote_rule{T <: Integer}(::Type{Number}, ::Type{T}) = Number
 #
 ###############################################################################
 
-function hash(a::Number)
+function hash(a::SingularFieldElem)
    return hash(parent(a)) $ hash(string(a))  ## TODO: string may be a bit too inefficient wherever hash is used...?
 end
 
 function hash(a::Coeffs)
-   h = 0x8a30b0d963237dd5 # TODO: change this const to something uniqe!
+#   h = 0x8a30b0d963237dd5 # TODO: change this const to something uniqe!
    return hash(string(a))  ## TODO: string may be a bit too inefficient wherever hash is used...?
 end
 
-deepcopy(a::Number) = Number(a)
-zero(a::Coeffs) = Number(a, 0)
-one(a::Coeffs) = Number(a, 1)
+deepcopy(a::SingularFieldElem) = NumberElem(a)
 
-isunit(a::Number) = !iszero(a)  # NOTE:Coeff.  Rings are not supported at the moment
+zero(a::Coeffs) = a(0)
+one(a::Coeffs) = a(1)
+mone(a::Coeffs) = a(-1)
+
+#### #wrong for ZZ???
+isunit(a::SingularFieldElem) = !iszero(a) # FIXME: NOTE:Coeff.  Rings are not supported at the moment
 
 ###############################################################################
 #
@@ -546,26 +643,53 @@ isunit(a::Number) = !iszero(a)  # NOTE:Coeff.  Rings are not supported at the mo
 #
 ###############################################################################
 
-canonical_unit(x::Number) = isnegative(x) ? Number(parent(x), -1) : Number(parent(x), 1)
+##### FIXME: wrong? for printing & normalization of fractions?
+canonical_unit(x::SingularFieldElem) = isnegative(x) ? mone(parent(x)) : one(parent(x)) ## ZZ
+## 
 
 
 ###############################################################################
 #
-#   Unsafe operators
+#   Unsafe functions  for performance
 #
 ###############################################################################
 
 ### void n_InpMult(number &a, number b, const coeffs r)
 ### void n_InpAdd(number &a, number b, const coeffs r)
 
-for (fJ, fC) in ((:muleq!, :n_InpMult), (:addeq!, :n_InpAdd))
+for (fJ, fC) in ((:muleq!, :n_Mult), (:addeq!, :n_Add))
     @eval begin
-        function ($fJ)(x :: Number, y :: Number)
+        function ($fJ)(x :: SingularFieldElem, y :: SingularFieldElem)
             check_parent(x, y)
             cf = get_raw_ptr(parent(x))
-            @cxx ($fC)(x.ptr, y.ptr, cf) ### FIXME!!!!
+            xx = get_raw_ptr(x)
+            yy = get_raw_ptr(y)
+
+            ptr = @cxx ($fC)(xx, yy, cf) ### TODO: check me! reference!? ##????
+
+	    @cxx _n_Delete(xx, cf)
+##            @cxx ($fC)(xx, yy, cf) ### TODO: check me! reference!? ##????
+            x.ptr = ptr
         end
     end
+end
+
+
+function mul!(c::SingularFieldElem, x::SingularFieldElem, y::SingularFieldElem)
+#    c = x * y
+    check_parent(x, y)
+    
+    C = parent(x)
+    ptr   = @cxx n_Mult(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(C))
+    
+#    old   = c.ptr
+#    oldcf = get_raw_ptr(parent(c)) 
+    _SingularFieldElem_clear_fn(c)
+    c.ctx = C
+    c.ptr = ptr
+
+##    @cxx n_Delete(&old, oldcf)
+##    muleq!(c, y)
 end
 
 ###############################################################################
@@ -574,6 +698,7 @@ end
 #
 ###############################################################################
 
+### TODO: move above
 # number  n_InpNeg(number n, const coeffs r) # to be used only as: n = n_InpNeg(n, cf);
 n_InpNeg(x, cf :: coeffs) = return (x = @cxx n_InpNeg(x, cf))
 
@@ -581,17 +706,14 @@ n_InpNeg(x, cf :: coeffs) = return (x = @cxx n_InpNeg(x, cf))
 ### number n_GetDenom(number& n, const coeffs r)
 ### number n_GetNumerator(number& n, const coeffs r)
 
-for (fJ, fC) in ((:numerator, :n_GetNumerator), (:denominator, :n_GetDenom), (:normalize, :n_Normalize))
+for (fJ, fC) in ((:num, :n_GetNumerator), (:den, :n_GetDenom), (:normalise, :n_Normalize))
     @eval begin
-        function ($fJ)(x :: Number)
+        function ($fJ)(x :: SingularFieldElem)
             cf = get_raw_ptr(parent(x))
             return @cxx ($fC)(x.ptr, cf) ### FIXME? 
         end
     end
 end
-
-num(x::Number) = numerator(x)
-den(x::Number) = denominator(x)
 
 ###############################################################################
 #
@@ -604,47 +726,55 @@ den(x::Number) = denominator(x)
 for (fJ, fC) in ((:+, :n_Add), (:-,:n_Sub), (:*, :n_Mult),
                  (:gcd, :n_Gcd), (:lcm, :n_Lcm) )
     @eval begin
-        function ($fJ)(x::Number, y::Number)
+        function ($fJ)(x::SingularFieldElem, y::SingularFieldElem)
             check_parent(x, y)
             c = parent(x)
-            return  Number(c, ($fC)(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c)))
+            p = ($fC)(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c));
+            return  NumberElem(c, p)
         end
         
-        ($fJ)(x::Number, i::Int) = ($fJ)(x, parent(x)(i)) 
-        ($fJ)(i::Int, x::Number) = ($fJ)(parent(x)(i), x)
+        ($fJ)(x::SingularFieldElem, i::Integer) = ($fJ)(x, parent(x)(i)) 
+        ($fJ)(i::Integer, x::SingularFieldElem) = ($fJ)(parent(x)(i), x)
     end
 end
 
-function divexact(x::Number, y::Number)
-    iszero(y) && throw(DivideError())
-    check_parent(x, y)
-    c = parent(x)
-    return Number(c, n_ExactDiv(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c))) 
-end
+##function divexact(x::SingularFieldElem, y::SingularFieldElem)
+##    iszero(y) && throw(DivideError())
+##    check_parent(x, y)
+##    c = parent(x)
+##    return c(n_ExactDiv(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c)))
+##end
+
+##### TODO: check for exact multiple before divexact & error?
 
 
 # Metaprogram to define functions /, div, mod
 
-for (fJ, fC) in ((:/, :n_Div), (:div, :n_DivExact), (:mod, :n_Mod))
+if false
+
+for (fJ, fC) in ((://, :n_Div), ### ????? /: floating point division?
+    (:div, :n_DivExact), ##### FIXME / TODO : Euclid domain???
+    (:mod, :n_Mod))
     @eval begin
-        function ($fJ)(x::Number, y::Number)
+        function ($fJ)(x::SingularFieldElem, y::SingularFieldElem)
             iszero(y) == 0 && throw(DivideError())
             check_parent(x, y)
             c = parent(x)
-            return  Number(c, ($fC)(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c)))
+            return  c(($fC)(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c)))
         end
-        ($fJ)(x::Number, i::Int) = ($fJ)(x,  parent(x)(i)) 
-        ($fJ)(i::Int, x::Number) = ($fJ)(parent(x)(i), x)
+        ($fJ)(x::SingularFieldElem, i::Integer) = ($fJ)(x,  parent(x)(i)) 
+        ($fJ)(i::Integer, x::SingularFieldElem) = ($fJ)(parent(x)(i), x)
     end
 end
 
+end
 ###############################################################################
 #
 #   Powering
 #
 ###############################################################################
 
-function ^(x::Number, y::Int)
+function ^(x::SingularFieldElem, y::Int)
     if y < 0; throw(DomainError()); end
     if isone(x); return x; end
     if ismone(x); return isodd(y) ? x : -x; end
@@ -652,7 +782,8 @@ function ^(x::Number, y::Int)
     c = parent(x)
     if y == 0; return one(c); end
     if y == 1; return x; end
-    return Number(c, n_Power(get_raw_ptr(x), y, get_raw_ptr(c)))
+    p = n_Power(get_raw_ptr(x), y, get_raw_ptr(c))
+    return NumberElem(c, p)
 end
 
 
@@ -662,13 +793,25 @@ end
 #
 ###############################################################################
 
-function -(x::Number)
-    return (parent(x)(0) - x)
+function -(x::SingularFieldElem)
+    return (zero(parent(x)) - x)   ### TODO: FIXME: deepcopy & n_InpNeg!
 end
 
-function abs(x::Number)
+function abs(x::SingularFieldElem)
     ispositive(x) && return x
     return (-x)
+end
+
+function sign(a::SingularFieldElem)
+    ispositive(a) && return 1
+    iszero(a) && return 0
+    return -1
+end
+
+function inv(x::SingularFieldElem)
+    C = parent(x)
+     #### TODO FIXME: isring(C)?
+    return C(n_Invers(get_raw_ptr(x), get_raw_ptr(C)))
 end
 
 ###############################################################################
@@ -677,24 +820,20 @@ end
 #
 ###############################################################################
 
-#function divrem(x::Number, y::Number)
+#function divrem(x::SingularFieldElem, y::SingularFieldElem)
 #    iszero(y) && throw(DivideError())
-#    z1 = fmpz()
-#    z2 = fmpz()
-#    ccall((:fmpz_tdiv_qr, :libflint), Void, 
-#          (Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}), &z1, &z2, &x, &y)
-#    z1, z2
+#    div(x, y), mod(x, y) ### TODO: @cxx ??? mod (non-negative) vs rem (C semantics)??? s
 #end
 
-function crt(r1::Number, m1::Number, r2::Number, m2::Number, signed=false)
+#function crt(r1::SingularFieldElem, m1::SingularFieldElem, r2::SingularFieldElem, m2::SingularFieldElem, signed=false)
 #   z = fmpz()
 #   ccall((:fmpz_CRT, :libflint), Void,
 #          (Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Cint),
 #          &z, &r1, &m1, &r2, &m2, signed)
 #   return z
-end
+#end
 
-#function crt(r1::Number, m1::Number, r2::Int, m2::Int, signed=false)
+#function crt(r1::SingularFieldElem, m1::SingularFieldElem, r2::Int, m2::Int, signed=false)
 #   z = fmpz()
 #   r2 < 0 && throw(DomainError())
 #   m2 < 0 && throw(DomainError())
@@ -710,7 +849,7 @@ end
 #
 ###############################################################################
 
-#function gcdx(a::Number, b::Number)
+##function gcdx(a::SingularFieldElem, b::SingularFieldElem)
 #    if b == 0 # shortcut this to ensure consistent results with gcdx(a,b)
 #        return a < 0 ? (-a, -one(FlintZZ), zero(FlintZZ)) : (a, one(FlintZZ), zero(FlintZZ))
 #    end
@@ -721,9 +860,9 @@ end
 #        (Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}),
 #        &g, &s, &t, &a, &b)
 #    g, s, t
-#end
+##end
 
-#function gcdinv(a::Number, b::Number)
+##function gcdinv(a::SingularFieldElem, b::SingularFieldElem)
 #   a < 0 && throw(DomainError())
 #   b < a && throw(DomainError())
 #   g = fmpz()
@@ -732,7 +871,7 @@ end
 #        (Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}),
 #        &g, &s, &a, &b)
 #   return g, s
-#end
+##end
 
 ###############################################################################
 #
@@ -742,21 +881,15 @@ end
 
 for (fJ, fC) in ((:isone, :n_IsOne), (:ismone, :n_IsMOne), (:iszero, :n_IsZero), (:ispositive, :n_GreaterZero), (:size, :n_Size)) 
     @eval begin
-        function ($fJ)(x :: Number)
+        function ($fJ)(x :: SingularFieldElem)
             return ($fC)(get_raw_ptr(x), get_raw_ptr(parent(x)))
         end
     end
 end
 
-isnegative(a::Number) = (!iszero(a)) && (!ispositive(a))
+isnegative(a::SingularFieldElem) = (!iszero(a)) && (!ispositive(a))
 
-function sign(a::Number)
-    ispositive(a) && return 1
-    iszero(a) && return 0
-    return -1
-end
-
-function cmp(x::Number, y::Number)
+function cmp(x::SingularFieldElem, y::SingularFieldElem)
     check_parent(x, y)
     cf = get_raw_ptr(parent(x))
     xx = get_raw_ptr(x) 
@@ -768,15 +901,15 @@ function cmp(x::Number, y::Number)
     return -1
 end
 
-==(x::Number, y::Number) = cmp(x,y) == 0
+==(x::SingularFieldElem, y::SingularFieldElem) = cmp(x,y) == 0
 
-<=(x::Number, y::Number) = cmp(x,y) <= 0
+<=(x::SingularFieldElem, y::SingularFieldElem) = cmp(x,y) <= 0
 
->=(x::Number, y::Number) = cmp(x,y) >= 0
+>=(x::SingularFieldElem, y::SingularFieldElem) = cmp(x,y) >= 0
 
-<(x::Number, y::Number) = cmp(x,y) < 0
+<(x::SingularFieldElem, y::SingularFieldElem) = cmp(x,y) < 0
 
->(x::Number, y::Number) = cmp(x,y) > 0
+>(x::SingularFieldElem, y::SingularFieldElem) = cmp(x,y) > 0
 
 ###############################################################################
 #
@@ -784,68 +917,49 @@ end
 #
 ###############################################################################
 
-cmp(x::Number, y::Int) = cmp(x, Number(parent(x), y))
+cmp(x::SingularFieldElem, y::Int) = cmp(x, parent(x)(y))
 
-==(x::Number, y::Int) = cmp(x,y) == 0
+==(x::SingularFieldElem, y::Int) = cmp(x,y) == 0
 
-<=(x::Number, y::Int) = cmp(x,y) <= 0
+<=(x::SingularFieldElem, y::Int) = cmp(x,y) <= 0
 
->=(x::Number, y::Int) = cmp(x,y) >= 0
+>=(x::SingularFieldElem, y::Int) = cmp(x,y) >= 0
 
-<(x::Number, y::Int) = cmp(x,y) < 0
+<(x::SingularFieldElem, y::Int) = cmp(x,y) < 0
 
->(x::Number, y::Int) = cmp(x,y) > 0
+>(x::SingularFieldElem, y::Int) = cmp(x,y) > 0
 
-cmp(x::Int, y::Number) = cmp(Number(parent(y), x), y)
+cmp(x::Int, y::SingularFieldElem) = cmp(parent(y)(x), y)
 
-==(x::Int, y::Number) = cmp(y,x) == 0
+==(x::Int, y::SingularFieldElem) = cmp(y,x) == 0
 
-<=(x::Int, y::Number) = cmp(y,x) >= 0
+<=(x::Int, y::SingularFieldElem) = cmp(y,x) >= 0
 
->=(x::Int, y::Number) = cmp(y,x) <= 0
+>=(x::Int, y::SingularFieldElem) = cmp(y,x) <= 0
 
-<(x::Int, y::Number) = cmp(y,x) > 0
+<(x::Int, y::SingularFieldElem) = cmp(y,x) > 0
 
->(x::Int, y::Number) = cmp(y,x) < 0
-
-
-###############################################################################
-#
-#   Number theoretic/combinatorial
-#
-###############################################################################
-
-function divisible(x::Number, y::Number)
-   y == 0 && throw(DivideError())
-#   Bool(ccall((:fmpz_divisible, :libflint), Cint, 
-#              (Ptr{fmpz}, Ptr{fmpz}), &x, &y))
-end
-
-function divisible(x::Number, y::Int)
-   y == 0 && throw(DivideError())
-#   Bool(ccall((:fmpz_divisible_si, :libflint), Cint, 
-#              (Ptr{fmpz}, Int), &x, y))
-end
+>(x::Int, y::SingularFieldElem) = cmp(y,x) < 0
 
 
 ###############################################################################
 #
-#   Number bases/digits
+#   Number-theoretic/combinatorial
 #
 ###############################################################################
 
-#bin(n::Number) = base(n, 2)
-#oct(n::Number) = base(n, 8)
-#dec(n::Number) = base(n, 10)
-#hex(n::Number) = base(n, 16)
+##function divisible(x::SingularFieldElem, y::SingularFieldElem)
+##   y == 0 && throw(DivideError())
+###   Bool(ccall((:fmpz_divisible, :libflint), Cint, 
+###              (Ptr{fmpz}, Ptr{fmpz}), &x, &y))
+##end
 
-#function base(n::Number, b::Integer)
-#    2 <= b <= 62 || error("invalid base: $b")
-#    p = ccall((:fmpz_get_str,:libflint), Ptr{Uint8}, 
-#              (Ptr{Uint8}, Cint, Ptr{fmpz}), C_NULL, b, &n)
-#    len = Int(ccall(:strlen, Csize_t, (Ptr{Uint8},), p))
-#    ASCIIString(pointer_to_array(p, len, true))
-#end
+##function divisible(x::SingularFieldElem, y::Int)
+##   y == 0 && throw(DivideError())
+###   Bool(ccall((:fmpz_divisible_si, :libflint), Cint, 
+###              (Ptr{fmpz}, Int), &x, y))
+##end
+
 
 ###############################################################################
 #
@@ -853,37 +967,14 @@ end
 #
 ###############################################################################
 
-#function parseint(c::Coeffs, s::String)
+####function parseint(c::Coeffs, s::String)
 #    s = bytestring(s)
 #    sgn = s[1] == '-' ? -1 : 1
 #    i = 1 + (sgn == -1)
-##    z = Number()
 ## TODO!
-##    err = ccall((:Number_set_str, :libflint),
-##               Int32, (Ptr{Number}, Ptr{Uint8}, Int32),
-##               &z, bytestring(SubString(s, i)), base)
 #    err == 0 || error("Invalid big integer: $(repr(s))")
 #    return sgn < 0 ? -z : z
 #end
 
 
 
-###############################################################################
-#
-#   Serialisation
-#
-###############################################################################
-
-#function serialize(s, c::Coeffs)
-#    Base.serialize_type(s, Coeffs)
-#    serialize(s, "(" * string(c) * ")")
-#end
-
-#function serialize(s, n::Number)
-#    Base.serialize(s, parent(n))
-#
-#    Base.serialize_type(s, Number)
-#    serialize(s, "(" * string(n) * ")")
-#end
-
-# deserialize(s, ::Type{Number}) = Base.parseint_nocheck(FlintZZ, deserialize(s), 62)

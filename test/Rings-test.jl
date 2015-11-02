@@ -71,8 +71,24 @@ end
 
 function test_all()
    test_singular()
-   test_fields()
    test_rings()
+   test_fields()
+
+   if( Nemo.with_cxx )
+      for (c,nn) in Nemo.leftovers
+         println(c)
+	 println("Numbers: ")
+         
+         for (k,v) in nn
+            if (v > 1)
+                 println(k, "   ====>>>>   ", v)
+            end
+         end
+              
+	 println()
+     end
+   end
+
 end
 
 end # module
