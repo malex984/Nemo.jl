@@ -144,6 +144,9 @@ typealias number Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,fal
 
 typealias number_ptr Ptr{number} ### FIXME : Cxx Ptr & Ref ???
 
+typealias number_ref Ref{number} ### TODO?
+
+
 # include("cxx_singular_lowlevel.jl") # TODO: move most wrappers there from around here!
 
 function nInitChar(n :: n_coeffType, p :: Ptr{Void})
@@ -197,14 +200,16 @@ function n_Print(n :: number, cf :: coeffs)
 end
 
 
-function n_Delete(n_ptr :: number_ptr, cf :: coeffs)
-   @cxx n_Delete(n_ptr, cf)
-end
+#function n_Delete(n_ptr :: number_ptr, cf :: coeffs)
+#   @cxx n_Delete(n_ptr, cf)
+#end
 
-#function n_Delete(n :: Ref{number}, cf :: coeffs)
-#   m = number(n)
-#  @cxx _n_Delete(m, cf)
-#   n = number(0)
+#function n_Delete(n :: number, cf :: coeffs)
+##   m = number(n)
+#  # @cxx n_Delete(n_ref, cf)
+#  n = n_ref[]
+#  icxx"n_Delete($n_ref, $cf);"
+##   n = number(0)
 #end
 
 function _n_Delete(n :: number, cf :: coeffs)
@@ -380,8 +385,6 @@ type Coeffs <: SingularField
    end
 end
 
-get_raw_ptr( cf::Coeffs ) = cf.ptr
-
 function _Coeffs_clear_fn(cf::Coeffs)
    nKillChar( get_raw_ptr(cf) )
 end
@@ -431,7 +434,20 @@ end
 
 # {T <: SingularFieldElem}
 get_raw_ptr( n::NumberElem ) = n.ptr
+
 parent( n::NumberElem ) = n.ctx
+
+function set_raw_ptr!(n::NumberElem, p::number)
+   n.ptr = p
+end
+
+function set_raw_ptr!(n::NumberElem, p::number, C::Coeffs)
+   n.ptr = p
+   n.ctx = C
+end
+
+
+get_raw_ptr( cf::Coeffs ) = cf.ptr
 
 
 const leftovers = ObjectIdDict()
@@ -445,7 +461,7 @@ function _SingularFieldElem_clear_fn(n::SingularFieldElem)
    p = get_raw_ptr(n)
 #   p = &n
 
-   n.ptr = number(0)
+   set_raw_ptr!(n, number(0))#   n.ptr = number(0)
 
    if nCoeff_has_simple_Alloc(cf) # || ( (Int(p) & 255) != 0 )
       return ;
@@ -453,20 +469,22 @@ function _SingularFieldElem_clear_fn(n::SingularFieldElem)
 
 
 #   n_Delete(Ptr{number}(pointer(n)), cf)
-
 #   print("\n_SingularFieldElem_clear_fn(n)...")
- 
-   if !haskey(leftovers, c) 
-       leftovers[c] = Dict([ p => 1 ])
-   else
-       nn = leftovers[c]
 
-       if !haskey(nn, p)
-           nn[p] = 1
-       else ### :(
-       	   nn[p] = nn[p] + 1;
-       end
-   end
+#   ref = number_ref(p)
+   _n_Delete(p, cf)
+ 
+#   if !haskey(leftovers, c) 
+#       leftovers[c] = Dict([ p => 1 ])
+#   else
+#       nn = leftovers[c]
+#
+#       if !haskey(nn, p)
+#           nn[p] = 1
+#       else ### :(
+#       	   nn[p] = nn[p] + 1;
+#       end
+#   end
 
 ###   @cxx _n_Delete(p, cf)
 ###    n_Delete(p, cf)
@@ -549,15 +567,16 @@ function string(n::SingularFieldElem)
 end
 
 #### TODO: needs considering?
-needs_parentheses(x::SingularFieldElem)   = true # TODO: is coeffs has parameters?
-show_minus_one{T <: SingularFieldElem}(::Type{T}) = true
+needs_parentheses(x::SingularFieldElem)   = false # TODO: is coeffs has parameters?
+show_minus_one{T <: SingularFieldElem}(::Type{T}) = false
 is_negative(x::SingularFieldElem) = isnegative(x) 
 
 isring(c::Coeffs) = nCoeff_is_Ring(get_raw_ptr(c))
 isdomain(c::Coeffs) = nCoeff_is_Domain(get_raw_ptr(c))
 
 show(io::IO, c::Coeffs) = print(io, string(c))
-show(io::IO, n::SingularFieldElem) = print(io, "SingularFieldElem(", string(n), ")")
+#show(io::IO, n::SingularFieldElem) = print(io, "SingularFieldElem(", string(n), ")")
+show(io::IO, n::SingularFieldElem) = print(io, string(n))
 
 const SingularQQ = Coeffs(n_Q, Ptr{Void}(0)) # SingularRationalField()
 const SingularZZ = Coeffs(n_Z, Ptr{Void}(0)) # SingularRing()
@@ -657,36 +676,45 @@ canonical_unit(x::SingularFieldElem) = isnegative(x) ? mone(parent(x)) : one(par
 ### void n_InpMult(number &a, number b, const coeffs r)
 ### void n_InpAdd(number &a, number b, const coeffs r)
 
-for (fJ, fC) in ((:muleq!, :n_Mult), (:addeq!, :n_Add))
-    @eval begin
-        function ($fJ)(x :: SingularFieldElem, y :: SingularFieldElem)
+function muleq!(x :: SingularFieldElem, y :: SingularFieldElem)
             check_parent(x, y)
             cf = get_raw_ptr(parent(x))
-            xx = get_raw_ptr(x)
+            xx = number_ref(get_raw_ptr(x))
             yy = get_raw_ptr(y)
 
-            ptr = @cxx ($fC)(xx, yy, cf) ### TODO: check me! reference!? ##????
+#	    @cxx ($fC)(xx, yy, cf) 
+	    icxx" n_InpMult($xx, $yy, $cf);"
 
-	    @cxx _n_Delete(xx, cf)
-##            @cxx ($fC)(xx, yy, cf) ### TODO: check me! reference!? ##????
-            x.ptr = ptr
-        end
-    end
+	    set_raw_ptr!(x, xx[])#            x.ptr = ptr
 end
 
+function addeq!(x :: SingularFieldElem, y :: SingularFieldElem)
+            check_parent(x, y)
+            cf = get_raw_ptr(parent(x))
+            xx = number_ref(get_raw_ptr(x))
+            yy = get_raw_ptr(y)
 
-function mul!(c::SingularFieldElem, x::SingularFieldElem, y::SingularFieldElem)
+#  @cxx ($fC)(xx, yy, cf) ### TODO: check me! reference!? ##????
+	    icxx" n_InpAdd($xx, $yy, $cf);"
+
+#	    @cxx _n_Delete(xx, cf)
+# @cxx ($fC)(xx, yy, cf) ### TODO: check me! reference!? ##????
+
+	    set_raw_ptr!(x, xx[])#            x.ptr = ptr
+end
+
 #    c = x * y
+### mul!(x, x, x) ???
+function mul!(c::SingularFieldElem, x::SingularFieldElem, y::SingularFieldElem)
     check_parent(x, y)
     
     C = parent(x)
     ptr   = @cxx n_Mult(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(C))
     
-#    old   = c.ptr
-#    oldcf = get_raw_ptr(parent(c)) 
-    _SingularFieldElem_clear_fn(c)
-    c.ctx = C
-    c.ptr = ptr
+    #    old   = c.ptrw#    oldcf = get_raw_ptr(parent(c)) 
+    _SingularFieldElem_clear_fn(c) ## BAD IDEA?
+
+    set_raw_ptr!(c, ptr, C) #    c.ctx = C#    c.ptr = ptr
 
 ##    @cxx n_Delete(&old, oldcf)
 ##    muleq!(c, y)
@@ -710,7 +738,11 @@ for (fJ, fC) in ((:num, :n_GetNumerator), (:den, :n_GetDenom), (:normalise, :n_N
     @eval begin
         function ($fJ)(x :: SingularFieldElem)
             cf = get_raw_ptr(parent(x))
-            return @cxx ($fC)(x.ptr, cf) ### FIXME? 
+            p = get_raw_ptr(x)
+	    r = number_ref(p)
+            ret = @cxx ($fC)(r, cf) ### FIXME? 
+            set_raw_ptr!(x, r[])
+	    return ret
         end
     end
 end
