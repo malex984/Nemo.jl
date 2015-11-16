@@ -1,4 +1,36 @@
-VERSION >= v"0.4.0-dev+6521" && __precompile__()
+function with_singular() 
+   # user settings in $HOME/.julia/v0.4/Nemo/Make.user 
+   # todo: move elsewhere?
+   isfile(joinpath(dirname(@__FILE__), "..", "UserConfig.jl")) && include(joinpath(dirname(@__FILE__), "..", "UserConfig.jl"))
+#   local const nm = joinpath(dirname(@__FILE__), "..", "UserConfig.jl")
+#   include(nm)
+#   print("Evaluating file: "); println(nm); local f = open(nm, "r"); while !eof(f); txt = readline(f); end; close(f)
+
+
+   if !isdefined(:try_singular)
+      return false
+   end
+
+   @assert isdefined(:try_singular)
+   if !try_singular
+      return false
+   end
+
+   # Cxx is required for Singular!
+   local tempiobuffer = IOBuffer(); Pkg.status("Cxx", tempiobuffer);
+   return (tempiobuffer.size!=0)
+end
+
+function _check_precompile_()
+   (VERSION < v"0.4.0-dev+6521") && return false
+
+   # for Singular we require Cxx, but Cxx does NOT support precompilation yet!
+   with_singular() && return false 
+
+   return true # Ok... let's try to precompile Nemo (without Cxx / Singular)
+end
+
+_check_precompile_() && __precompile__()
 
 module Nemo
 
@@ -53,6 +85,12 @@ const libmpfr = joinpath(pkgdir, "local", "lib", "libmpfr")
 const libflint = joinpath(pkgdir, "local", "lib", "libflint")
 const libpari = joinpath(pkgdir, "local", "lib", "libpari")
 const libarb = joinpath(pkgdir, "local", "lib", "libarb")
+const libSingular = joinpath(pkgdir, "local", "lib", "libSingular")
+
+# default config
+global try_singular = false
+
+isfile(joinpath(pkgdir, "UserConfig.jl")) && include(joinpath(pkgdir, "UserConfig.jl"))
   
 function allocatemem(bytes::Int)
    newsize = pari(fmpz(bytes)).d
@@ -64,9 +102,29 @@ function pari_sigint_handler()
    return
 end
 
-on_windows64 = (@windows ? true : false) && (Int == Int64)
+const on_windows64 = (@windows ? true : false) && (Int == Int64)
+
+function with_singular() 
+   # user settings in $HOME/.julia/v0.4/Nemo/Make.user 
+   # todo: move elsewhere?
+#   local const nm = joinpath(dirname(@__FILE__), "..", "UserConfig.jl")
+#   if isfile(nm)
+#      include(nm)
+#      print("Evaluating file: "); println(nm); local f = open(nm, "r"); while !eof(f); txt = readline(f); end; close(f)
+#   end
+   if !isdefined(:try_singular)
+      return false
+   end
+
+   @assert isdefined(:try_singular)
+
+   local tempiobuffer = IOBuffer(); Pkg.status("Cxx", tempiobuffer);
+   return ((tempiobuffer.size!=0) && try_singular)
+end
 
 function __init__()
+   @assert isdefined(:try_singular)
+
 
    on_windows = @windows ? true : false
    on_linux = @linux ? true : false
@@ -80,6 +138,8 @@ function __init__()
        Libdl.dlopen(libflint)
        Libdl.dlopen(libpari)
        Libdl.dlopen(libarb)
+
+       with_singular() && Libdl.dlopen(libSingular)
    else
       push!(Libdl.DL_LOAD_PATH, libdir)
    end
@@ -116,6 +176,8 @@ function __init__()
       cglobal(:jl_realloc),
       cglobal(:jl_free))
 
+   with_singular() && __singular_init__()
+
    println("")
    println("Welcome to Nemo version 0.4.0")
    println("")
@@ -147,15 +209,7 @@ include("arb/ArbTypes.jl")
 
 include("pari/PariTypes.jl")
 
-function test_pkg_status(pkg)
-   tempiobuffer = IOBuffer(); 
-   Pkg.status(pkg, tempiobuffer);
-   return (tempiobuffer.size != 0);
-end
-const with_cxx = test_pkg_status("Cxx")
-if with_cxx
-   include("singular/SingularTypes.jl")
-end
+with_singular() && include("singular/SingularTypes.jl")
 
 include("Groups.jl")
 

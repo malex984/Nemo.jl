@@ -235,32 +235,32 @@ void test_coeffs(n_coeffType t, void *p, long v)
 
    println("PASS")
 
-   @test Nemo.n_Zp == Nemo.n_coeffType(1)
-   @test Nemo.n_Q == Nemo.n_coeffType(2)
-   @test Nemo.n_Z == Nemo.n_coeffType(9)
+   @test Nemo.n_Zp() == Nemo.n_coeffType(1)
+   @test Nemo.n_Q() == Nemo.n_coeffType(2)
+   @test Nemo.n_Z() == Nemo.n_coeffType(9)
 
 ### TODO: separate creation for Coeffs & pass them into jtest_coeffs instead!
-   println("SingularZZ: ", Nemo.SingularZZ)
-   println("SingularQQ: ", Nemo.SingularQQ)
+   const ZZ = Nemo.SingularZZ();
+   const QQ = Nemo.SingularQQ();
+   println("SingularZZ: ", ZZ)
+   println("SingularQQ: ", QQ)
 
    # q = 66 in QQ
-   @test Nemo.SingularQQ == Nemo.Coeffs( Nemo.n_Q, Ptr{Void}(0) )
-   jtest_coeffs( Nemo.n_Q, Ptr{Void}(0), 66)#   @cxx test_coeffs( n_Q, Ptr{Void}(0), 66) 
+#   @test Nemo.SingularQQ() == Nemo.Coeffs( Nemo.n_Q(), Ptr{Void}(0) )
+   jtest_coeffs( Nemo.n_Q(), Ptr{Void}(0), 66)#   @cxx test_coeffs( n_Q(), Ptr{Void}(0), 66) 
 
    ## z = 666 in ZZ
-   @test Nemo.SingularZZ == Nemo.Coeffs( Nemo.n_Z, Ptr{Void}(0) )
-   jtest_coeffs( Nemo.n_Z, Ptr{Void}(0), 666) #   @cxx test_coeffs( n_Z, Ptr{Void}(0), 666) 
+#   @test Nemo.SingularZZ() == Nemo.Coeffs( Nemo.n_Z(), Ptr{Void}(0) )
+   jtest_coeffs( Nemo.n_Z(), Ptr{Void}(0), 666) #   @cxx test_coeffs( n_Z, Ptr{Void}(0), 666) 
 
    ## zz = 6 in Zp{11}
-   jtest_coeffs( Nemo.n_Zp, Ptr{Void}(11), 11*3 + 6) #   @cxx test_coeffs( n_Zp, Ptr{Void}(11), 11*3 + 6) 
+   jtest_coeffs( Nemo.n_Zp(), Ptr{Void}(11), 11*3 + 6) #   @cxx test_coeffs( n_Zp, Ptr{Void}(11), 11*3 + 6) 
 
 
    println()
 
 
 end
-
-
 
 ##### SingPoly : p * q & gcd 
 
