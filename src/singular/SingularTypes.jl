@@ -1,6 +1,6 @@
 ###############################################################################
 #
-#   Types.jl : Parent and object types for Singular
+#   Types.jl : Parent and object types for Singular types
 #
 ###############################################################################
 
@@ -8,45 +8,94 @@ export SingularField, SingularFieldElem, Coeffs, NumberElem, SingularQQ, Singula
 # export elem_type, base_ring, check_parent, show
 export characteristic 
 
-
 using Cxx
 
-const prefix = joinpath(Pkg.dir("Nemo"), "local")
-const singular_binary_path = joinpath(prefix, "bin", "Singular")
+function __singular_init__()
 
-libSingular = Libdl.dlopen(joinpath(prefix, "lib", "libSingular"), Libdl.RTLD_GLOBAL)
+   const local prefix = joinpath(Pkg.dir("Nemo"), "local")
 
+#   print("prefix: ");    println(prefix);
+#   return
 
-ENV["SINGULAR_EXECUTABLE"] = singular_binary_path
+   addHeaderDir(joinpath(prefix, "include"), kind = C_System)
+   addHeaderDir(joinpath(prefix, "include", "singular"), kind = C_System)
 
-addHeaderDir(joinpath(prefix, "include"), kind = C_System)
-addHeaderDir(joinpath(prefix, "include", "singular"), kind = C_System)
+#   println("cxx #includes1:")
+#   return
 
-cxxinclude("Singular/libsingular.h", isAngled=false)
-cxxinclude("coeffs/coeffs.h", isAngled=false)
+   cxxinclude("Singular/libsingular.h", isAngled=false)
+   cxxinclude("omalloc/omalloc.h", isAngled=false)
+   cxxinclude("reporter/reporter.h", isAngled=false)
+   cxxinclude("coeffs/coeffs.h", isAngled=false)
+
+##   println("cxx #includes2:")
+##   return
 
 cxx"""
     #include "Singular/libsingular.h"
-
     #include "omalloc/omalloc.h"
     #include "reporter/reporter.h"
-
     #include "coeffs/coeffs.h"
+"""
 
+#   println("cxx fun wraps:")
+#   return
+
+cxx"""
     static void _omFree(void* p){ omFree(p); }
     static void _PrintLn(){ PrintLn(); } 
-    static void _PrintS(const void *p){ PrintS((const char*)(p)); } 
+    static void _PrintS(const void *p)
+    { PrintS((const char*)(p));}
     static int  _siRand(){ return siRand(); }
     static number _n_Power(number a, int b, const coeffs r)
-    {
-      number res; n_Power(a, b, &res, r);
-      return res;
-    }
-    static void _n_Delete(number a, const coeffs r)
-    {
-      n_Delete(&a, r);
-    }
+    { number res; n_Power(a, b, &res, r); return res; }
+    static void _n_Delete(number a,const coeffs r)
+    {n_Delete(&a,r);}
 """
+#   println("n_coeffType:")
+#   return
+
+cxx"""
+// TODO: follow https://github.com/Keno/Cxx.jl#example-6-using-c-enums 
+//   static n_coeffType get_Q() { return n_Q; };
+//   static n_coeffType get_Z() { return n_Z; };
+//   static n_coeffType get_Zp(){ return n_Zp; }; 
+"""
+
+   const local singular_binary_path=joinpath(prefix, "bin", "Singular")
+   ENV["SINGULAR_EXECUTABLE"] = singular_binary_path
+##   libSingular = Libdl.dlopen(joinpath(prefix, "lib", "libSingular"), Libdl.RTLD_GLOBAL)
+
+#   println("siInit, with $singular_binary_path")
+ 
+#  OK
+
+   # Initialize Singular!
+#   siInit(singular_binary_path) 
+
+   println("init - done!!!")
+   return
+end
+
+
+
+
+
+## TODO: remove this once destructors work properly!
+const leftovers = ObjectIdDict() # dupes_counter = 0
+
+function siInit(p)
+   pp = pointer(p); print("pp: $pp::::::")
+
+   PrintLn();
+
+   PrintS(pp); PrintLn();
+
+   @cxx siInit(pp)
+   return
+end
+
+
 
 # @cxx PrintS(s)  # BUG: PrintS is a C function
 # icxx" PrintS($s); "   # quick and dirty shortcut
@@ -77,14 +126,6 @@ function feStringAppendResources(i :: Int = -1)
    @cxx feStringAppendResources(i)
 end
 
-function siInit(p) 
-   @cxx siInit(pointer(p))
-end
-
-
-siInit(singular_binary_path) # Initialize Singular!
-
-
 function PrintResources(s)
    StringSetS(s)
    feStringAppendResources(0)
@@ -92,6 +133,12 @@ function PrintResources(s)
    PrintS(m)
    omFree(m)
 end
+
+
+
+
+
+
 
 
 
@@ -107,11 +154,11 @@ abstract SingularFieldElem <: FieldElem ### {Singular}?
 # typealias SingularRing 
 abstract SingularRingElem <: RingElem ### {Singular}?
 
-type SingularPolynomialRing <: Ring{Singular} # SingularRing
-end
+#type SingularPolynomialRing <: Ring{Singular} # SingularRing
+#end
 
-type SingularPolynomial <: PolyElem
-end
+#type SingularPolynomial <: PolyElem
+#end
 
 
 const CoeffID = ObjectIdDict()
@@ -125,15 +172,10 @@ const CoeffID = ObjectIdDict()
 
 typealias n_coeffType Cxx.CppEnum{:n_coeffType}
 
-cxx"""
-static n_coeffType get_Q() { return n_Q; };
-static n_coeffType get_Z() { return n_Z; };
-static n_coeffType get_Zp(){ return n_Zp; }; // n_coeffType.
-"""
 ## todo: avoid the above!
-const n_Zp = @cxx get_Zp() #  # get_Zp() = icxx" return n_Zp; "
-const n_Q  = @cxx get_Q() # Cxx.CppEnum{:n_coeffType}(2) # icxx" return n_Q; "
-const n_Z  = @cxx get_Z() # Cxx.CppEnum{:n_coeffType}(9) # icxx" return n_Z; "
+n_Zp() = @cxx get_Zp(); #  # get_Zp() = icxx" return n_Zp; "
+n_Q()  = @cxx get_Q(); # Cxx.CppEnum{:n_coeffType}(2) # icxx" return n_Q; "
+n_Z() = @cxx get_Z(); # Cxx.CppEnum{:n_coeffType}(9) # icxx" return n_Z; "
 
 ### FIXME : Cxx Type?
 typealias coeffs Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}
@@ -145,7 +187,6 @@ typealias number Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,fal
 typealias number_ptr Ptr{number} ### FIXME : Cxx Ptr & Ref ???
 
 typealias number_ref Ref{number} ### TODO?
-
 
 # include("cxx_singular_lowlevel.jl") # TODO: move most wrappers there from around here!
 
@@ -215,6 +256,7 @@ end
 function _n_Delete(n :: number, cf :: coeffs)
    @cxx _n_Delete(n, cf)
 end
+
 
 ###############################################################################
 #
@@ -350,6 +392,11 @@ function getCoeffType(r :: coeffs )
    return @cxx getCoeffType(r) 
 end
 
+
+
+
+###!
+
 type Coeffs <: SingularField
    ptr :: coeffs
 
@@ -450,10 +497,6 @@ end
 get_raw_ptr( cf::Coeffs ) = cf.ptr
 
 
-const leftovers = ObjectIdDict()
-
-# dupes_counter = 0
-
 function _SingularFieldElem_clear_fn(n::SingularFieldElem)
    c = parent(n)
    cf = get_raw_ptr(c)
@@ -493,6 +536,7 @@ function _SingularFieldElem_clear_fn(n::SingularFieldElem)
 #   n.ptr = p ## not necessary?
 end
 
+
 ###############################################################################
 #
 #   Parent object call overloads
@@ -522,6 +566,11 @@ end
 NumberElem(c::Coeffs, z::Integer) = c(BigInt(z))
 
 
+
+###!
+
+
+
 ###############################################################################
 #
 #   Parameters and characteristic
@@ -539,6 +588,7 @@ function par(i::Int, c::Coeffs)
     ((i >= 1) && (i <= npars(c))) && return c(n_Param(i, get_raw_ptr(c)))
     error("Wrong parameter index")
 end 
+
 
 
 
@@ -578,8 +628,8 @@ show(io::IO, c::Coeffs) = print(io, string(c))
 #show(io::IO, n::SingularFieldElem) = print(io, "SingularFieldElem(", string(n), ")")
 show(io::IO, n::SingularFieldElem) = print(io, string(n))
 
-const SingularQQ = Coeffs(n_Q, Ptr{Void}(0)) # SingularRationalField()
-const SingularZZ = Coeffs(n_Z, Ptr{Void}(0)) # SingularRing()
+SingularQQ() = Coeffs(n_Q(), Ptr{Void}(0)); # SingularRationalField()
+SingularZZ() = Coeffs(n_Z(), Ptr{Void}(0)); # SingularRing()
 
 # include("coeff.jl")
 # include("poly.jl")
@@ -630,6 +680,7 @@ end
 #end
 
 Base.promote_rule{S <: SingularFieldElem, T <: Integer}(::Type{S}, ::Type{T}) = NumberElem #TODO: ?!
+
 
 
 ###############################################################################
@@ -720,6 +771,16 @@ function mul!(c::SingularFieldElem, x::SingularFieldElem, y::SingularFieldElem)
 ##    muleq!(c, y)
 end
 
+
+
+
+
+#####################################################################
+#####################################################################!
+#####################################################################
+
+
+
 ###############################################################################
 #
 #   ? DEN ? NUM ? NORM ?
@@ -782,24 +843,30 @@ end
 
 # Metaprogram to define functions /, div, mod
 
-if false
+#if false ### --here??
+#for (fJ, fC) in ((://, :n_Div), ### ????? /: floating point division?
+#    (:div, :n_DivExact), ##### FIXME / TODO : Euclid domain???
+#    (:mod, :n_Mod))
+#    @eval begin
+#        function ($fJ)(x::SingularFieldElem, y::SingularFieldElem)
+#            iszero(y) == 0 && throw(DivideError())
+#            check_parent(x, y)
+#            c = parent(x)
+#            return  c(($fC)(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c)))
+#        end
+#        ($fJ)(x::SingularFieldElem, i::Integer) = ($fJ)(x,  parent(x)(i)) 
+#        ($fJ)(i::Integer, x::SingularFieldElem) = ($fJ)(parent(x)(i), x)
+#    end
+#end
+#end
 
-for (fJ, fC) in ((://, :n_Div), ### ????? /: floating point division?
-    (:div, :n_DivExact), ##### FIXME / TODO : Euclid domain???
-    (:mod, :n_Mod))
-    @eval begin
-        function ($fJ)(x::SingularFieldElem, y::SingularFieldElem)
-            iszero(y) == 0 && throw(DivideError())
-            check_parent(x, y)
-            c = parent(x)
-            return  c(($fC)(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c)))
-        end
-        ($fJ)(x::SingularFieldElem, i::Integer) = ($fJ)(x,  parent(x)(i)) 
-        ($fJ)(i::Integer, x::SingularFieldElem) = ($fJ)(parent(x)(i), x)
-    end
-end
 
-end
+#####################################################################
+#####################################################################!
+#####################################################################
+
+
+
 ###############################################################################
 #
 #   Powering
@@ -905,6 +972,7 @@ end
 #   return g, s
 ##end
 
+
 ###############################################################################
 #
 #   Comparison
@@ -919,9 +987,11 @@ for (fJ, fC) in ((:isone, :n_IsOne), (:ismone, :n_IsMOne), (:iszero, :n_IsZero),
     end
 end
 
+##!
+
 isnegative(a::SingularFieldElem) = (!iszero(a)) && (!ispositive(a))
 
-function cmp(x::SingularFieldElem, y::SingularFieldElem)
+function sscmp(x::SingularFieldElem, y::SingularFieldElem)
     check_parent(x, y)
     cf = get_raw_ptr(parent(x))
     xx = get_raw_ptr(x) 
@@ -933,15 +1003,15 @@ function cmp(x::SingularFieldElem, y::SingularFieldElem)
     return -1
 end
 
-==(x::SingularFieldElem, y::SingularFieldElem) = cmp(x,y) == 0
+==(x::SingularFieldElem, y::SingularFieldElem) = sscmp(x,y) == 0
 
-<=(x::SingularFieldElem, y::SingularFieldElem) = cmp(x,y) <= 0
+<=(x::SingularFieldElem, y::SingularFieldElem) = sscmp(x,y) <= 0
 
->=(x::SingularFieldElem, y::SingularFieldElem) = cmp(x,y) >= 0
+>=(x::SingularFieldElem, y::SingularFieldElem) = sscmp(x,y) >= 0
 
-<(x::SingularFieldElem, y::SingularFieldElem) = cmp(x,y) < 0
+<(x::SingularFieldElem, y::SingularFieldElem) = sscmp(x,y) < 0
 
->(x::SingularFieldElem, y::SingularFieldElem) = cmp(x,y) > 0
+>(x::SingularFieldElem, y::SingularFieldElem) = sscmp(x,y) > 0
 
 ###############################################################################
 #
@@ -949,29 +1019,42 @@ end
 #
 ###############################################################################
 
-cmp(x::SingularFieldElem, y::Int) = cmp(x, parent(x)(y))
+sicmp(x::SingularFieldElem, y::Int) = sscmp(x, parent(x)(y))
+iscmp(x::Int, y::SingularFieldElem) = sscmp(parent(y)(x), y)
 
-==(x::SingularFieldElem, y::Int) = cmp(x,y) == 0
+==(x::SingularFieldElem, y::Int) = sicmp(x,y) == 0
+==(x::Int, y::SingularFieldElem) = iscmp(x,y) == 0
 
-<=(x::SingularFieldElem, y::Int) = cmp(x,y) <= 0
+<=(x::SingularFieldElem, y::Int) = sicmp(x,y) <= 0
+<=(x::Int, y::SingularFieldElem) = iscmp(x,y) <= 0
 
->=(x::SingularFieldElem, y::Int) = cmp(x,y) >= 0
+<(x::SingularFieldElem, y::Int) = sicmp(x,y) < 0
+<(x::Int, y::SingularFieldElem) = iscmp(x,y) < 0
 
-<(x::SingularFieldElem, y::Int) = cmp(x,y) < 0
+#####################################################################! OK untill here!
 
->(x::SingularFieldElem, y::Int) = cmp(x,y) > 0
+function >=(x::SingularFieldElem, y::Int) 
+#   return  (sicmp(x,y) >= 0)
+#### julia-debug: codegen.cpp:3005: llvm::Value* emit_assignment(llvm::Value*, jl_value_t*, jl_value_t*, bool, bool, jl_codectx_t*): 
+#### Assert on `rval->getType() == jl_pvalue_llvmt || rval->getType() == NoopType' failed.
+end
 
-cmp(x::Int, y::SingularFieldElem) = cmp(parent(y)(x), y)
 
-==(x::Int, y::SingularFieldElem) = cmp(y,x) == 0
+function >(x::Int, y::SingularFieldElem) 
+#   return (iscmp(x,y) > 0)
+### /home/malex/JJ/usr/bin/julia-debug: symbol lookup error: /home/malex/.julia/v0.4/Cxx/src/../deps/usr/lib/libcxxffi-debug.so: undefined symbol: _ZNK5clang7CodeGen17CGBuilderInserterILb0EE12InsertHelperEPN4llvm11InstructionERKNS3_5TwineEPNS3_10BasicBlockENS3_14ilist_iteratorIS4_EE
+end
 
-<=(x::Int, y::SingularFieldElem) = cmp(y,x) >= 0
+function >(x::SingularFieldElem, y::Int)
+#   return (sicmp(x,y) > 0)
+### /home/malex/JJ/usr/bin/julia-debug: symbol lookup error: /home/malex/.julia/v0.4/Cxx/src/../deps/usr/lib/libcxxffi-debug.so: undefined symbol: _ZNK5clang7CodeGen17CGBuilderInserterILb0EE12InsertHelperEPN4llvm11InstructionERKNS3_5TwineEPNS3_10BasicBlockENS3_14ilist_iteratorIS4_EE
+end
 
->=(x::Int, y::SingularFieldElem) = cmp(y,x) <= 0
-
-<(x::Int, y::SingularFieldElem) = cmp(y,x) > 0
-
->(x::Int, y::SingularFieldElem) = cmp(y,x) < 0
+function >=(x::Int, y::SingularFieldElem) 
+#   return (iscmp(x,y) >= 0)
+###fq_poly.adhoc_exact_division...
+### /home/malex/JJ/usr/bin/julia-debug: symbol lookup error: /home/malex/.julia/v0.4/Cxx/src/../deps/usr/lib/libcxxffi-debug.so: undefined symbol: _ZNK5clang7CodeGen17CGBuilderInserterILb0EE12InsertHelperEPN4llvm11InstructionERKNS3_5TwineEPNS3_10BasicBlockENS3_14ilist_iteratorIS4_EE
+end
 
 
 ###############################################################################
@@ -1009,4 +1092,6 @@ cmp(x::Int, y::SingularFieldElem) = cmp(parent(y)(x), y)
 #end
 
 
-
+#####################################################################
+#####################################################################! finish?
+#####################################################################

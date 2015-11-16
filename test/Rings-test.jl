@@ -16,11 +16,7 @@ include("flint/fmpz_mat-test.jl")
 include("pari/pari_maximal_order_elem-test.jl")
 include("pari/PariIdeal-test.jl")
 
-if( Nemo.with_cxx )
-   include("singular-test.jl")
-else
-   test_singular() = println("\n\nIt appears that package 'Cxx' required for wrapping Singular (C++ code!) is missing! :(");
-end
+Nemo.with_singular() && include("singular-test.jl")
 
 include("generic/Poly-test.jl")
 include("generic/Residue-test.jl")
@@ -28,8 +24,8 @@ include("generic/PowerSeries-test.jl")
 include("generic/Matrix-test.jl")
 
 function test_rings()
-   test_singular()
 
+#   Nemo.with_singular() && test_singular()
    test_fmpz()
    test_fmpz_poly()
    test_fmpz_mod_poly()
@@ -53,10 +49,9 @@ function test_rings()
    test_nmod_mat()
    test_fmpz_mat()
 
-   if( Nemo.with_cxx )
+   if Nemo.with_singular()
       for (c,nn) in Nemo.leftovers
-         println(c)
-	 println("Numbers: ")
+         println(c); println("Numbers: ")
          
          for (k,v) in nn
             if (v > 1)
