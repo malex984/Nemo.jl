@@ -25,7 +25,7 @@ include("generic/Matrix-test.jl")
 
 function test_rings()
 
-#   Nemo.with_singular() && test_singular()
+   Nemo.with_singular() && test_singular()
    test_fmpz()
    test_fmpz_poly()
    test_fmpz_mod_poly()
@@ -49,19 +49,19 @@ function test_rings()
    test_nmod_mat()
    test_fmpz_mat()
 
-   if Nemo.with_singular()
-      for (c,nn) in Nemo.leftovers
-         println(c); println("Numbers: ")
-         
-         for (k,v) in nn
-            if (v > 1)
-                 println(k, "   ====>>>>   ", v)
-            end
-         end
-             
-	 println()
-     end
-   end
+#   if Nemo.with_singular()
+#      for (c,nn) in Nemo.leftovers
+#         println(c); println("Numbers: ")
+#         
+#         for (k,v) in nn
+#            if (v > 1)
+#                 println(k, "   ====>>>>   ", v)
+#            end
+#         end
+#             
+#	 println()
+#     end
+#   end
 
 end
 
