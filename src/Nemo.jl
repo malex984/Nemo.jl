@@ -85,7 +85,7 @@ const libmpfr = joinpath(pkgdir, "local", "lib", "libmpfr")
 const libflint = joinpath(pkgdir, "local", "lib", "libflint")
 const libpari = joinpath(pkgdir, "local", "lib", "libpari")
 const libarb = joinpath(pkgdir, "local", "lib", "libarb")
-const libSingular = joinpath(pkgdir, "local", "lib", "libSingular")
+const libsingular = joinpath(pkgdir, "local", "lib", "libSingular")
 
 # default config
 global try_singular = false
@@ -139,7 +139,7 @@ function __init__()
        Libdl.dlopen(libpari)
        Libdl.dlopen(libarb)
 
-       with_singular() && Libdl.dlopen(libSingular)
+       with_singular() && Libdl.dlopen(libsingular)
    else
       push!(Libdl.DL_LOAD_PATH, libdir)
    end
