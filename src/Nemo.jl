@@ -30,7 +30,7 @@ function _check_precompile_()
    return true # Ok... let's try to precompile Nemo (without Cxx / Singular)
 end
 
-_check_precompile_() && __precompile__()
+### _check_precompile_() && __precompile__()
 
 module Nemo
 
@@ -88,9 +88,9 @@ const libarb = joinpath(pkgdir, "local", "lib", "libarb")
 const libsingular = joinpath(pkgdir, "local", "lib", "libSingular")
 
 # default config
-global try_singular = false
+try_singular = true # false
 
-isfile(joinpath(pkgdir, "UserConfig.jl")) && include(joinpath(pkgdir, "UserConfig.jl"))
+# isfile(joinpath(pkgdir, "UserConfig.jl")) && include(joinpath(pkgdir, "UserConfig.jl"))
   
 function allocatemem(bytes::Int)
    newsize = pari(fmpz(bytes)).d
@@ -112,19 +112,19 @@ function with_singular()
 #      include(nm)
 #      print("Evaluating file: "); println(nm); local f = open(nm, "r"); while !eof(f); txt = readline(f); end; close(f)
 #   end
-   if !isdefined(:try_singular)
-      return false
-   end
+#   if !isdefined(:try_singular)
+#      return false
+#   end
 
-   @assert isdefined(:try_singular)
+#   @assert isdefined(:try_singular)
 
    local tempiobuffer = IOBuffer(); Pkg.status("Cxx", tempiobuffer);
-   return ((tempiobuffer.size!=0) && try_singular)
+   return ((tempiobuffer.size!=0) ) # && try_singular
 end
 
 function __init__()
-   @assert isdefined(:try_singular)
-
+#   @assert isdefined(:try_singular)
+    @assert with_singular()
 
    on_windows = @windows ? true : false
    on_linux = @linux ? true : false
@@ -139,7 +139,7 @@ function __init__()
        Libdl.dlopen(libpari)
        Libdl.dlopen(libarb)
 
-       with_singular() && Libdl.dlopen(libsingular)
+       with_singular() && Libdl.dlopen(libsingular,Libdl.RTLD_GLOBAL)
    else
       push!(Libdl.DL_LOAD_PATH, libdir)
    end

@@ -36,6 +36,10 @@ __singular_init__() = libSingular.__libSingular_init__()
 
 using Cxx
 
+typealias number libSingular.number
+typealias number_ptr libSingular.number_ptr
+typealias number_ref libSingular.number_ref
+
 include("Coeffs.jl")
 include("NumberElem.jl")
 

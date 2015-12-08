@@ -7,21 +7,18 @@ function __libSingular_init__()
    const local prefix = joinpath(Pkg.dir("Nemo"), "local")
 
 #   print("prefix: ");    println(prefix);
-#   return
 
    addHeaderDir(joinpath(prefix, "include"), kind = C_System)
    addHeaderDir(joinpath(prefix, "include", "singular"), kind = C_System)
 
 #   println("cxx #includes1:")
-#   return
 
    cxxinclude("Singular/libsingular.h", isAngled=false)
    cxxinclude("omalloc/omalloc.h", isAngled=false)
    cxxinclude("reporter/reporter.h", isAngled=false)
    cxxinclude("coeffs/coeffs.h", isAngled=false)
 
-##   println("cxx #includes2:")
-##   return
+#   println("cxx #includes2:")
 
 cxx"""
     #include "Singular/libsingular.h"
@@ -31,7 +28,6 @@ cxx"""
 """
 
 #   println("cxx fun wraps:")
-#   return
 
 cxx"""
     static void _omFree(void* p){ omFree(p); }
@@ -45,39 +41,29 @@ cxx"""
     {n_Delete(&a,r);}
 """
 #   println("n_coeffType:")
-#   return
 
 cxx"""
-// TODO: follow https://github.com/Keno/Cxx.jl#example-6-using-c-enums 
-//   static n_coeffType get_Q() { return n_Q; };
-//   static n_coeffType get_Z() { return n_Z; };
-//   static n_coeffType get_Zp(){ return n_Zp; }; 
+// TODO: follow https://github.com/Keno/Cxx.jl#example-6-using-c-enums
+   static n_coeffType get_Q() { return n_Q; };
+   static n_coeffType get_Z() { return n_Z; };
+   static n_coeffType get_Zp(){ return n_Zp; }; 
 """
-
-   const local singular_binary_path=joinpath(prefix, "bin", "Singular")
-   ENV["SINGULAR_EXECUTABLE"] = singular_binary_path
-##   libSingular = Libdl.dlopen(joinpath(prefix, "lib", "libSingular"), Libdl.RTLD_GLOBAL)
-
-#   println("siInit, with $singular_binary_path")
- 
-#  OK
+   local const binSingular = joinpath(prefix, "bin", "Singular")
+   ENV["SINGULAR_EXECUTABLE"] = binSingular
 
    # Initialize Singular!
-   siInit(singular_binary_path) 
-#   return
+   siInit(binSingular) 
 end
 
-
-
 function siInit(p)
-   pp = pointer(p); print("pp: $pp::::::")
-
+#   pp = pointer(p); # print("pp: $pp::::::")
 #   PrintLn();
 #   PrintS(pp); PrintLn();
-#   @cxx siInit(pp)
 
-   println("siInit - done!!!")
-   return
+   @cxx siInit(pointer(p))
+
+#   println("siInit - done!!!")
+#   return
 end
 
 
@@ -120,12 +106,6 @@ function PrintResources(s)
 end
 
 
-typealias number libSingular.number
-typealias number_ptr libSingular.number_ptr
-typealias number_ref libSingular.number_ref
-
-
-
 # Ring?   
 # todo: add default constructor for QQ, Fp ?! 
 # TODO: fix the following to work 
@@ -143,14 +123,10 @@ n_Z() = @cxx get_Z(); # Cxx.CppEnum{:n_coeffType}(9) # icxx" return n_Z; "
 typealias coeffs Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}
 # Ptr{Void}
 
+# essentially: Ptr{Void}
 typealias number Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)}
-# Ptr{Void}
-
-typealias number_ptr Ptr{number} ### FIXME : Cxx Ptr & Ref ???
-
-typealias number_ref Ref{number} ### TODO?
-
-# include("cxx_singular_lowlevel.jl") # TODO: move most wrappers there from around here!
+typealias number_ptr Ptr{number} ### ?: Cxx should auto-support Ptr & Ref... 
+typealias number_ref Ref{number} ### 
 
 function nInitChar(n :: n_coeffType, p :: Ptr{Void})
    return @cxx nInitChar( n, p )
