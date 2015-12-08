@@ -258,7 +258,7 @@ function muleq!(x :: SingularFieldElem, y :: SingularFieldElem)
             xx = number_ref(get_raw_ptr(x))
             yy = get_raw_ptr(y)
 
-#	    @cxx ($fC)(xx, yy, cf) 
+#	    @cxx (libSingular.$fC)(xx, yy, cf) 
 	    icxx" n_InpMult($xx, $yy, $cf);"
 
 	    set_raw_ptr!(x, xx[])#            x.ptr = ptr
@@ -270,11 +270,11 @@ function addeq!(x :: SingularFieldElem, y :: SingularFieldElem)
             xx = number_ref(get_raw_ptr(x))
             yy = get_raw_ptr(y)
 
-#  @cxx ($fC)(xx, yy, cf) ### TODO: check me! reference!? ##????
+#  @cxx (libSingular.$fC)(xx, yy, cf) ### TODO: check me! reference!? ##????
 	    icxx" n_InpAdd($xx, $yy, $cf);"
 
 #	    @cxx _n_Delete(xx, cf)
-# @cxx ($fC)(xx, yy, cf) ### TODO: check me! reference!? ##????
+# @cxx (libSingular.$fC)(xx, yy, cf) ### TODO: check me! reference!? ##????
 
 	    set_raw_ptr!(x, xx[])#            x.ptr = ptr
 end
@@ -313,7 +313,7 @@ for (fJ, fC) in ((:num, :n_GetNumerator), (:den, :n_GetDenom), (:normalise, :n_N
             p = get_raw_ptr(x)
 	    r = number_ref(p)
 	### TODO: FIXME:!!!!
-            ret = @cxx ($fC)(r, cf) 
+            ret = @cxx (libSingular.$fC)(r, cf) 
             set_raw_ptr!(x, r[])
 	    return ret
         end
@@ -334,7 +334,7 @@ for (fJ, fC) in ((:+, :n_Add), (:-,:n_Sub), (:*, :n_Mult),
         function ($fJ)(x::SingularFieldElem, y::SingularFieldElem)
             check_parent(x, y)
             c = parent(x)
-            p = ($fC)(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c));
+            p = (libSingular.$fC)(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c));
             return  NumberElem(c, p)
         end
         
@@ -354,22 +354,22 @@ end
 
 # Metaprogram to define functions /, div, mod
 
-#if false ### --here??
-#for (fJ, fC) in ((://, :n_Div), ### ????? /: floating point division?
-#    (:div, :n_DivExact), ##### FIXME / TODO : Euclid domain???
-#    (:mod, :n_Mod))
-#    @eval begin
-#        function ($fJ)(x::SingularFieldElem, y::SingularFieldElem)
-#            iszero(y) == 0 && throw(DivideError())
-#            check_parent(x, y)
-#            c = parent(x)
-#            return  c(($fC)(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c)))
-#        end
-#        ($fJ)(x::SingularFieldElem, i::Integer) = ($fJ)(x,  parent(x)(i)) 
-#        ($fJ)(i::Integer, x::SingularFieldElem) = ($fJ)(parent(x)(i), x)
-#    end
-#end
-#end
+if false ### --here??
+for (fJ, fC) in ((://, :n_Div), ### ????? /: floating point division?
+    (:div, :n_DivExact), ##### FIXME / TODO : Euclid domain???
+    (:mod, :n_Mod))
+    @eval begin
+        function ($fJ)(x::SingularFieldElem, y::SingularFieldElem)
+            iszero(y) == 0 && throw(DivideError())
+            check_parent(x, y)
+            c = parent(x)
+            return  c((libSingular.$fC)(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c)))
+        end
+        ($fJ)(x::SingularFieldElem, i::Integer) = ($fJ)(x,  parent(x)(i)) 
+        ($fJ)(i::Integer, x::SingularFieldElem) = ($fJ)(parent(x)(i), x)
+    end
+end
+end
 
 
 #####################################################################
@@ -495,7 +495,7 @@ for (fJ, fC) in ((:isone, :n_IsOne), (:ismone, :n_IsMOne),
 		(:size,   :n_Size)) 
     @eval begin
         function ($fJ)(x :: SingularFieldElem)
-            return ($fC)(get_raw_ptr(x), get_raw_ptr(parent(x)))
+            return (libSingular.$fC)(get_raw_ptr(x), get_raw_ptr(parent(x)))
         end
     end
 end
