@@ -12,21 +12,9 @@ using Cxx
 
 ###############################################################################
 #
-#   SingularFields
+#   Singular low-level wrappers for coeffs
 #
 ###############################################################################
-
-abstract SingularField <: Field{Singular}
-abstract SingularFieldElem <: FieldElem ### {Singular}?
-
-# typealias SingularRing 
-abstract SingularRingElem <: RingElem ### {Singular}?
-
-#type SingularPolynomialRing <: Ring{Singular} # SingularRing
-#end
-
-#type SingularPolynomial <: PolyElem
-#end
 
 include("libSingular.jl")
 
@@ -37,9 +25,58 @@ __singular_init__() = libSingular.__libSingular_init__()
 using Cxx
 
 typealias number libSingular.number
-typealias number_ptr libSingular.number_ptr
 typealias number_ref libSingular.number_ref
+#typealias number_ptr libSingular.number_ptr
+
+###############################################################################
+#
+#   SingularCoeffs (Fields)
+#
+###############################################################################
+
+### See ../../src/AbstractTypes.jl:
+#   abstract Ring{T} <: Group{T}
+#   abstract Field{T} <: Ring{T}
+
+#   abstract RingElem <: GroupElem
+#   abstract FieldElem <: RingElem
+
+#   abstract PolyElem{T} <: RingElem
+#   abstract ResidueElem{T} <: RingElem
+#   abstract FractionElem{T} <: FieldElem
+
+#   abstract IntegerRingElem <: RingElem
+#   abstract FiniteFieldElem <: FieldElem
+#   abstract NumberFieldElem <: FieldElem
+
+abstract SingularRing <: Ring{Singular}
+abstract SingularRingElem <: RingElem
+
+#####  TODO: ATM SingularField & SingularFieldElem are not recognised by Nemo as Filed/FieldElem!!!
+abstract SingularField <: SingularRing
+abstract SingularFieldElem <: SingularRingElem
+#####  Previously it was as follows:
+#abstract SingularField <: Field{Singular}
+#abstract SingularFieldElem <: FieldElem
+
 
 include("Coeffs.jl")
 include("NumberElem.jl")
 
+###############################################################################
+#
+#   SingularPolynomial (Rings)
+#
+###############################################################################
+
+abstract SingularPolynomialRing <: Ring{Singular}
+abstract SingularPolynomialElem <: RingElem
+
+# typealias SingularRing 
+
+include("PRings.jl")
+
+# include("PRingElem.jl?")
+
+#type SingularPolynomial <: PolyElem
+#end

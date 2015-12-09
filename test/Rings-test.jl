@@ -16,8 +16,6 @@ include("flint/fmpz_mat-test.jl")
 include("pari/pari_maximal_order_elem-test.jl")
 include("pari/PariIdeal-test.jl")
 
-Nemo.with_singular() && include("singular-test.jl")
-
 include("generic/Poly-test.jl")
 include("generic/Residue-test.jl")
 include("generic/PowerSeries-test.jl")
@@ -25,7 +23,6 @@ include("generic/Matrix-test.jl")
 
 function test_rings()
 
-   Nemo.with_singular() && test_singular()
    test_fmpz()
    test_fmpz_poly()
    test_fmpz_mod_poly()

@@ -1,9 +1,9 @@
 typealias coeffs libSingular.coeffs
 
-const CoeffID = ObjectIdDict()
-#const SRingID = ObjectIdDict()
+const CoeffID = ObjectIdDict() # All Coeffs are to be unique!
 
-type Coeffs <: SingularField
+# TODO Coeffs: Integer which is a Ring...?
+type Coeffs <: SingularRing
    ptr :: libSingular.coeffs
 
    function Coeffs(nt::libSingular.n_coeffType, par::Ptr{Void}) 
@@ -77,14 +77,20 @@ function string(c::Coeffs)
    return "SingularCoeffs(" * bytestring(mm) * "|[" * bytestring(m) * "])"
 end
 
+# r->is_field==0
 isring(c::Coeffs) = libSingular.nCoeff_is_Ring(get_raw_ptr(c))
+
+# returns TRUE, if r is a field or r has no zero divisors (i.e is a domain)
+# r->is_domain
 isdomain(c::Coeffs) = libSingular.nCoeff_is_Domain(get_raw_ptr(c))
 
 show(io::IO, c::Coeffs) = print(io, string(c))
 
-SingularQQ() = Coeffs(libSingular.n_Q(), Ptr{Void}(0)); # SingularRationalField()
-SingularZZ() = Coeffs(libSingular.n_Z(), Ptr{Void}(0)); # SingularRing()
+SingularZZ() = Coeffs(libSingular.n_Z(), Ptr{Void}(0)); # SingularRing!
 
+# TODO: SingularField: 
+SingularQQ() = Coeffs(libSingular.n_Q(), Ptr{Void}(0)); 
+SingularZp(p::Int) = Coeffs(libSingular.n_Zp(), Ptr{Void}(p));
 
 
 ###############################################################################

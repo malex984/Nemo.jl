@@ -819,7 +819,7 @@ function bernoulli(n::UInt, r::ArbField)
   return z
 end
 
-bernoulli(n::Int, r::ArbField) = n >= 0 ? bernoulli(UInt(n), r) : throw(DomainError)
+bernoulli(n::Int, r::ArbField) = n >= 0 ? bernoulli(UInt(n), r) : throw(DomainError())
 
 function risingfac(x::arb, n::UInt)
   z = parent(x)()

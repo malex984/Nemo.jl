@@ -1,52 +1,25 @@
 using Base.Test
 using Cxx
 
-function test_singular()
-   println()
+# include("generic/Fraction-test.jl")
+# include("generic/Residue-test.jl")
+# include("generic/PowerSeries-test.jl")
 
-   print("Printing Singular resources pathes...\n")  
+include("generic/Poly-test.jl")
+# include("generic/Matrix-test.jl")
 
+
+function test_singular_wrappers()
+   println("Printing Singular resources pathes...")  
    Nemo.libSingular.PrintResources("Singular Resources info: ")
-
    println("PASS")
+end
 
-   print("Constructing/showing/deleting Singular rings via Cxx...")
 
-##TODO## icxx" char* n [] = { (char*)\"t\"}; ring r = rDefault( 13, 1, n); rWrite(r); PrintLn(); rDelete(r); "
+# TODO: untangle this mess!!!
+function test_singular_lowlevel_coeffs()
 
-cxx"""
-void test_contruct_ring()
-{
-  char* n [] = { (char*)\"t\"}; 
-  ring r = rDefault( 13, 1, n); 
-  rWrite(r); 
-  PrintLn(); 
-  rDelete(r);
-}
-"""
-   @cxx test_contruct_ring()
-
-   println("PASS")
-
-#function dummy(cf::Ptr{Void})
-#  println("new coeffs: $cf"); return
-#end
-#const dummy_c = cfunction(dummy, Void, (Ptr{Void},))
-#cxx"""
-#BOOLEAN myInitChar(coeffs n, void*){
-#n->cfCoeffWrite  = (???)$dummy_c; return FALSE; } 
-#"""
-
-#######################################################
-                
-#function jlInit(cf::Ptr{Void}, ::Ptr{Void})
-#  println("jlInit: new coeffs: $cf"); return convert( Cint, 1);
-#end
-#const cjlInit = cfunction(jlInit, Cint, (Ptr{Void},Ptr{Void}))
-#newTyp = icxx" return nRegister( n_unknown, (cfInitCharProc)$cjlInit); " # CppEnum{:n_coeffType}(14)
-#newCoeff = icxx" return nInitChar( $newTyp, 0 ); "
-
-   print("Wrapping libSingular constants/functions with Cxx...\n")  
+   print("Wrapping libSingular constants/functions with Cxx/Julia...\n")  
 
 cxx"""
 void test_coeffs(n_coeffType t, void *p, long v)
@@ -93,6 +66,20 @@ void test_coeffs(n_coeffType t, void *p, long v)
    siSeed = seed;
 }
 """
+
+   @test Nemo.libSingular.n_Zp() == Nemo.libSingular.n_coeffType(1)
+   @test Nemo.libSingular.n_Q() == Nemo.libSingular.n_coeffType(2)
+   @test Nemo.libSingular.n_Z() == Nemo.libSingular.n_coeffType(9)
+
+   const ZZ = Nemo.SingularZZ();
+   const QQ = Nemo.SingularQQ();
+
+   print("SingularZZ: $ZZ, SingularQQ: $QQ...")
+   println("PASS")
+
+
+### TODO: separate creation for Coeffs & pass them into jtest_coeffs instead!
+
 
    function jtest_coeffs(n :: Nemo.libSingular.n_coeffType, p :: Ptr{Void}, i::Int)
 
@@ -236,17 +223,6 @@ void test_coeffs(n_coeffType t, void *p, long v)
         println("\n...PASS")
    end	  
 
-   println("PASS")
-
-   @test Nemo.libSingular.n_Zp() == Nemo.libSingular.n_coeffType(1)
-   @test Nemo.libSingular.n_Q() == Nemo.libSingular.n_coeffType(2)
-   @test Nemo.libSingular.n_Z() == Nemo.libSingular.n_coeffType(9)
-
-### TODO: separate creation for Coeffs & pass them into jtest_coeffs instead!
-   const ZZ = Nemo.SingularZZ();
-   const QQ = Nemo.SingularQQ();
-   println("SingularZZ: ", ZZ)
-   println("SingularQQ: ", QQ)
 
    # q = 66 in QQ
 #   @test Nemo.SingularQQ() == Nemo.Coeffs( Nemo.libSingular.n_Q(), Ptr{Void}(0) )
@@ -262,12 +238,89 @@ void test_coeffs(n_coeffType t, void *p, long v)
    jtest_coeffs( Nemo.libSingular.n_Zp(), Ptr{Void}(11), 11*3 + 6) 
 #   @cxx test_coeffs( n_Zp, Ptr{Void}(11), 11*3 + 6) 
 
+end
 
-   println()
 
+function test_singular_polynomial_rings()
+   print("Constructing/showing/deleting Singular rings via Cxx...")
+
+##TODO## icxx" char* n [] = { (char*)\"t\"}; ring r = rDefault( 13, 1, n); rWrite(r); PrintLn(); rDelete(r); "
+
+cxx"""
+ring test_contruct_ring()
+{
+  char* n [] = { (char*)\"t\"}; 
+  ring r = rDefault( 13, 1, n); 
+  rWrite(r); 
+  PrintLn(); 
+  return (r);
+}
+"""
+   r = @cxx test_contruct_ring()
+   println(r)
+   @cxx rDelete(r)
+   println("PASS")
+
+
+   print("Constructing Singular Polynomial Ring over native coeffs...\n")  
+
+   const ZZ = Nemo.SingularZZ();
+   RZ = Nemo.PRing(ZZ, Symbol("x, y"));
+
+   print("_ Over Singular Integer Ring [", string(ZZ), "]: ", string(RZ))
+   # @test parent(RZ) == ZZ # ?
+   println("...PASS")
+
+   const QQ = Nemo.SingularQQ();
+   RQ = Nemo.PRing(QQ, Symbol("x, y"));
+
+   print("_ Over Singular Rational Field [", QQ, "]: ", string(RQ))
+   # @test parent(RQ) == QQ # ?
+   println("...PASS")
 
 end
 
-##### SingPoly : p * q & gcd 
 
 
+function test_singular()
+   println()
+
+   test_singular_wrappers()
+   test_singular_lowlevel_coeffs()
+   test_singular_polynomial_rings()
+
+   # generic polynomials over SingularZZ()...
+   test_poly_singular()
+
+end
+
+#### TODOs:
+
+## Generic Polys over Singular Coeffs with benchmarks!
+## Matrices over Singular Coeffs with benchmarks!
+## Benchmarks?!
+
+##### Generic Poly : gcd :( ?
+
+
+#######################################################
+### TODO? Nemo Fields (e.g. BigFloat/QQ?) as Singular Coeffs?
+
+### Register Coeffs into Singular?
+
+
+#function dummy(cf::Ptr{Void})
+#  println("new coeffs: $cf"); return
+#end
+#const dummy_c = cfunction(dummy, Void, (Ptr{Void},))
+#cxx"""
+#BOOLEAN myInitChar(coeffs n, void*){
+#n->cfCoeffWrite  = (???)$dummy_c; return FALSE; } 
+#"""
+                
+#function jlInit(cf::Ptr{Void}, ::Ptr{Void})
+#  println("jlInit: new coeffs: $cf"); return convert( Cint, 1);
+#end
+#const cjlInit = cfunction(jlInit, Cint, (Ptr{Void},Ptr{Void}))
+#newTyp = icxx" return nRegister( n_unknown, (cfInitCharProc)$cjlInit); " # CppEnum{:n_coeffType}(14)
+#newCoeff = icxx" return nInitChar( $newTyp, 0 ); "
