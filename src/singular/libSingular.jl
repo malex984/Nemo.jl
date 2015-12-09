@@ -13,10 +13,12 @@ function __libSingular_init__()
 
 #   println("cxx #includes1:")
 
-   cxxinclude("Singular/libsingular.h", isAngled=false)
-   cxxinclude("omalloc/omalloc.h", isAngled=false)
-   cxxinclude("reporter/reporter.h", isAngled=false)
-   cxxinclude("coeffs/coeffs.h", isAngled=false)
+   cxxinclude(joinpath("Singular", "libsingular.h"), isAngled=false)
+   cxxinclude(joinpath("omalloc", "omalloc.h"), isAngled=false)
+   cxxinclude(joinpath("reporter", "reporter.h"), isAngled=false)
+   cxxinclude(joinpath("coeffs", "coeffs.h"), isAngled=false)
+   cxxinclude(joinpath("polys", "monomials", "ring.h"), isAngled=false)
+   cxxinclude(joinpath("polys", "monomials", "p_polys.h"), isAngled=false)
 
 #   println("cxx #includes2:")
 
@@ -25,6 +27,9 @@ cxx"""
     #include "omalloc/omalloc.h"
     #include "reporter/reporter.h"
     #include "coeffs/coeffs.h"
+
+    #include <polys/monomials/ring.h>
+    #include <polys/monomials/p_polys.h>
 """
 
 #   println("cxx fun wraps:")
@@ -39,14 +44,25 @@ cxx"""
     { number res; n_Power(a, b, &res, r); return res; }
     static void _n_Delete(number a,const coeffs r)
     {n_Delete(&a,r);}
+
+    static ring test_create_ring2(const coeffs cf)
+    { char* ns[] = {(char*)"x", (char*)"y"}; return rDefault( cf, 2, ns); }
+
+    static poly test_create_poly(const long n, const ring r)
+    {  return p_ISet(n, r); }
+
+    static void omalloc_mem_info_and_check()
+    { // TODO!
+    }
+
 """
 #   println("n_coeffType:")
 
 cxx"""
 // TODO: follow https://github.com/Keno/Cxx.jl#example-6-using-c-enums
-   static n_coeffType get_Q() { return n_Q; };
-   static n_coeffType get_Z() { return n_Z; };
-   static n_coeffType get_Zp(){ return n_Zp; }; 
+//   static n_coeffType get_Q() { return n_Q; };
+//   static n_coeffType get_Z() { return n_Z; };
+//   static n_coeffType get_Zp(){ return n_Zp; }; 
 """
    local const binSingular = joinpath(prefix, "bin", "Singular")
    ENV["SINGULAR_EXECUTABLE"] = binSingular
@@ -115,9 +131,30 @@ end
 typealias n_coeffType Cxx.CppEnum{:n_coeffType}
 
 ## todo: avoid the above!
-n_Zp() = @cxx get_Zp(); #  # get_Zp() = icxx" return n_Zp; "
-n_Q()  = @cxx get_Q(); # Cxx.CppEnum{:n_coeffType}(2) # icxx" return n_Q; "
-n_Z() = @cxx get_Z(); # Cxx.CppEnum{:n_coeffType}(9) # icxx" return n_Z; "
+n_Zp() = (@cxx n_coeffType::n_Zp) 
+#  n_Zp # , /**< \F{p < 2^31} */
+
+n_Q()  = (@cxx n_coeffType::n_Q) # @cxx get_Q(); # Cxx.CppEnum{:n_coeffType}(2) # icxx" return n_Q; "
+#  n_Q # ,  /**< rational (GMP) numbers */
+
+n_R() =  (@cxx n_coeffType::n_R) #,  /**< single prescision (6,6) real numbers */
+
+n_GF() =  (@cxx n_coeffType::n_GF) # , /**< \GF{p^n < 2^16} */
+n_long_R() = (@cxx n_coeffType::n_long_R)# , /**< real floating point (GMP) numbers */
+n_algExt() = (@cxx n_coeffType::n_algExt) # ,  /**< used for all algebraic extensions, i.e.,the top-most extension in an extension tower is algebraic */
+n_transExt() = (@cxx n_coeffType::n_transExt) #,  /**< used for all transcendental extensions, i.e.,the top-most extension in an extension tower is transcendental */
+n_long_C() = (@cxx n_coeffType::n_long_C) # , /**< complex floating point (GMP) numbers */
+#  n_Z, /**< only used if HAVE_RINGS is defined: ? */
+n_Z() =  (@cxx n_coeffType::n_Z) # @cxx get_Z(); # Cxx.CppEnum{:n_coeffType}(9) # icxx" return n_Z; "
+
+n_Zn() =  (@cxx n_coeffType::n_Zn) # , /**< only used if HAVE_RINGS is defined: ? */
+n_Znm() =  (@cxx n_coeffType::n_Znm) # , /**< only used if HAVE_RINGS is defined: ? */
+n_Z2m() =  (@cxx n_coeffType::n_Z2m) # , /**< only used if HAVE_RINGS is defined: ? */
+n_CF() =  (@cxx n_coeffType::n_CF) #  /**< ? */
+
+
+
+#  # get_Zp() = icxx" return n_Zp; "
 
 ### FIXME : Cxx Type?
 typealias coeffs Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}
@@ -125,7 +162,7 @@ typealias coeffs Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,f
 
 # essentially: Ptr{Void}
 typealias number Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)}
-typealias number_ptr Ptr{number} ### ?: Cxx should auto-support Ptr & Ref... 
+### typealias number_ptr Ptr{number} ### ?: Cxx should auto-support Ptr & Ref... 
 typealias number_ref Ref{number} ### 
 
 function nInitChar(n :: n_coeffType, p :: Ptr{Void})
@@ -172,6 +209,10 @@ end
 
 function n_Int(n :: number, cf :: coeffs) 
    return @cxx n_Int(n, cf)
+end
+
+function n_Copy(n :: number, cf :: coeffs) 
+   return @cxx n_Copy(n, cf)
 end
 
 function n_Print(n :: number, cf :: coeffs) 
@@ -290,6 +331,7 @@ end
 # number n_Mult(number a, number b, const coeffs r)
 # number n_ExactDiv(number a, number b, const coeffs r)
 # number n_IntMod(number a, number b, const coeffs r)
+
 # number n_Gcd(number a, number b, const coeffs r)
 # number n_SubringGcd(number a, number b, const coeffs r)
 # number n_Lcm(number a, number b, const coeffs r)
@@ -311,9 +353,38 @@ function n_Power(a::number, b::Int, cf::coeffs)
     return @cxx _n_Power(a, b, cf)
 end
 
+function n_ExtGcd(a::number, b::number, cf:: coeffs)
+   s = number(0)
+   t = number(0)
+
 ## number n_ExtGcd(number a, number b, number *s, number *t, const coeffs r)
+   g = @cxx n_ExtGcd(a, b, &s, &t, cf); # ??
+
+   g, s, t
+end
+
+function n_XExtGcd(a::number, b::number, cf:: coeffs)
+   s = number(0)
+   t = number(0)
+   u = number(0)
+   v = number(0)
+
 ## number n_XExtGcd(number a, number b, number *s, number *t, number *u, number *v, const coeffs r)
+   g = @cxx n_ExtGcd(a, b, &s, &t, &u, &v, cf); # ??
+
+   g, s, t, u, v
+end
+
+function n_QuotRem(a::number, b::number, cf:: coeffs)
+   q = number(0)
+
 ## number n_QuotRem(number a, number b, number *q, const coeffs r)
+   r = @cxx n_QuotRem(a, b, &q, cf); # ??
+
+   r, q
+end
+
+
 
 ##### number n_ChineseRemainderSym(number *a, number *b, int rl, BOOLEAN sym,CFArray &inv_cache,const coeffs r)
 ## nMapFunc n_SetMap(const coeffs src, const coeffs dst)
@@ -339,13 +410,9 @@ end
 n_InpNeg(x, cf :: coeffs) = return (x = @cxx n_InpNeg(x, cf))
 
 
+typealias ring Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:ip_sring},(false,false,false)},(false,false,false)}
+# Ptr{Void}
 
+typealias poly Ptr{Void}
 
-
-
-
-
-
-
-
-end
+end # libSingular module
