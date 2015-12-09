@@ -583,6 +583,10 @@ function test_poly_mul_ks_singular()
    println("PASS")
 end
 
+function *{T<:FiniteFieldElem}(x::SingularRingElem, y::T)
+    convert(BigInt, x) * y
+end
+
 function test_poly_generic_eval_singular()
    print("Poly.generic_eval / Singular Coeffs...")
 
@@ -602,10 +606,10 @@ function test_poly_generic_eval_singular()
 
    @test f(ZZ(123)) == 45510*x + 126
 
-#   R, x = PolynomialRing(ZZ, "x")
-#   T, y = FiniteField(103, 1, "y") #### !!!!
-#   f = x^5 + 3x^3 + 2x^2 + x + 1
-#   @test f(T(13)) == 20 # TODO: FIXME: not impelemented! WHAT IS NECESSARY? 
+   R, x = PolynomialRing(ZZ, "x")
+   T, y = FiniteField(103, 1, "y") #### !!!! GP(103^1, y)
+   f = x^5 + 3x^3 + 2x^2 + x + 1
+   @test f(T(13)) == 20 # TODO: FIXME: not impelemented! WHAT IS NECESSARY? R * T -> T(i)*T!
 # ERROR: LoadError: test error in expression: f(T(13)) == 20
 
    println("PASS")

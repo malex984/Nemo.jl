@@ -119,20 +119,21 @@ void test_coeffs(n_coeffType t, void *p, long v)
         @test !Nemo.iszero(mid) 
         @test !Nemo.ispositive(mid)
 
-        @test id > zr 
+        @test id > zr
 	@test id != zr
 	@test (1 != zr) 
         @test (id != 0)
-#        @test (1 > zr) && (id > 0) # bug somewhere in the Julia engine :(
+        @test (1 > zr) 
+	@test (id > 0) # bug somewhere in the Julia engine :(
 
         if (ch == 0)  
             @test (id > mid)
             @test (zr > mid)
 
-#            @test (id > -1) # bug as above ...?
-#            @test (zr > -1)
-#            @test (1 > mid)
-#            @test (0 > mid)
+            @test (id > -1) # bug as above ...?
+            @test (zr > -1)
+            @test (1 > mid)
+            @test (0 > mid)
         end
 
 	z = C(i)
