@@ -235,7 +235,7 @@ function test_benchmarks_singular()
 
    p = 32003;
    CF_F = ResidueRing(Nemo.FlintZZ, p);
-   CF_S = Nemo.SingularZp(p);
+   CF_S = Nemo.SingularZp(p); ## ???
 
    println("Testing Rings over Zp: ");
 

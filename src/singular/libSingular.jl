@@ -18,7 +18,7 @@ function n_Zp(); return(@cxx n_Zp); end # n_coeffType::
 # /**< \F{p < 2^31} */
 
 function n_Q(); return(@cxx n_Q); end  # 
-# @cxx get_Q(); # Cxx.CppEnum{:n_coeffType}(2) # icxx" return n_Q; " # /**< rational (GMP) numbers */
+# @cxx get_Q(); # Cxx.CppEnum{:n_coeffType}(2) /**< rational (GMP) numbers */
 
 function n_R(); return(@cxx n_R); end # 
 #,  /**< single prescision (6,6) real numbers */
@@ -36,7 +36,7 @@ function n_long_C(); return(@cxx n_long_C); end
 
 #  n_Z, /**< only used if HAVE_RINGS is defined: ? */
 function n_Z(); return(@cxx n_Z); end
- # @cxx get_Z(); # Cxx.CppEnum{:n_coeffType}(9) # icxx" return n_Z; "
+ # @cxx get_Z(); # Cxx.CppEnum{:n_coeffType}(9)
 
 #n_Zn() =  (@cxx n_Zn) # , /**< only used if HAVE_RINGS is defined: ? */
 #n_Znm() =  (@cxx n_Znm) # , /**< only used if HAVE_RINGS is defined: ? */
@@ -78,8 +78,24 @@ cxx"""
     static void _n_Delete(number a,const coeffs r)
     {n_Delete(&a,r);}
 
+
+    static void _n_WriteLong(number* n, const coeffs cf)
+    { n_WriteLong(*n, cf); } 
+
+    static void _n_WriteShort(number* n, const coeffs cf)
+    { n_WriteShort(*n, cf); } 
+
+    static number _n_Normalize(number n, const coeffs cf)
+    { n_Normalize(n, cf); return n; } 
+
+    static number _n_GetDenom(number* n, const coeffs cf)
+    { return n_GetDenom(*n, cf); } 
+
+    static number _n_GetNumerator(number* n, const coeffs cf)
+    { return n_GetNumerator(*n, cf); } 
+
     static void _n_Write(number* n, const coeffs cf, int d)
-    { n_Write(*n, cf, d); } // return (n); }
+    { n_Write(*n, cf, d); }
 
 // static FORCE_INLINE long n_Int(number &n,       const coeffs r)
     static long _n_Int(number *n, const coeffs cf)
@@ -148,7 +164,7 @@ end
 
 
 # @cxx PrintS(s)  # BUG: PrintS is a C function
-# icxx" PrintS($s); "   # quick and dirty shortcut
+# icxx""" PrintS($s); """   # quick and dirty shortcut
 # PrintS(m) = ccall( Libdl.dlsym(Nemo.libsingular, :PrintS), Void, (Ptr{Uint8},), m) # workaround for C function
 
 function PrintS(m)
@@ -190,8 +206,6 @@ end
 
 
 
-
-#  # get_Zp() = icxx" return n_Zp; "
 
 ### FIXME : Cxx Type?
 typealias coeffs Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}
@@ -253,33 +267,36 @@ end
 # number n_InitMPZ(mpz_t n,     const coeffs r) # TODO: BigInt???
 
 function n_InitMPZ(b :: BigInt, cf :: coeffs)
-   return icxx" return n_InitMPZ((mpz_t)$b, $cf); "
+#   bb = Ref(b)	 
+   return icxx""" return n_InitMPZ((mpz_t)$b, $cf); """ ## TODO!?
 end
 
 # void n_MPZ(mpz_t result, number &n,       const coeffs r)
 function n_MPZ(a :: number_ref, cf :: coeffs)
-##    r = BigInt(); icxx" n_MPZ($r, $a, $cf); "
+##    r = BigInt(); icxx""" n_MPZ($r, $a, $cf); """
 # TODO: FIXME: Got bad type information while compiling Cxx.CppNNS{Tuple{:n_MPZ}} (got BigInt for argument 1
 
 #    n :: number = a[]
-    r = BigInt()
-    icxx" n_MPZ((mpz_t)$r, $a, $cf); "
+    r = Ref(BigInt())
+    icxx""" mpz_t t; n_MPZ(t, $a, $cf); $r = t;"""
 
 #    @cxx _n_MPZ(Ptr{Void}(r), &n, cf);
 #    a[] = n;
 
-    return r
+    return r[]
 end
 
 ## static FORCE_INLINE void number2mpz(number n, coeffs c, mpz_t m){ n_MPZ(m, n, c); }
 ## static FORCE_INLINE number mpz2number(mpz_t m, coeffs c){ return n_InitMPZ(m, c); }
+# long n_Int(number &n,       const coeffs r)
 
 function n_Int(n :: number_ref, cf :: coeffs) 
-    nn :: number = n[]
 
-    r = (@cxx _n_Int(&nn, cf))
+     r = icxx""" return n_Int($n, $cf); """
 
-    n[] = nn;
+#    nn :: number = n[]
+#    r = (@cxx _n_Int(&nn, cf))
+#    n[] = nn;
     return r
 
     # Got bad type information while compiling Cxx.CppNNS{Tuple{:n__Int}} 
@@ -300,13 +317,13 @@ end
 #   @cxx n_Delete(n_ptr, cf)
 #end
 
-#function n_Delete(n :: number, cf :: coeffs)
+function n_Delete(n :: number_ref, cf :: coeffs)
 ##   m = number(n)
 #  # @cxx n_Delete(n_ref, cf)
 #  n = n_ref[]
-#  icxx"n_Delete($n_ref, $cf);"
+  icxx""" number k = $n; n_Delete(&k, $cf); $n = k; """
 ##   n = number(0)
-#end
+end
 
 function _n_Delete(n :: number, cf :: coeffs)
    @cxx _n_Delete(n, cf)
@@ -382,10 +399,50 @@ n_Param(i::Int, cf :: coeffs) = @cxx n_Param(i, cf)
 function n_Write( n::number_ref, cf :: coeffs, bShortOut::Bool = false )
    const d :: Int = (bShortOut? 1 : 0)
 
-   nn :: number = n[]
-   @cxx _n_Write(&nn, cf, d);
-   n[] = nn
+   icxx""" n_Write($n, $cf, $d); """ 
+
+#   nn :: number = n[]
+##   @cxx _n_Write(&nn, cf, d);
+#   n[] = nn
+
 end
+
+
+#, (:n_Normalize)
+        function n_Normalize(x :: number_ref, cf :: coeffs) 
+	    icxx""" n_Normalize($x, $cf); """
+
+#	    xx = x[] 
+#            ret = @cxx _n_Normalize(xx, cf)
+#	    x[] = ret
+        end
+
+
+# number n_GetNumerator(number& n, const coeffs r)
+# number n_GetDenom(number& n, const coeffs r)
+
+function _n_GetNumerator(x :: number_ref, cf :: coeffs)
+    return icxx""" return n_GetNumerator($x, $cf); """
+#	    xx :: number = x[];
+#            ret :: number = @cxx ($f)(&xx, cf);
+#	    x[] = xx;
+#	    ret
+end
+
+function _n_GetDenom(x :: number_ref, cf :: coeffs)
+    return icxx""" return n_GetDenom($x, $cf); """
+end
+
+
+# void   n_WriteShort(number& n,  const coeffs r)
+# void   n_WriteLong(number& n,  const coeffs r)
+#for (f) in ((:n_WriteLong), (:n_WriteShort))
+#    @eval begin
+#        function ($f)(x :: number_ref, cf :: coeffs) 
+#            @cxx ($f)(x, cf)
+#        end
+#    end
+#end
 
 
 #### Metaprogram to define functions :
@@ -402,6 +459,7 @@ for (f) in ((:n_Invers), (:n_EucNorm), (:n_Ann), (:n_RePart), (:n_ImPart))
         end
     end
 end
+
 
 #### Metaprogram to define functions :
 # number n_Add(number a, number b, const coeffs r)
@@ -431,46 +489,59 @@ end
 # static FORCE_INLINE number  n_QuotRem(number a, number b, number *q, const coeffs r)
 # Div(a,b), IntMod(a,b)
 function n_QuotRem(a::number, b::number, cf::coeffs)
-    q :: number = number(0);
-    d :: number = (@cxx n_QuotRem(a, b, &q, cf));
-    return (d, q)
+    m = number_ref(number(0));
+    q = number_ref(number(0));
+
+    icxx""" number mm = $m; $q = n_QuotRem($a, $b, &mm, $cf); $m = mm; """
+
+    q[], m[]
 end
 
 
 # void   n_Power(number a, int b, number *res, const coeffs r)
 function n_Power(a::number, b::Int, cf::coeffs)
-    return @cxx _n_Power(a, b, cf)
+    return (@cxx _n_Power(a, b, cf));
 end
 
 function n_ExtGcd(a::number, b::number, cf:: coeffs)
-   s = number(0)
-   t = number(0)
+   s = number_ref( number(0) )
+   t = number_ref( number(0) )
 
 ## number n_ExtGcd(number a, number b, number *s, number *t, const coeffs r)
-   g = @cxx n_ExtGcd(a, b, &s, &t, cf); # ??
+   g = number_ref( number(0) )
 
-   g, s, t
+   icxx""" number ss, tt; $g = n_ExtGcd($a, $b, &ss, &tt, $cf); $s = ss; $t = tt; """
+
+######   g = @cxx n_ExtGcd(a, b, &s, &t, cf)
+
+   @assert (g[] != number(0)) | (s[] != number(0)) | (t[] != number(0))
+
+   g[], s[], t[]
 end
 
+## number n_XExtGcd(number a, number b, number *s, number *t, number *u, number *v, const coeffs r)
 function n_XExtGcd(a::number, b::number, cf:: coeffs)
+   g = number(0)
    s = number(0)
    t = number(0)
    u = number(0)
-   v = number(0)
+   v = number(0) # TODO: with REF!
 
-## number n_XExtGcd(number a, number b, number *s, number *t, number *u, number *v, const coeffs r)
-   g = @cxx n_ExtGcd(a, b, &s, &t, &u, &v, cf); # ??
-
+###   g = @cxx n_XExtGcd(a, b, &s, &t, &u, &v, cf); # ??
+   icxx""" number ss, tt, uu, vv; $g = n_XExtGcd($a, $b, &ss, &tt, &uu, &vv, $cf); $s = ss; $t = tt; $u = uu; $v = vv; """
    g, s, t, u, v
 end
 
-function n_QuotRem(a::number, b::number, cf:: coeffs)
-   q = number(0)
-
 ## number n_QuotRem(number a, number b, number *q, const coeffs r)
-   r = @cxx n_QuotRem(a, b, &q, cf); # ??
+function n_QuotRem(a::number, b::number, cf:: coeffs)
+   q = number_ref( number(0) )
+   r = number_ref( number(0) )
 
-   r, q
+   icxx""" number qq; $r = n_QuotRem($a, $b, &qq, $cf); $q = qq; """
+
+   @assert (q[] != number(0)) | (r[] != number(0))
+
+   r[], q[]
 end
 
 

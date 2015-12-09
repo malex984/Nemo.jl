@@ -70,6 +70,9 @@ typealias SingularCoeffs Union{SingularRing,SingularField}
 typealias SingularCoeffsElems Union{SingularRingElem,SingularFieldElem}
 typealias SingularUniqueCoeffsElems Union{SingularUniqueRingElem,SingularUniqueFieldElem}
 
+typealias SingularRingElems Union{SingularRingElem,SingularUniqueRingElem}
+typealias SingularFieldElems Union{SingularFieldElem,SingularUniqueFieldElem}
+
 include("Coeffs.jl")
 include("NumberElem.jl")
 
@@ -214,5 +217,8 @@ function ^{T <: SingularCoeffsElems}(a::PolyElem{T}, b::Int)
       return z
    end
 end
+
+
+Base.promote_rule{T <: RingElem, S <: SingularCoeffsElems}(::Type{Mat{T}}, ::Type{S}) = Mat{T}
 
 #end
