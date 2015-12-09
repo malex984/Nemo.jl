@@ -547,21 +547,27 @@ end
 ### number n_GetDenom(number& n, const coeffs r)
 ### number n_GetNumerator(number& n, const coeffs r)
 
-for (fJ, fC) in ((:num, :n_GetNumerator), (:den, :n_GetDenom), (:normalise, :n_Normalize))
+for (fJ, fC) in ((:num, :_n_GetNumerator), (:den, :_n_GetDenom))
     @eval begin
         function ($fJ)(x :: SingularCoeffsElems)
-	    error("Sorry: $fJ has to be verified yet!")
-	 
-            cf = get_raw_ptr(parent(x))
-            p = get_raw_ptr(x)
-	    r = number_ref(p)
-	### TODO: FIXME:!!!! ???
-            ret = @cxx (libSingular.$fC)(r, cf) 
+	    C = parent(x); r = number_ref(get_raw_ptr(x))
+            ret = (libSingular.$fC)(r, get_raw_ptr(C))  # TODO: FIXME:!!!! ???
             set_raw_ptr!(x, r[])
-	    return ret
+	    return C(ret) # TODO: result in the same Coeffs?? 
+
+#	    error("Sorry: $fJ has to be verified yet!")
         end
     end
 end
+
+# , (:normalise, :n_Normalize)
+function normalize(x :: SingularCoeffsElems) #
+   cf = get_raw_ptr(parent(x)); r = number_ref(get_raw_ptr(x));
+   ret = libSingular.n_Normalize(r, cf); # TODO: FIXME:!!!! ???
+   set_raw_ptr!(x, r[])
+   return x
+end
+
 
 ###############################################################################
 #
@@ -589,14 +595,15 @@ end
 function divexact(x::SingularCoeffsElems, y::SingularCoeffsElems)
     iszero(y) && throw(ErrorException("DivideError() in divexact"))
     check_parent(x, y)
-    c = parent(x)
-    return c(libSingular.n_ExactDiv(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c)))
+    C = parent(x)
+    return C(libSingular.n_ExactDiv(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(C)))
 end
 
 ##### TODO: check for exact multiple before divexact & error?
 
 # Metaprogram to define functions /, div, mod
 
+# SingularRingElems
 for (fJ, fC) in ((://, :n_Div), ## ?? /: floating point division?
     (:div, :n_ExactDiv), ##### FIXME / TODO : Euclid domain???
     (:mod, :n_IntMod))
@@ -611,6 +618,38 @@ for (fJ, fC) in ((://, :n_Div), ## ?? /: floating point division?
         ($fJ)(i::Integer, x::SingularCoeffsElems) = ($fJ)(parent(x)(i), x)
     end
 end
+
+#    (:%,   :n_IntMod))
+rem(x::SingularRingElems, y::SingularRingElems) = mod(x, y) ### ??? TODO: IntMod vs QuotRem??!
+
+rem(x::SingularRingElem, i::Integer) = rem(x,  parent(x)(i)) 
+rem(i::Integer, x::SingularRingElem) = rem(parent(x)(i), x)
+
+function remQR(x::SingularRingElem, y::SingularRingElem)
+    iszero(y) && throw(ErrorException("DivideError() in % (rem)"))
+    check_parent(x, y)
+    C = parent(x); cf = get_raw_ptr(C);
+
+    q, m = libSingular.n_QuotRem(get_raw_ptr(x), get_raw_ptr(y), cf);
+
+    libSingular._n_Delete(q, cf);
+    return C(m)
+end
+
+
+function divQR(x::SingularRingElem, y::SingularRingElem)
+    iszero(y) && throw(ErrorException("DivideError() in % (div)"))
+    check_parent(x, y)
+
+    C = parent(x); cf = get_raw_ptr(C)
+
+    q, m = libSingular.n_QuotRem(get_raw_ptr(x), get_raw_ptr(y), cf);
+
+    libSingular._n_Delete(m, cf);
+    return C(q)
+end
+
+
 
 
 ###############################################################################
@@ -658,6 +697,7 @@ function inv(x::SingularCoeffsElems)
     C = parent(x)
 
     p = libSingular.n_Invers(get_raw_ptr(x), get_raw_ptr(C)) 
+
     if p != number(0); return C(p); end
 
     isring(C) && error("Sorry but input has no inverse in its ring!")
@@ -671,16 +711,27 @@ end
 #
 ###############################################################################
 
-function divrem(x::SingularCoeffsElems, y::SingularCoeffsElems)
+function divrem(x::SingularRingElems, y::SingularRingElems)
     iszero(y) && throw(ErrorException("DivideError() in divrem"))
 
-    C = parent(x)
-    CF = get_raw_ptr(C)
+    check_parent(x, y)
 
-    ## TODO: use n_QuotRem
-    return libSingular.n_QuotRem(gt_raw_ptr(a), get_raw_ptr(b), CF)
+    div(x, y), mod(x, y) ### TODO: @cxx ??? mod (non-negative) vs rem (C semantics)??? s
 
-#    div(x, y), mod(x, y) ### TODO: @cxx ??? mod (non-negative) vs rem (C semantics)??? s
+#    C = parent(x); cf = get_raw_ptr(C)
+#    q, m = libSingular.n_QuotRem(get_raw_ptr(x), get_raw_ptr(y), cf);
+#    C(q), C(m)
+end
+
+
+
+function divremQR(x::SingularRingElems, y::SingularRingElems)
+    iszero(y) && throw(ErrorException("DivideError() in divrem"))
+    check_parent(x, y)
+
+    C = parent(x); cf = get_raw_ptr(C)
+    (q, m) = libSingular.n_QuotRem(get_raw_ptr(x), get_raw_ptr(y), cf);
+    C(q), C(m)
 end
 
 function crt(r1::SingularCoeffsElems, m1::SingularCoeffsElems, r2::SingularCoeffsElems, m2::SingularCoeffsElems, signed=false)
@@ -710,33 +761,33 @@ end
 
 function gcdx(a::SingularCoeffsElems, b::SingularCoeffsElems)
     check_parent(a, b)
-    c = parent(a)
+    C = parent(a)
 
     if iszero(b) # shortcut this to ensure consistent results with gcdx(a,b)
-        return a < 0 ? (-a, -one(c), zero(c)) : (a, one(c), zero(c))
+        return (a < 0) ? (-a, -one(C), zero(C)) : (a, one(C), zero(C))
     end
 
-    g, s, t = libSingular.n_ExtGcd(get_raw_ptr(a), get_raw_ptr(b), get_raw_ptr(c));
+    g, s, t = libSingular.n_ExtGcd(get_raw_ptr(a), get_raw_ptr(b), get_raw_ptr(C));
 
-#    ccall((:fmpz_xgcd, :libflint), Void, (Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}), &g, &s, &t, &a, &b)
-
-    g, s, t
+    C(g), C(s), C(t)
 end
 
 function gcdinv(a::SingularCoeffsElems, b::SingularCoeffsElems)
     check_parent(a, b)
     c = parent(a)
 
-
     if iszero(b) # shortcut this to ensure consistent results with gcdx(a,b)
         return a < 0 ? (-a, -one(c)) : (a, one(c))
     end
 
     # ???
-    a < 0 && throw(ErrorException("DivideError(): a < 0 (gcdinv)"))
-    b < a && throw(ErrorException("DivideError(): b < a (gcdinv)")) 
+#    a < 0 && throw(ErrorException("DivideError(): a < 0 (gcdinv)"))
+#    b < a && throw(ErrorException("DivideError(): b < a (gcdinv)")) 
 
-    g, s, t = libSingular.n_ExtGcd(get_raw_ptr(a), get_raw_ptr(b), get_raw_ptr(c));
+    cf = get_raw_ptr(c);
+
+    g, s, t = libSingular.n_ExtGcd(get_raw_ptr(a), get_raw_ptr(b), cf);
+
 
 #   g = fmpz()
 #   s = fmpz()
@@ -746,7 +797,9 @@ function gcdinv(a::SingularCoeffsElems, b::SingularCoeffsElems)
 #   return g, s
 ###   error("Sorry this functionality (gcdinv) is not implemented yet :(")
 
-    g, s
+    libSingular._n_Delete(t, cf)
+
+    c(g), c(s)
 end
 
 
@@ -770,7 +823,7 @@ isnegative(a::SingularCoeffsElems) = (!iszero(a)) && (!ispositive(a))
 
 # see also https://github.com/JuliaLang/julia/blob/master/base/operators.jl
 
-function sscmp(x::SingularCoeffsElems, y::SingularCoeffsElems)
+function cmp(x::SingularCoeffsElems, y::SingularCoeffsElems)
     check_parent(x, y)
     cf = get_raw_ptr(parent(x))
     xx = get_raw_ptr(x) 
@@ -781,6 +834,9 @@ function sscmp(x::SingularCoeffsElems, y::SingularCoeffsElems)
 
     return -1
 end
+
+cmpabs(x::SingularCoeffsElems, y::SingularCoeffsElems) = cmp( abs(x), abs(y) )
+
 
 function ==(x::SingularCoeffsElems, y::SingularCoeffsElems)
     check_parent(x, y)
@@ -818,18 +874,19 @@ isless(x::Int, y::SingularCoeffsElems) = isless(parent(y)(x), y)
 #
 ###############################################################################
 
+#### Return true if x is divisible by y, otherwise return false. If y = 0 a ~DivideError() is raised.
 function divisible(x::SingularCoeffsElems, y::SingularCoeffsElems)
    iszero(y) && throw(ErrorException("DivideError() in divisible"))  # throw(DivideError())
-
-   # TODO?!
-   error("Sorry this functionality (divisible) is not implemented yet :(") # Bool(ccall((:fmpz_divisible, :libflint), Cint, (Ptr{fmpz}, Ptr{fmpz}), &x, &y))
+   
+   # test whether 'x' is divisible by 'y';
+   # in Z: TRUE iff 'y' divides 'x' (with remainder = zero)
+   return libSingular.n_DivBy( get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(parent(x)) )
 end
 
 function divisible(x::SingularCoeffsElems, y::Int)
    (y==0) && throw(ErrorException("DivideError() in divisible")) # throw(DivideError())
 
    return divisible(x, parent(x)(y)) # for now
-#   Bool(ccall((:fmpz_divisible_si, :libflint), Cint, (Ptr{fmpz}, Int), &x, y))
 end
 
 

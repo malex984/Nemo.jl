@@ -219,9 +219,14 @@ function get_raw_ptr(::Singular_ZZ)
    return ptr
 end
 
-# BigInt
-const default_choice = true # false - just for testing...
-SingularZZ(uq = default_choice) = ( uq ? Singular_ZZ() : Coeffs(libSingular.n_Z()) )
+global uq_default_choice = true # e.g. for testing both non-unique and unique reps. of rings/fields 
+
+function toggle_uq_default_choice() 
+    uq_default_choice = !uq_default_choice
+end
+
+# ~BigInt?
+SingularZZ() = ( uq_default_choice ? Singular_ZZ() : Coeffs(libSingular.n_Z()) )
 
 # SingularField:
 
@@ -251,12 +256,12 @@ get_raw_ptr(::Singular_Rr) = libSingular.ptr_Rr
 
 # Rational{BigInt}
 # false
-SingularQQ(uq = default_choice) = ( uq ? Singular_QQ() : CoeffsField(libSingular.n_Q()) ) 
+SingularQQ() = ( uq_default_choice ? Singular_QQ() : CoeffsField(libSingular.n_Q()) ) 
 
 # BigFloats
-SingularRR(uq = default_choice) = ( uq ? Singular_RR() : CoeffsField(libSingular.n_long_R()) )
-SingularCC(uq = default_choice) = ( uq ? Singular_CC() : CoeffsField(libSingular.n_long_C()) )
-SingularRr(uq = default_choice) = ( uq ? Singular_Rr() : CoeffsField(libSingular.n_R()) ) # single prescision (6,6) real numbers
+SingularRR() = ( uq_default_choice ? Singular_RR() : CoeffsField(libSingular.n_long_R()) )
+SingularCC() = ( uq_default_choice ? Singular_CC() : CoeffsField(libSingular.n_long_C()) )
+SingularRr() = ( uq_default_choice ? Singular_Rr() : CoeffsField(libSingular.n_R()) ) # single prescision (6,6) real numbers
 
 # non-unique => NumberFElem
 SingularFp(p::Int) = CoeffsField(libSingular.n_Zp(), Ptr{Void}(p));
