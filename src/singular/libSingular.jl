@@ -128,7 +128,7 @@ end
 # 2 into separate low-level functions
 # 3 back to types <: mathematical using those functions!
 
-typealias n_coeffType Cxx.CppEnum{:n_coeffType}
+typealias n_coeffType Cxx.CppEnum{:n_coeffType} # pcpp"n_coeffType" # 
 
 ## todo: avoid the above!
 n_Zp() = (@cxx n_coeffType::n_Zp) 
@@ -158,12 +158,21 @@ n_CF() =  (@cxx n_coeffType::n_CF) #  /**< ? */
 
 ### FIXME : Cxx Type?
 typealias coeffs Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}
+# cpcpp"coeffs" 
 # Ptr{Void}
+
+typealias const_coeffs coeffs # pcpp"const coeffs"
+# NOTE: no need in coeffs_ptr, right?
 
 # essentially: Ptr{Void}
 typealias number Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)}
-### typealias number_ptr Ptr{number} ### ?: Cxx should auto-support Ptr & Ref... 
-typealias number_ref Ref{number} ### 
+# pcpp"number" #
+typealias const_number number # pcpp"const number"
+
+typealias number_ptr Ptr{number}
+#pcpp"number*" # Ptr{number} ### ?: Cxx should auto-support Ptr & Ref... 
+typealias number_ref Ref{number} ###   rcpp"number" # 
+
 
 function nInitChar(n :: n_coeffType, p :: Ptr{Void})
    return @cxx nInitChar( n, p )
@@ -183,12 +192,12 @@ function n_CoeffWrite(cf :: coeffs, details::Bool = true)
 end
 
 # char * nCoeffString(const coeffs cf)
-function nCoeffString(cf :: coeffs)
+function nCoeffString(cf :: const_coeffs)
    return @cxx nCoeffString(cf)
 end
 
 # char * nCoeffName(const coeffs cf)
-function nCoeffName(cf :: coeffs)
+function nCoeffName(cf :: const_coeffs)
    return @cxx nCoeffName(cf)
 end
 

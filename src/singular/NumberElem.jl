@@ -1,3 +1,7 @@
+typealias number libSingular.number
+typealias number_ref libSingular.number_ref
+typealias number_ptr libSingular.number_ptr
+
 type NumberElem <: SingularRingElem
     ptr :: libSingular.number
     ctx :: Coeffs
@@ -29,6 +33,8 @@ type NumberElem <: SingularRingElem
     end
 
     function NumberElem(c::Coeffs, b::BigInt)
+    	error("Sorry this functionality seems to be unsupported ATM :(") # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
+
         c = parent(x)
         p = libSingular.n_InitMPZ(b, get_raw_ptr(c))
 
@@ -36,8 +42,6 @@ type NumberElem <: SingularRingElem
         finalizer(z, _SingularRingElem_clear_fn)
         return z
     end
-
-### TODO: BigInt # mpz_t n
 end
 
 # {T <: SingularRingElem}
@@ -128,17 +132,24 @@ end
 ####### convert(::Type{Rational{BigInt}}, a::fmpq) = Rational(a)
 
 function convert(::Type{BigInt}, a::SingularRingElem)
+    error("Sorry this functionality seems to be unsupported ATM :(") # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
     r = BigInt()
-    aa =  number_ref(a); 
-    @cxx n_MPZt(&r, aa, get_raw_ptr(parent(a)))
-    set_raw_ptr!(a, aa[]) # a.ptr = ptr
+    aa = get_raw_ptr(a); aaa =  number_ref(aa); 
+    cf = get_raw_ptr(parent(a))
+    @cxx n_MPZ(r, aaa, cf)# TODO: FIXME: Got bad type information while compiling Cxx.CppNNS{Tuple{:n_MPZ}} (got BigInt for argument 1)
+    set_raw_ptr!(a, aaa[]) # a.ptr = ptr
     return r
 end
 
 function convert(::Type{Int}, a::SingularRingElem) 
-    aa =  number_ref(a); 
-    ret = @cxx n_Int(aa, get_raw_ptr(parent(a)))
-    set_raw_ptr!(a, aa[]) # a.ptr = ptr
+    cf = get_raw_ptr(parent(a))
+    aa = get_raw_ptr(a); 
+#    aaa = number_ref(aa); 
+    r = Int()
+    icxx"""{ number f = $(aa); $(r) = n_Int(f, $(cf)); $(aa) = f; }; """
+    # Got bad type information while compiling Cxx.CppNNS{Tuple{:n_Int}} 
+    # (got Base.RefValue{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)}} for argument 1)
+    set_raw_ptr!(a, aa)# aaa[] # a.ptr = ptr
     return ret
 end
 

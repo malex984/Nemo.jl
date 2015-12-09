@@ -67,14 +67,11 @@ void test_coeffs(n_coeffType t, void *p, long v)
 }
 """
 
-   @test Nemo.libSingular.n_Zp() == Nemo.libSingular.n_coeffType(1)
-   @test Nemo.libSingular.n_Q() == Nemo.libSingular.n_coeffType(2)
-   @test Nemo.libSingular.n_Z() == Nemo.libSingular.n_coeffType(9)
-
    const ZZ = Nemo.SingularZZ();
    const QQ = Nemo.SingularQQ();
+   const Z11 = Nemo.SingularZp(11);
 
-   print("SingularZZ: $ZZ, SingularQQ: $QQ...")
+   print("SingularZZ: $ZZ, SingularQQ: $QQ, SingularZ11: $Z11...")
    println("PASS")
 
 
@@ -285,14 +282,17 @@ end
 
 function test_singular()
    println()
-
    test_singular_wrappers()
+
+   println()
    test_singular_lowlevel_coeffs()
+
+   println()
    test_singular_polynomial_rings()
 
-   # generic polynomials over SingularZZ()...
+   # generic polynomials over SingularZZ() & sometimes over SingularQQ()...
+   println()
    test_poly_singular()
-
 end
 
 #### TODOs:
@@ -323,5 +323,5 @@ end
 #  println("jlInit: new coeffs: $cf"); return convert( Cint, 1);
 #end
 #const cjlInit = cfunction(jlInit, Cint, (Ptr{Void},Ptr{Void}))
-#newTyp = icxx" return nRegister( n_unknown, (cfInitCharProc)$cjlInit); " # CppEnum{:n_coeffType}(14)
+#newTyp = icxx" return nRegister( n_unknown, (cfInitCharProc)$cjlInit); " 
 #newCoeff = icxx" return nInitChar( $newTyp, 0 ); "
