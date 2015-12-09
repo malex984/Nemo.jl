@@ -121,27 +121,34 @@ end
 ###############################################################################
 
 #### For the following we miss a context
-#convert(::Type{NumberElem}, a::Int) = #NumberElem (a)
-#convert(::Type{NumberElem}, a::Integer) = #NumberElem (a)
 
-# convert(::Type{Rational{BigInt}}, a::fmpq) = Rational(a)
-#function convert(::Type{BigInt}, a::NumberElem)
-#   r = BigInt()
-#   ccall((:NumberElem_get_mpz, :libflint), Void, (Ptr{BigInt}, Ptr{NumberElem}), &r, &a)
-#   return r
-#end
+#convert(::Type{NumberElem}, a::Integer) = SingularZZ()(a)
+#convert(::Type{NumberElem}, a::Int) = SingularZZ()(a)
 
-#function convert(::Type{Int}, a::NumberElem) 
-#   return ccall((:NumberElem_get_si, :libflint), Int, (Ptr{NumberElem},), &a)
-#end
+####### convert(::Type{Rational{BigInt}}, a::fmpq) = Rational(a)
 
-#function convert(::Type{UInt}, x::NumberElem)
-#   return ccall((:NumberElem_get_ui, :libflint), UInt, (Ptr{NumberElem}, ), &x)
-#end
+function convert(::Type{BigInt}, a::SingularRingElem)
+    r = BigInt()
+    aa =  number_ref(a); 
+    @cxx n_MPZt(&r, aa, get_raw_ptr(parent(a)))
+    set_raw_ptr!(a, aa[]) # a.ptr = ptr
+    return r
+end
 
-#function convert(::Type{Float64}, n::NumberElem)
-#    # rounds to zero
-#end
+function convert(::Type{Int}, a::SingularRingElem) 
+    aa =  number_ref(a); 
+    ret = @cxx n_Int(aa, get_raw_ptr(parent(a)))
+    set_raw_ptr!(a, aa[]) # a.ptr = ptr
+    return ret
+end
+
+function convert(::Type{UInt}, x::SingularRingElem)
+   error("Sorry this functionality is not implemented yet :(") #   return ccall((:?_get_ui, :libflint), UInt, (Ptr{?}, ), &x)
+end
+
+function convert(::Type{Float64}, n::SingularRingElem) # rounds to zero
+   error("Sorry this functionality is not implemented yet :(")
+end
 
 Base.promote_rule{S <: SingularRingElem, T <: Integer}(::Type{S}, ::Type{T}) = NumberElem #TODO: ?!
 
@@ -507,6 +514,8 @@ end
 
 isnegative(a::SingularRingElem) = (!iszero(a)) && (!ispositive(a))
 
+# see also https://github.com/JuliaLang/julia/blob/master/base/operators.jl
+
 function sscmp(x::SingularRingElem, y::SingularRingElem)
     check_parent(x, y)
     cf = get_raw_ptr(parent(x))
@@ -519,15 +528,19 @@ function sscmp(x::SingularRingElem, y::SingularRingElem)
     return -1
 end
 
-==(x::SingularRingElem, y::SingularRingElem) = sscmp(x,y) == 0
+function ==(x::SingularRingElem, y::SingularRingElem)
+    check_parent(x, y)
+    return libSingular.n_Equal(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(parent(x)))
+end
 
-<=(x::SingularRingElem, y::SingularRingElem) = sscmp(x,y) <= 0
+isequal(x::SingularRingElem, y::SingularRingElem) = (x == y)
 
->=(x::SingularRingElem, y::SingularRingElem) = sscmp(x,y) >= 0
+# <(x,y) = isless(x,y)
+function isless(x::SingularRingElem, y::SingularRingElem)
+    check_parent(x, y)
+    return libSingular.n_Greater(get_raw_ptr(y), get_raw_ptr(x), get_raw_ptr(parent(x)))
+end
 
-<(x::SingularRingElem, y::SingularRingElem) = sscmp(x,y) < 0
-
->(x::SingularRingElem, y::SingularRingElem) = sscmp(x,y) > 0
 
 ###############################################################################
 #
@@ -535,53 +548,48 @@ end
 #
 ###############################################################################
 
-sicmp(x::SingularRingElem, y::Int) = sscmp(x, parent(x)(y))
-iscmp(x::Int, y::SingularRingElem) = sscmp(parent(y)(x), y)
+==(x::SingularRingElem, y::Int) = (x ==  parent(x)(y))
+==(x::Int, y::SingularRingElem) = (parent(y)(x) == y)
 
-==(x::SingularRingElem, y::Int) = sicmp(x,y) == 0
-==(x::Int, y::SingularRingElem) = iscmp(x,y) == 0
+isequal(x::SingularRingElem, y::Int) = (x == y)
+isequal(x::Int, y::SingularRingElem) = (x == y)
 
-<=(x::SingularRingElem, y::Int) = sicmp(x,y) <= 0
-<=(x::Int, y::SingularRingElem) = iscmp(x,y) <= 0
-
-<(x::SingularRingElem, y::Int) = sicmp(x,y) < 0
-<(x::Int, y::SingularRingElem) = iscmp(x,y) < 0
+isless(x::SingularRingElem, y::Int) = isless(x, parent(x)(y))
+isless(x::Int, y::SingularRingElem) = isless(parent(y)(x), y)
 
 #####################################################################! OK untill here!
 
-function >(x::Int, y::SingularRingElem) 
-   return (sicmp(y,x) < 0)
+#function >(x::Int, y::SingularRingElem) 
+#   return (sicmp(y,x) < 0)
 
 #   return (iscmp(x,y) > 0) # BUG:
 # /home/malex/JJ/usr/bin/julia-debug: symbol lookup error: /home/malex/.julia/v0.4/Cxx/src/../deps/usr/lib/libcxxffi-debug.so: undefined symbol: _ZNK5clang7CodeGen17CGBuilderInserterILb0EE12InsertHelperEPN4llvm11InstructionERKNS3_5TwineEPNS3_10BasicBlockENS3_14ilist_iteratorIS4_EE
-end
+#end
 
-function >(x::SingularRingElem, y::Int)
-   return (iscmp(y,x) < 0)
+#function >(x::SingularRingElem, y::Int)
+#   return (iscmp(y,x) < 0) # OK
 
 #   return (sicmp(x,y) > 0) # BUG:
 # /home/malex/JJ/usr/bin/julia-debug: symbol lookup error: /home/malex/.julia/v0.4/Cxx/src/../deps/usr/lib/libcxxffi-debug.so: undefined symbol: _ZNK5clang7CodeGen17CGBuilderInserterILb0EE12InsertHelperEPN4llvm11InstructionERKNS3_5TwineEPNS3_10BasicBlockENS3_14ilist_iteratorIS4_EE
-end
+#end
 
-function >=(x::Int, y::SingularRingElem) 
-   return (sicmp(y,x) <= 0)
+#function >=(x::Int, y::SingularRingElem) 
+#   return (sicmp(y,x) <= 0)
 
 #   return (iscmp(x,y) >= 0) # BUG:
 #fq_poly.adhoc_exact_division... /home/malex/JJ/usr/bin/julia-debug: symbol lookup error: /home/malex/.julia/v0.4/Cxx/src/../deps/usr/lib/libcxxffi-debug.so: undefined symbol: _ZNK5clang7CodeGen17CGBuilderInserterILb0EE12InsertHelperEPN4llvm11InstructionERKNS3_5TwineEPNS3_10BasicBlockENS3_14ilist_iteratorIS4_EE
-end
+#end
 
 
-
-
-function >=(x::SingularRingElem, y::Int) # x >= y !(x<y)
-    error("Sorry Julia bug!") # OK
+#function >=(x::SingularRingElem, y::Int) # x >= y !(x<y)
+#    error("Sorry Julia bug!") # OK
 
 #   return  !(x<y)            # BUG:
 #   return (iscmp(y,x) <= 0)  # BUG:
 #   return (sicmp(x,y) >= 0)  # BUG:
 #### julia-debug: codegen.cpp:3005: llvm::Value* emit_assignment(llvm::Value*, jl_value_t*, jl_value_t*, bool, bool, jl_codectx_t*): 
 #### Assert on `rval->getType() == jl_pvalue_llvmt || rval->getType() == NoopType' failed.
-end
+#end
 
 
 
