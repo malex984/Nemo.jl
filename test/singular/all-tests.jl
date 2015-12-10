@@ -15,20 +15,273 @@ function test_singular_wrappers()
    println("PASS")
 end
 
+function _PolynomialRing(R::Nemo.Ring, s::AbstractString{})
+   S = symbol(s)
+   print("S: "); println(S)
 
-# TODO: untangle this mess!!!
-function test_singular_lowlevel_coeffs()
+   # ERROR: LoadError: TypeError: Type: in parameter, expected Type{T}, got Nemo.Coeffs
+   # ERROR: LoadError: TypeError: NumberElem: in parameter, expected Type{T}, got Nemo.Coeffs
+   T = Nemo.elem_type(R)
+   print("T: "); println(T)
 
-   print("Wrapping libSingular constants/functions with Cxx/Julia...\n")  
+   parent_obj = Nemo.PolynomialRing{T}(R, S)
+   print("parent_obj: "); println(parent_obj)
+
+   base = Nemo.base_ring(R)
+   print("base: "); println(base)
+
+   R2 = R
+
+   parent_type = Nemo.Poly{T}
+   print("parent_type: "); println(parent_type)
+
+   b = Nemo.base_ring(R2)
+   print("b: "); println(b)
+
+   while b != Union{}
+      R2 = Nemo.base_ring(R2)
+      print("R2: "); println(R2)
+
+      T2 = Nemo.elem_type(R2)
+
+      print("T2: "); println(T2)
+
+      println(:(Base.promote_rule(::Type{$parent_type}, ::Type{$T2}) = $parent_type))
+      eval(:(Base.promote_rule(::Type{$parent_type}, ::Type{$T2}) = $parent_type))
+
+      b = Nemo.base_ring(R2)
+      print("b: "); println(b)
+   end
+
+   print("v: ");
+   v = parent_obj([R(0), R(1)]);
+   println(v);
+
+   return parent_obj, v
+end
+
+
+function _mullow{T <: Nemo.SingularRingElem}(a::PolyElem{T}, b::PolyElem{T}, n::Int)
+   check_parent(a, b)
+   lena = length(a)
+   lenb = length(b)
+
+   if lena == 0 || lenb == 0
+      return zero(parent(a))
+   end
+
+   if n < 0
+      n = 0
+   end
+
+   lenz = min(lena + lenb - 1, n)
+
+   d = Array(T, lenz)
+
+   for i = 1:min(lena, lenz)
+      d[i] = coeff(a, i - 1)*coeff(b, 0)
+   end
+
+   if lenz > lena
+      for j = 2:min(lenb, lenz - lena + 1)
+          d[lena + j - 1] = coeff(a, lena - 1)*coeff(b, j - 1)
+      end
+   end
+
+   print("d: "); println(d);
+
+   t = T()
+   for i = 1:lena - 1
+      if lenz > i
+         for j = 2:min(lenb, lenz - i + 1)
+	    # d[i + j - 1] += ( coeff(a, i - 1) * b.coeffs[j] =: t )
+
+            mul!(t, coeff(a, i - 1), b.coeffs[j]) #??!
+            addeq!(d[i + j - 1], t)#??
+         end
+      end
+   end
+     
+   z = parent(a)(d)
+   
+   set_length!(z, normalise(z, lenz))
+
+   return z
+end
+
+
+function _pow_multinomial{T <: Nemo.SingularRingElem}(a::PolyElem{T}, e::Int)
+   e < 0 && throw(DomainError())
+   lena = length(a)
+   lenz = (lena - 1) * e + 1
+   res = Array(T, lenz)
+   for k = 1:lenz
+      res[k] = base_ring(a)()
+   end
+   d = base_ring(a)()
+   first = coeff(a, 0)
+   res[1] = first ^ e
+   for k = 1 : lenz - 1
+      u = -k
+      for i = 1 : min(k, lena - 1)
+         t = coeff(a, i) * res[(k - i) + 1]
+         u += e + 1
+         addeq!(res[k + 1], t * u) ## !!!
+      end
+      addeq!(d, first) ## !!!
+      res[k + 1] = divexact(res[k + 1], d) ## ?????!
+   end
+   z = parent(a)(res)
+   set_length!(z, normalise(z, lenz))
+   return z
+end
+
+function ^{T <: Nemo.SingularCoeffsElems}(a::PolyElem{T}, b::Int)
+   b < 0 && throw(DomainError())
+   # special case powers of x for constructing polynomials efficiently
+   if isgen(a)
+      d = Array(T, b + 1)
+      d[b + 1] = coeff(a, 1)
+      for i = 1:b
+         d[i] = coeff(a, 0)
+      end
+      z = parent(a)(d)
+      set_length!(z, b + 1)
+      return z
+   elseif length(a) == 0
+      return zero(parent(a))
+   elseif length(a) == 1
+      return parent(a)(coeff(a, 0)^b)
+   elseif b == 0
+      return one(parent(a))
+   else
+#      if T <: SingularFieldElem
+#         zn = 0
+#         while iszero(coeff(a, zn))
+#            zn += 1
+#         end
+#         if length(a) - zn < 8 && b > 4
+#             f = shift_right(a, zn)
+#             return shift_left(_pow_multinomial(f, b), zn*b)  ### BUG ???
+#         end
+#      end
+      bit = ~((~UInt(0)) >> 1)
+      while (UInt(bit) & b) == 0
+         bit >>= 1
+      end
+      z = a
+      bit >>= 1
+      while bit != 0
+         z = z*z
+         if (UInt(bit) & b) != 0
+            z *= a
+         end
+         bit >>= 1
+      end
+      return z
+   end
+end
+
+function test_generic_polys(C::Nemo.SingularCoeffs)
+   println("test_generic_polys for 'C'...")
+   println("C: ", C)
+
+   println("C(0): ", C(0))
+   println("zero(C): ", zero(0))
+
+   print("R = C[x].... "); 
+
+   R, x = _PolynomialRing(C, "x")
+
+   print("R(0): "); 
+   println(R(0))
+
+   print("zero(R): "); 
+   println(zero(R))
+
+   print("x: "); 
+   println(x)
+
+   print("C[x]: "); 
+   println(R)
+
+   ff = R(3)*x + R(1) ### ??? 
+   println("ff: ", ff)
+
+   f = x^3 + 3x - 1 ### ??? 
+   print("f: ")
+   println(f)
+
+
+   h = f + R(1)
+   g = R(1)
+   for j = 1:10
+      println("j: ", j)
+      g = g * h
+#            println("g: ", g)
+#            hj = (h^j)  
+#            println("h^j: ", hj)
+#            println("@test: ", g - hj)
+#            @test length(g - hj) == 0 
+   end
+
+
+   print("Product(f+1, 10): "); 
+   println(g)
+
+   print("g: "); 
+   g = g + 1
+   println(g)
+
+   print("(f+1)^10: "); 
+   h = h^10; #### ERROR: LoadError: DivideError: integer division error   # TODO: FIXME: Zp{11}
+   println(h);
+
+   print("h: "); 
+   h = h + 1
+   println(h)
+
+   @test g == h
+
+   print("f*g: ")
+   println(f*g)
+
+#	if !Nemo.isring(C)  # use isa(...Field)?
+#           println("C is not a RING - Field?")
+###	   println("gcd: ", gcd(f, g))
+#        end
+
+   # Benchmark:
+	S, y = PolynomialRing(R, "y")
+        T, z = PolynomialRing(S, "z")
+	U, t = PolynomialRing(T, "t")
+
+        p = (1+x+y+z+t);
+        println("p: ", p)
+        @time pp = p^10
+
+        # println("pp: ", pp)
+        @time ppp = pp*(pp+1);
+
+###	g = h^5 ## bug in powering ???
+		
+        println("\n...PASS")
+end
+
+
+function jtest_coeffs(C::Nemo.SingularCoeffs, i::Int)
+	ptr =  Nemo.get_raw_ptr(C)
+
+        println("Test embedding (Int)$i into Singular coeffs via Cxx... ")  
+	println("Coeffs ptr: ", ptr)
+	println("Coeffs    : ", C)
 
 cxx"""
-void test_coeffs(n_coeffType t, void *p, long v)
+number test_coeffs(const coeffs C, long v)
 {
    int seed = siSeed;
 
-   PrintS("Singular coeffs output: ");
-   coeffs C = nInitChar(t, p); 
-   n_CoeffWrite(C, 1);
+   PrintS("Singular coeffs output: \n"); n_CoeffWrite(C, 1);
 
    number nn = n_Init(v, C);
 
@@ -61,46 +314,24 @@ void test_coeffs(n_coeffType t, void *p, long v)
      n_Delete(&n, C);
    }
 
-   n_Delete(&nn, C);
-   nKillChar(C);
+//   n_Delete(&nn, C);
    siSeed = seed;
+
+   return (nn);
 }
 """
-
-   const ZZ = Nemo.SingularZZ();
-   const QQ = Nemo.SingularQQ();
-   const Z11 = Nemo.SingularZp(11);
-
-   print("SingularZZ: $ZZ, SingularQQ: $QQ, SingularZ11: $Z11...")
-   println("PASS")
-
-
-### TODO: separate creation for Coeffs & pass them into jtest_coeffs instead!
-
-
-   function jtest_coeffs(n :: Nemo.libSingular.n_coeffType, p :: Ptr{Void}, i::Int)
-
-        print("Test embedding (Int)$i into Singular coeffs: $n ($p) via Cxx:\n")  
-        @cxx test_coeffs(n, p, i)
+        nn = @cxx test_coeffs(ptr, i);
         println("\n...PASS")
-
-
-	print("Test embedding (Int)$i into Singular coeffs: $n ($p) via iCxx:\n")  
-
-	C = Nemo.Coeffs( n, p )
-
-	print("coeffs: ")
-	println( Nemo.get_raw_ptr(C) )
 
 	print("Singular coeffs output: ")
 	Nemo.libSingular.n_CoeffWrite( Nemo.get_raw_ptr(C), false )
 
+	println("C: ")
+	println(C)
+        
  	const ch = Nemo.characteristic(C)
-
 	println("Char coeffs: ", ch)
 
-	println("C: ", C)
-        
         zr = zero(C)
 	println("C(0): ", zr)
 
@@ -121,13 +352,13 @@ void test_coeffs(n_coeffType t, void *p, long v)
 	@test (1 != zr) 
         @test (id != 0)
         @test (1 > zr) 
-	@test (id > 0) # bug somewhere in the Julia engine :(
+	@test (id > 0)
 
         if (ch == 0)  
             @test (id > mid)
             @test (zr > mid)
 
-            @test (id > -1) # bug as above ...?
+            @test (id > -1)
             @test (zr > -1)
             @test (1 > mid)
             @test (0 > mid)
@@ -168,74 +399,43 @@ void test_coeffs(n_coeffType t, void *p, long v)
             println("Singular number output: ", z^j);
         end
 
+	@test z == C(nn)
+
 ##	Nemo.n_Delete(z, C.ptr)
 #	print("Deleted number: ")
 #	println(z);
+end	  
 
 
-        R, x = PolynomialRing(C, "x")
+# TODO: untangle this mess!!!
+function test_singular_lowlevel_coeffs()
 
-        f = x^3 + 3x - 1
-        println("f: ", f)
+#   print("Wrapping libSingular constants/functions with Cxx/Julia...\n")  
 
+   const ZZ = Nemo.SingularZZ();
+   const Z11 = Nemo.SingularZp(11);
+   const QQ = Nemo.SingularQQ();
 
-        h = f + R(1)
-        g = R(1)
-        for j = 1:10
-            println("j: ", j)
-            g = g * h
-#            println("g: ", g)
-#            hj = (h^j)  
-#            println("h^j: ", hj)
-#            println("@test: ", g - hj)
-#            @test length(g - hj) == 0 
-        end
-
-#        g = (f+1)^10 + 1 
-	g = g + R(1)
-
-#        g = (f+1)^10 + 1 
-        println("g: ", g)
+   print("SingularZZ: $ZZ, SingularQQ: $QQ, SingularZ11: $Z11...")
+   println("PASS")
 
 
-        println("f*g: ", f * g)
-
-	if !Nemo.isring(C) 
-           println("C is not a RING - Field?")
-##	   println("gcd: ", gcd(f, g))
-        end
-
-	S, y = PolynomialRing(R, "y")
-        T, z = PolynomialRing(S, "z")
-	U, t = PolynomialRing(T, "t")
-
-        p = (1+x+y+z+t);
-        println("p: ", p)
-        @time pp = p^10
-
-        # println("pp: ", pp)
-        @time ppp = pp*(pp+1);
-
-###	g = h^5 ## bug in powering ???
-		
-        println("\n...PASS")
-   end	  
-
-
-   # q = 66 in QQ
-#   @test Nemo.SingularQQ() == Nemo.Coeffs( Nemo.libSingular.n_Q(), Ptr{Void}(0) )
-   jtest_coeffs( Nemo.libSingular.n_Q(), Ptr{Void}(0), 66)
-#   @cxx test_coeffs( n_Q(), Ptr{Void}(0), 66) 
+### TODO: separate creation for Coeffs & pass them into jtest_coeffs instead!
 
    ## z = 666 in ZZ
-#   @test Nemo.SingularZZ() == Nemo.Coeffs( Nemo.libSingular.n_Z(), Ptr{Void}(0) )
-   jtest_coeffs( Nemo.libSingular.n_Z(), Ptr{Void}(0), 666) 
-#   @cxx test_coeffs( n_Z, Ptr{Void}(0), 666) 
+   jtest_coeffs(ZZ, 666) 
 
    ## zz = 6 in Zp{11}
-   jtest_coeffs( Nemo.libSingular.n_Zp(), Ptr{Void}(11), 11*3 + 6) 
-#   @cxx test_coeffs( n_Zp, Ptr{Void}(11), 11*3 + 6) 
+   jtest_coeffs(Z11, 11*3 + 6) 
 
+   # q = 66 in QQ
+   jtest_coeffs(QQ, 66)
+
+   test_generic_polys(ZZ)
+
+   test_generic_polys(QQ)
+
+   test_generic_polys(Z11)
 end
 
 
@@ -249,28 +449,28 @@ ring test_contruct_ring()
 {
   char* n [] = { (char*)\"t\"}; 
   ring r = rDefault( 13, 1, n); 
-  rWrite(r); 
+  PrintLn(); rWrite(r, 1); 
   PrintLn(); 
   return (r);
 }
 """
    r = @cxx test_contruct_ring()
-   println(r)
+
+   println(r, string(r))
    @cxx rDelete(r)
    println("PASS")
-
 
    print("Constructing Singular Polynomial Ring over native coeffs...\n")  
 
    const ZZ = Nemo.SingularZZ();
-   RZ = Nemo.PRing(ZZ, Symbol("x, y"));
+   RZ = Nemo.PRing(ZZ, "x, y"); # just testing ATM!
 
    print("_ Over Singular Integer Ring [", string(ZZ), "]: ", string(RZ))
    # @test parent(RZ) == ZZ # ?
    println("...PASS")
 
    const QQ = Nemo.SingularQQ();
-   RQ = Nemo.PRing(QQ, Symbol("x, y"));
+   RQ = Nemo.PRing(QQ, "x, y"); # just testing ATM!
 
    print("_ Over Singular Rational Field [", QQ, "]: ", string(RQ))
    # @test parent(RQ) == QQ # ?
@@ -293,6 +493,8 @@ function test_singular()
    # generic polynomials over SingularZZ() & sometimes over SingularQQ()...
    println()
    test_poly_singular()
+
+   println()
 end
 
 #### TODOs:
@@ -325,3 +527,4 @@ end
 #const cjlInit = cfunction(jlInit, Cint, (Ptr{Void},Ptr{Void}))
 #newTyp = icxx" return nRegister( n_unknown, (cfInitCharProc)$cjlInit); " 
 #newCoeff = icxx" return nInitChar( $newTyp, 0 ); "
+
