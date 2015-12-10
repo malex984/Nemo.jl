@@ -46,19 +46,5 @@ function test_rings()
    test_nmod_mat()
    test_fmpz_mat()
 
-#   if Nemo.with_singular()
-#      for (c,nn) in Nemo.leftovers
-#         println(c); println("Numbers: ")
-#         
-#         for (k,v) in nn
-#            if (v > 1)
-#                 println(k, "   ====>>>>   ", v)
-#            end
-#         end
-#             
-#	 println()
-#     end
-#   end
-
 end
 

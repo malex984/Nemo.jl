@@ -9,7 +9,7 @@ const SRingID = ObjectIdDict()
 type PRing <: SingularPolynomialRing
    ptr :: libSingular.ring  ### base_ring :: Ring    ### S::Symbol
 
-   function PRing(cf::SingularRing, vars::Symbol) 
+   function PRing(cf::SingularCoeffs, vars::AbstractString{}) 
       try
           return SRingID[cf, vars]
       catch
@@ -50,7 +50,7 @@ function _PRing_clear_fn(r::PRing)
    @cxx rDelete(get_raw_ptr(r))
 end
 
-get_raw_ptr( r::SingularPolynomialRing ) = r.ptr
+get_raw_ptr(r::SingularPolynomialRing) = r.ptr
 
 ###############################################################################
 #
@@ -87,8 +87,8 @@ function string(r::PRing)
    return s
 end
 
-#isring(c::Coeffs) = libSingular.nCoeff_is_Ring(get_raw_ptr(c))
-#isdomain(c::Coeffs) = libSingular.nCoeff_is_Domain(get_raw_ptr(c))
+#isring(c::Singular?) = libSingular.nCoeff_is_Ring(get_raw_ptr(c))
+#isdomain(c::Singular?) = libSingular.nCoeff_is_Domain(get_raw_ptr(c))
 
 show(io::IO, r::PRing) = print(io, string(r))
 
@@ -108,9 +108,9 @@ function hash(a::PRing)
    return hash(string(a))  ## TODO: string may be a bit too inefficient wherever hash is used...?
 end
 
-#zero(a::Coeffs) = a(0)
-#one(a::Coeffs) = a(1)
-#mone(a::Coeffs) = a(-1)
+#zero(a::Singular?) = a(0)
+#one(a::Singular?) = a(1)
+#mone(a::Singular?) = a(-1)
 
 
 

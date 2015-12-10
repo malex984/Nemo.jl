@@ -49,14 +49,24 @@ using Cxx
 abstract SingularRing <: Ring{Singular}
 abstract SingularRingElem <: RingElem
 
-#####  TODO: ATM SingularField & SingularFieldElem are not recognised by Nemo as Filed/FieldElem!!!
+abstract SingularUniqueRing <: SingularRing
+abstract SingularUniqueRingElem <: SingularRingElem
+
+
+#####  TODO: ATM SingularField & SingularFieldElem are not recognised by Nemo as Filed/FieldElem:
 #abstract SingularField <: SingularRing
 #abstract SingularFieldElem <: SingularRingElem
 
-#####  Previously it was as follows:
+#####  Now it is as follows:
 abstract SingularField <: Field{Singular}
 abstract SingularFieldElem <: FieldElem
 
+abstract SingularUniqueField <: SingularField
+abstract SingularUniqueFieldElem <: SingularFieldElem
+
+#####  All the basic coeffs on the Julia side: forcefully merge diverging type branches to share the low-level implementation
+typealias SingularCoeffs Union{SingularRing,SingularField}
+typealias SingularCoeffsElems Union{SingularRingElem,SingularFieldElem}
 
 include("Coeffs.jl")
 include("NumberElem.jl")
@@ -67,6 +77,7 @@ include("NumberElem.jl")
 #
 ###############################################################################
 
+# NOTE: only one sort of polynomials in Nemo, right?
 abstract SingularPolynomialRing <: Ring{Singular}
 abstract SingularPolynomialElem <: RingElem
 

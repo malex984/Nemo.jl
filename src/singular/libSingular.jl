@@ -1,17 +1,56 @@
 module libSingular
 
+# export n_coeffType, number, coeffs
+
 using Cxx
+
+
+# Ring?   
+# todo: add default constructor for QQ, Fp ?! 
+# TODO: fix the following to work 
+# 2 into separate low-level functions
+# 3 back to types <: mathematical using those functions!
+
+typealias n_coeffType Cxx.CppEnum{:n_coeffType} # pcpp"n_coeffType" # 
+
+## todo: avoid the above!
+function n_Zp(); return(@cxx n_Zp); end # n_coeffType::
+# /**< \F{p < 2^31} */
+
+function n_Q(); return(@cxx n_Q); end  # 
+# @cxx get_Q(); # Cxx.CppEnum{:n_coeffType}(2) # icxx" return n_Q; " # /**< rational (GMP) numbers */
+
+function n_R(); return(@cxx n_R); end # 
+#,  /**< single prescision (6,6) real numbers */
+
+#function n_GF(); return(@cxx n_GF); end # 
+# , /**< \GF{p^n < 2^16} */
+
+
+#n_algExt() = (@cxx n_algExt) # ,  /**< used for all algebraic extensions, i.e.,the top-most extension in an extension tower is algebraic */
+#n_transExt() = (@cxx n_transExt) #,  /**< used for all transcendental extensions, i.e.,the top-most extension in an extension tower is transcendental */
+
+function n_long_R(); return(@cxx n_long_R); end # , /**< real floating point (GMP) numbers */
+function n_long_C(); return(@cxx n_long_C); end
+# , /**< complex floating point (GMP) numbers */
+
+#  n_Z, /**< only used if HAVE_RINGS is defined: ? */
+function n_Z(); return(@cxx n_Z); end
+ # @cxx get_Z(); # Cxx.CppEnum{:n_coeffType}(9) # icxx" return n_Z; "
+
+#n_Zn() =  (@cxx n_Zn) # , /**< only used if HAVE_RINGS is defined: ? */
+#n_Znm() =  (@cxx n_Znm) # , /**< only used if HAVE_RINGS is defined: ? */
+#n_Z2m() =  (@cxx n_Z2m) # , /**< only used if HAVE_RINGS is defined: ? */
+
+#function n_CF(); return(@cxx n_CF); end #  /**< ? */
+
 
 function __libSingular_init__()
 
    const local prefix = joinpath(Pkg.dir("Nemo"), "local")
 
-#   print("prefix: ");    println(prefix);
-
    addHeaderDir(joinpath(prefix, "include"), kind = C_System)
    addHeaderDir(joinpath(prefix, "include", "singular"), kind = C_System)
-
-#   println("cxx #includes1:")
 
    cxxinclude(joinpath("Singular", "libsingular.h"), isAngled=false)
    cxxinclude(joinpath("omalloc", "omalloc.h"), isAngled=false)
@@ -19,8 +58,6 @@ function __libSingular_init__()
    cxxinclude(joinpath("coeffs", "coeffs.h"), isAngled=false)
    cxxinclude(joinpath("polys", "monomials", "ring.h"), isAngled=false)
    cxxinclude(joinpath("polys", "monomials", "p_polys.h"), isAngled=false)
-
-#   println("cxx #includes2:")
 
 cxx"""
     #include "Singular/libsingular.h"
@@ -31,8 +68,6 @@ cxx"""
     #include <polys/monomials/ring.h>
     #include <polys/monomials/p_polys.h>
 """
-
-#   println("cxx fun wraps:")
 
 cxx"""
     static void _omFree(void* p){ omFree(p); }
@@ -56,19 +91,31 @@ cxx"""
     }
 
 """
-#   println("n_coeffType:")
 
-cxx"""
-// TODO: follow https://github.com/Keno/Cxx.jl#example-6-using-c-enums
-//   static n_coeffType get_Q() { return n_Q; };
-//   static n_coeffType get_Z() { return n_Z; };
-//   static n_coeffType get_Zp(){ return n_Zp; }; 
-"""
    local const binSingular = joinpath(prefix, "bin", "Singular")
    ENV["SINGULAR_EXECUTABLE"] = binSingular
 
    # Initialize Singular!
    siInit(binSingular) 
+
+   # unique coeffs:
+
+   # Ring:
+   global ptr_ZZ = nInitChar(n_Z(), Ptr{Void}(0)) 
+   @assert (ptr_ZZ != coeffs(0))
+
+   # Fields:
+   global ptr_QQ = nInitChar(n_Q(), Ptr{Void}(0))
+   @assert (ptr_QQ != coeffs(0))
+
+   global ptr_RR = nInitChar(n_long_R(), Ptr{Void}(0))
+   @assert (ptr_RR != coeffs(0))
+
+   global ptr_CC = nInitChar(n_long_C(), Ptr{Void}(0))
+   @assert (ptr_CC != coeffs(0))
+
+   global ptr_Rr = nInitChar(n_R(), Ptr{Void}(0)) # Numeric?!
+   @assert (ptr_Rr != coeffs(0))
 end
 
 function siInit(p)
@@ -122,36 +169,6 @@ function PrintResources(s)
 end
 
 
-# Ring?   
-# todo: add default constructor for QQ, Fp ?! 
-# TODO: fix the following to work 
-# 2 into separate low-level functions
-# 3 back to types <: mathematical using those functions!
-
-typealias n_coeffType Cxx.CppEnum{:n_coeffType} # pcpp"n_coeffType" # 
-
-## todo: avoid the above!
-n_Zp() = (@cxx n_coeffType::n_Zp) 
-#  n_Zp # , /**< \F{p < 2^31} */
-
-n_Q()  = (@cxx n_coeffType::n_Q) # @cxx get_Q(); # Cxx.CppEnum{:n_coeffType}(2) # icxx" return n_Q; "
-#  n_Q # ,  /**< rational (GMP) numbers */
-
-n_R() =  (@cxx n_coeffType::n_R) #,  /**< single prescision (6,6) real numbers */
-
-n_GF() =  (@cxx n_coeffType::n_GF) # , /**< \GF{p^n < 2^16} */
-n_long_R() = (@cxx n_coeffType::n_long_R)# , /**< real floating point (GMP) numbers */
-n_algExt() = (@cxx n_coeffType::n_algExt) # ,  /**< used for all algebraic extensions, i.e.,the top-most extension in an extension tower is algebraic */
-n_transExt() = (@cxx n_coeffType::n_transExt) #,  /**< used for all transcendental extensions, i.e.,the top-most extension in an extension tower is transcendental */
-n_long_C() = (@cxx n_coeffType::n_long_C) # , /**< complex floating point (GMP) numbers */
-#  n_Z, /**< only used if HAVE_RINGS is defined: ? */
-n_Z() =  (@cxx n_coeffType::n_Z) # @cxx get_Z(); # Cxx.CppEnum{:n_coeffType}(9) # icxx" return n_Z; "
-
-n_Zn() =  (@cxx n_coeffType::n_Zn) # , /**< only used if HAVE_RINGS is defined: ? */
-n_Znm() =  (@cxx n_coeffType::n_Znm) # , /**< only used if HAVE_RINGS is defined: ? */
-n_Z2m() =  (@cxx n_coeffType::n_Z2m) # , /**< only used if HAVE_RINGS is defined: ? */
-n_CF() =  (@cxx n_coeffType::n_CF) #  /**< ? */
-
 
 
 #  # get_Zp() = icxx" return n_Zp; "
@@ -160,6 +177,12 @@ n_CF() =  (@cxx n_coeffType::n_CF) #  /**< ? */
 typealias coeffs Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}
 # cpcpp"coeffs" 
 # Ptr{Void}
+
+global ptr_ZZ = coeffs(0)
+global ptr_QQ = coeffs(0)
+global ptr_RR = coeffs(0)
+global ptr_CC = coeffs(0)
+global ptr_Rr = coeffs(0)
 
 typealias const_coeffs coeffs # pcpp"const coeffs"
 # NOTE: no need in coeffs_ptr, right?
