@@ -406,10 +406,12 @@ number test_coeffs(const coeffs C, long v)
 
 	println("z: ", z)
 
-	const ii = Nemo.libSingular.n_Int( Nemo.get_raw_ptr(z), Nemo.get_raw_ptr( Nemo.parent(z)) )
+	const ii = Int(z) # Nemo.libSingular.n_Int( Nemo.get_raw_ptr(z), Nemo.get_raw_ptr( Nemo.parent(z)) )
 
-	@test ((ch == 0) && (i == ii)) || ((ch > 0) && ((i - ii) % ch == 0))
+	zz = C(ii)
+	println("Convertions mappings: $i -> $z -> $ii -> $zz (mod $ch).....")
 
+#	@test ((ch == 0) && (i == ii)) || ((ch > 0) && ((i - ii) % ch == 0)) #NOTE: HOW TO TEST IN GF(9)?
 
         const P = Nemo.npars(C)
 
@@ -441,14 +443,20 @@ end
 # TODO: untangle this mess!!!
 function test_singular_lowlevel_coeffs()
 
-#   print("Wrapping libSingular constants/functions with Cxx/Julia...\n")  
+   print("Wrapping libSingular constants/functions with Cxx/Julia...\n")  
 
    const ZZ = Nemo.SingularZZ();
    const Z11 = Nemo.SingularZp(11);
    const QQ = Nemo.SingularQQ();
+   const GF = Nemo.SingularGF(3,2,"n");
 
-   print("SingularZZ: $ZZ, SingularQQ: $QQ, SingularZ11: $Z11...")
-   println("PASS")
+   println("SingularZZ: $ZZ")
+   println("SingularQQ: $QQ")
+   println("SingularZp(11): $Z11")
+
+   println("SingularGF(3,2,'n'): $GF") #### 7,1???? // ** illegal GF-table size: 7  // ** Sorry: cannot init lookup table!??
+
+   println("...................PASS")
 
 
 ### TODO: separate creation for Coeffs & pass them into jtest_coeffs instead!
@@ -456,17 +464,21 @@ function test_singular_lowlevel_coeffs()
    ## z = 666 in ZZ
    jtest_coeffs(ZZ, 666) 
 
+   # q = 66 in QQ
+   jtest_coeffs(QQ, 66)
+
    ## zz = 6 in Zp{11}
    jtest_coeffs(Z11, 11*3 + 6) 
 
-   # q = 66 in QQ
-   jtest_coeffs(QQ, 66)
+   jtest_coeffs(GF, 3*666 + 2) 
 
    test_generic_polys(ZZ)
 
    test_generic_polys(QQ)
 
    test_generic_polys(Z11)
+
+   test_generic_polys(GF)
 end
 
 
@@ -505,6 +517,20 @@ ring test_contruct_ring()
 
    print("_ Over Singular Rational Field [", QQ, "]: ", string(RQ))
    # @test parent(RQ) == QQ # ?
+
+   const Z11 = Nemo.SingularZp(11);
+   R11 = Nemo.PRing(Z11, "x, y"); # just testing ATM!
+
+   print("_ Over Singular Modular Field [", Z11, "]: ", string(R11))
+   # @test parent(RQ) == QQ # ?
+
+   const GF14 = Nemo.SingularGF(7, 2, "T");
+   R14 = Nemo.PRing(GF14, "x, y"); # just testing ATM!
+
+   print("_ Over Singular Finite Field [", GF14, "]: ", string(R14))
+   # @test parent(RQ) == QQ # ?
+
+
    println("...PASS")
 
 end
@@ -513,7 +539,23 @@ end
 
 function test_singular()
    println()
+   test_singular_wrappers()
+
+
+   println()
    test_benchmarks_singular()
+
+   println()
+   test_singular_lowlevel_coeffs()
+
+   println()
+   test_singular_polynomial_rings()
+
+   # generic polynomials over SingularZZ() & sometimes over SingularQQ()...
+   println()
+   test_poly_singular()
+
+
 
    println()
    test_fraction_singular()
@@ -527,18 +569,6 @@ function test_singular()
    println()
    test_series_singular()
 
-   println()
-   test_singular_wrappers()
-
-   println()
-   test_singular_lowlevel_coeffs()
-
-   println()
-   test_singular_polynomial_rings()
-
-   # generic polynomials over SingularZZ() & sometimes over SingularQQ()...
-   println()
-   test_poly_singular()
 
    println()
 end

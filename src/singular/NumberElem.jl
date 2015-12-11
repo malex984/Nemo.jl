@@ -20,7 +20,7 @@ type NumberElem{CF<:SingularRing} <: SingularRingElem # TODO: rename -> NumberRE
     end
 
     function NumberElem(c::CF, b::BigInt)
-    	error("Sorry this functionality seems to be unsupported ATM :(")
+    	error("Sorry NumberElem(BigInt) seems to be unsupported ATM :(")
 #        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
 #        p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); return NumberElem{CF}(c, p)
     end
@@ -46,9 +46,10 @@ type NumberFElem{CF<:SingularField} <: SingularFieldElem
     end
 
     function NumberFElem(c::CF, b::BigInt)
-    	error("Sorry this functionality seems to be unsupported ATM :(")
-#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
-#        p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); return NumberFElem{CF}(c, p)
+        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
+        p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); 
+	return NumberFElem{CF}(c, p)
+   	error("Sorry NumberFElem(BigInt) seems to be unsupported ATM :(")
     end
 end
 
@@ -78,13 +79,13 @@ type Number_Elem{CF<:SingularUniqueRing} <: SingularUniqueRingElem  # TODO: rena
     end
 
     function Number_Elem(c::CF, b::BigInt)
-    	error("Sorry this functionality seems to be unsupported ATM :(")
+    	error("Sorry Number_Elem(CF, BigInt) seems to be unsupported ATM :(")
 #        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
 #        p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); return Number_Elem{CF}(p)
     end
 
     function Number_Elem(b::BigInt)
-    	error("Sorry this functionality seems to be unsupported ATM :(")
+    	error("Sorry Number_Elem(BigInt) seems to be unsupported ATM :(")
 #        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
 #        c = CF(); p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); return Number_Elem{CF}(p)
     end
@@ -116,13 +117,13 @@ type NumberF_Elem{CF<:SingularUniqueField} <: SingularUniqueFieldElem
     end
 
     function NumberF_Elem(c::CF, b::BigInt)
-    	error("Sorry this functionality seems to be unsupported ATM :(")
+    	error("Sorry NumberF_Elem(CF, BigInt) seems to be unsupported ATM :(")
 #        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
 #        p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); return NumberF_Elem{CF}(p)
     end
 
     function NumberF_Elem(b::BigInt)
-    	error("Sorry this functionality seems to be unsupported ATM :(")
+    	error("Sorry NumberF_Elem(BigInt) seems to be unsupported ATM :(")
 #        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
 #        c = CF(); p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); return NumberF_Elem{CF}(p)
     end
@@ -289,17 +290,25 @@ convert{S <: SingularUniqueField, T <: Integer}(::Type{NumberF_Elem{S}}, a::T) =
 ### convert(::Type{Rational{BigInt}}, a::fmpq) = Rational(a)
 
 function convert(::Type{BigInt}, a::SingularCoeffsElems)
-    error("Sorry this functionality seems to be unsupported ATM :(") # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
+##    error("Sorry BigInt(SingularCoeffsElems) seems to be unsupported ATM :(") # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
 
-    r = BigInt();
-    aa = get_raw_ptr(a); aaa =  number_ref(aa); cf = get_raw_ptr(parent(a))
-    @cxx n_MPZ(r, aaa, cf)# TODO: FIXME: Got bad type information while compiling Cxx.CppNNS{Tuple{:n_MPZ}} (got BigInt for argument 1)
+    aa = get_raw_ptr(a);
+    aaa =  number_ref(aa); 
+    cf = get_raw_ptr(parent(a))
+
+    r = libSingular.n_MPZ(aaa, cf)# BigInt();
+
+#    @cxx n_MPZ(r, aaa, cf)# TODO: FIXME: Got bad type information while compiling Cxx.CppNNS{Tuple{:n_MPZ}} (got BigInt for argument 1w)
+
     set_raw_ptr!(a, aaa[]) # a.ptr = ptr
     return r
 end
 
 function convert(::Type{Int}, a::SingularCoeffsElems) 
+
     cf = get_raw_ptr(parent(a));  aa = get_raw_ptr(a); 
+    return libSingular.n_Int(aa, cf)
+
 #    aaa = number_ref(aa); 
     r = Int()
     icxx"""{ number f = $(aa); $(r) = n_Int(f, $(cf)); $(aa) = f; }; """
