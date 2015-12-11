@@ -1,13 +1,44 @@
 using Base.Test
 using Cxx
 
-# include("generic/Fraction-test.jl")
-# include("generic/Residue-test.jl")
-# include("generic/PowerSeries-test.jl")
-
+include("generic/Fraction-test.jl")
+include("generic/Residue-test.jl")
 include("generic/Poly-test.jl")
-# include("generic/Matrix-test.jl")
+include("generic/Matrix-test.jl")
+include("generic/PowerSeries-test.jl")
+include("Benchmark-test.jl")
 
+#include("flint/fmpz-test.jl")
+#include("flint/fmpz_poly-test.jl")
+#include("flint/fmpz_mod_poly-test.jl")
+#include("flint/nmod_poly-test.jl")
+#include("flint/fmpq_poly-test.jl")
+#include("flint/fq_poly-test.jl")
+#include("flint/fq_nmod_poly-test.jl")
+#include("flint/fmpz_series-test.jl")
+#include("flint/fmpq_series-test.jl")
+#include("flint/fmpz_mod_series-test.jl")
+#include("flint/fq_series-test.jl")
+#include("flint/fq_nmod_series-test.jl")
+#include("flint/nmod_mat-test.jl")
+#include("flint/fmpz_mat-test.jl")
+
+#### TODO: remove those without analogs on Singular side!
+
+#   test_fmpz()
+#   test_fmpz_poly()
+#   test_fmpz_mod_poly()
+#   test_nmod_poly()
+#   test_fmpq_poly()
+#   test_fq_poly()
+#   test_fq_nmod_poly()
+#   test_fmpz_series()
+#   test_fmpq_series()
+#   test_fmpz_mod_series()
+#   test_fq_series()
+#   test_fq_nmod_series()
+#   test_nmod_mat()
+#   test_fmpz_mat()
 
 function test_singular_wrappers()
    println("Printing Singular resources pathes...")  
@@ -481,6 +512,21 @@ end
 
 
 function test_singular()
+   println()
+   test_benchmarks_singular()
+
+   println()
+   test_fraction_singular()
+
+   println()
+   test_residue_singular()
+
+   println()
+   test_matrix_singular()
+
+   println()
+   test_series_singular()
+
    println()
    test_singular_wrappers()
 
