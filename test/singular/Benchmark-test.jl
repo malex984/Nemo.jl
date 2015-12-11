@@ -1,52 +1,116 @@
 function test_benchmark_fateman_singular()
-   print("Benchmark.fateman / Singular Coeffs...")
- 
-   const ZZ = Nemo.SingularZZ();
-   const QQ = Nemo.SingularQQ();
 
-   R, x = PolynomialRing(ZZ, "x")
+########################################################
+   println("Benchmark.fateman / Flint ZZ...")
+ 
+   R, x = PolynomialRing(Nemo.FlintZZ, "x")
    S, y = PolynomialRing(R, "y")
    T, z = PolynomialRing(S, "z")
    U, t = PolynomialRing(T, "t")
 
-   p = (x + y + z + t + 1)^20
-   
-   q = p*(p + 1)
+   @time p = (x + y + z + t + 1)^10
+   @time p = (x + y + z + t + 1)^10
 
+   println()
+   @time q = p*(p + 1)
+   @test length(q) == 21
+
+   println()
+   @time p = (x + y + z + t + 1)^20
+   @time q = p*(p + 1)
    @test length(q) == 41
 
-   println("PASS")
+
+   println("..........................................PASS")
+
+########################################################
+
+   println("Benchmark.fateman / Singular ZZ...")
+
+   R, x = PolynomialRing(Nemo.SingularZZ(), "x")
+   S, y = PolynomialRing(R, "y")
+   T, z = PolynomialRing(S, "z")
+   U, t = PolynomialRing(T, "t")
+
+   @time p = (x + y + z + t + 1)^10
+   @time p = (x + y + z + t + 1)^10
+
+   println()
+   @time q = p*(p + 1)
+   @test length(q) == 21
+
+   println()
+   @time p = (x + y + z + t + 1)^20
+   @time q = p*(p + 1)
+   @test length(q) == 41
+# REAL Thing: p = ()^30 !?
+
+   println("..........................................PASS")
 end
 
 function test_benchmark_pearce_singular()
-   print("Benchmark.pearce / Singular Coeffs...")
- 
-   const ZZ = Nemo.SingularZZ();
-   const QQ = Nemo.SingularQQ();
 
-   R, x = PolynomialRing(ZZ, "x")
+########################################################
+   println("Benchmark.pearce / Flint ZZ...")
+ 
+   R, x = PolynomialRing(Nemo.FlintZZ, "x")
    S, y = PolynomialRing(R, "y")
    T, z = PolynomialRing(S, "z")
    U, t = PolynomialRing(T, "t")
    V, u = PolynomialRing(U, "u")
 
-   f = (x + y + 2z^2 + 3t^3 + 5u^5 + 1)^10
-   g = (u + t + 2z^2 + 3y^3 + 5x^5 + 1)^10
-   
-   q = f*g
+   f = (x + y + 2z^2 + 3t^3 + 5u^5 + 1)^5
+   g = (u + t + 2z^2 + 3y^3 + 5x^5 + 1)^5 
 
+   @time q = f*g
+   @time q = f*g
+   @test length(q) == 31
+
+   println()
+
+   f = f * f # (x + y + 2z^2 + 3t^3 + 5u^5 + 1)^10
+   g = g * g # (u + t + 2z^2 + 3y^3 + 5x^5 + 1)^10 
+
+   @time q = f*g
    @test length(q) == 61
 
-   println("PASS")
+   println("..........................................PASS")
+
+########################################################
+
+   println("Benchmark.pearce / Singular Coeffs...")
+
+   R, x = PolynomialRing(Nemo.SingularZZ(), "x")
+   S, y = PolynomialRing(R, "y")
+   T, z = PolynomialRing(S, "z")
+   U, t = PolynomialRing(T, "t")
+   V, u = PolynomialRing(U, "u")
+
+   f = (x + y + 2z^2 + 3t^3 + 5u^5 + 1)^5
+   g = (u + t + 2z^2 + 3y^3 + 5x^5 + 1)^5 
+
+   @time q = f*g
+   @time q = f*g
+   @test length(q) == 31
+
+   println()
+
+   f = f * f # (x + y + 2z^2 + 3t^3 + 5u^5 + 1)^10
+   g = g * g # (u + t + 2z^2 + 3y^3 + 5x^5 + 1)^10 
+
+   @time q = f*g
+   @test length(q) == 61
+
+### Real thing ^ 16 - tooo long with Singular :( 
+
+   println("..........................................PASS")
 end
 
 function test_benchmark_resultant_singular()
-   print("Benchmark.resultant / Singular Coeffs...")
+   println("Benchmark.resultant / Singular Coeffs...")
  
-   const ZZ = Nemo.SingularZZ();
-   const QQ = Nemo.SingularQQ();
-
-   R, x = FiniteField(7, 11, "x") # TODO: Singular GF?????
+   # FiniteField(7, 11, "x") # ???
+   R, x = Nemo.SingularGF(7, 3, "x") # // ** Sorry: illegal size: 7 ^ 11
    S, y = PolynomialRing(R, "y")
    T = ResidueRing(S, y^3 + 3x*y + 1)
    U, z = PolynomialRing(T, "z")
@@ -54,38 +118,42 @@ function test_benchmark_resultant_singular()
    f = (3y^2 + y + x)*z^2 + ((x + 2)*y^2 + x + 1)*z + 4x*y + 3
    g = (7y^2 - y + 2x + 7)*z^2 + (3y^2 + 4x + 1)*z + (2x + 1)*y + 1
 
+   @time r = resultant(f^2, (s+g)^2)
+
    s = f^12
    t = (s + g)^12
    
-   r = resultant(s, t)
+   @time r = resultant(s, t)
+#    @test r == (x^10+4*x^8+6*x^7+3*x^6+4*x^5+x^4+6*x^3+5*x^2+x)*y^2+(5*x^10+x^8+4*x^7+3*x^5+5*x^4+3*x^3+x^2+x+6)*y+(2*x^10+6*x^9+5*x^8+5*x^7+x^6+6*x^5+5*x^4+4*x^3+x+3)
 
-   @test r == (x^10+4*x^8+6*x^7+3*x^6+4*x^5+x^4+6*x^3+5*x^2+x)*y^2+(5*x^10+x^8+4*x^7+3*x^5+5*x^4+3*x^3+x^2+x+6)*y+(2*x^10+6*x^9+5*x^8+5*x^7+x^6+6*x^5+5*x^4+4*x^3+x+3)
+### Real thing: 7->17:
 
-   println("PASS")
-end
-
-function test_benchmark_poly_nf_elem_singular()
-   print("Benchmark.poly_nf_elem / Singular Coeffs...")
- 
-   const ZZ = Nemo.SingularZZ();
-   const QQ = Nemo.SingularQQ();
-
-   R, x = CyclotomicField(20, "x")  ### TODO ?
+   R, x = Nemo.SingularGF(17, 3, "x"); # FiniteField(7, 11, "x")
    S, y = PolynomialRing(R, "y")
+   T = ResidueRing(S, y^3 + 3x*y + 1)
+   U, z = PolynomialRing(T, "z")
 
-   f = (3x^7 + x^4 - 3x + 1)*y^3 + (2x^6-x^5+4x^4-x^3+x^2-1)*y +(-3x^7+2x^6-x^5+3x^3-2x^2+x)
+   f = (3y^2 + y + x)*z^2 + ((x + 2)*y^2 + x + 1)*z + 4x*y + 3
+   g = (7y^2 - y + 2x + 7)*z^2 + (3y^2 + 4x + 1)*z + (2x + 1)*y + 1
 
-   @test f^300 == f^100*f^200
+   @time r = resultant(f^2, (s+g)^2)
+
+   s = f^12
+   t = (s + g)^12
+   
+   @time r = resultant(s, t)
+
 
    println("PASS")
 end
+
 
 function test_benchmarks_singular()
-#   test_benchmark_resultant_singular() # TODO: Find Singular analogs
-   test_benchmark_fateman_singular()
    test_benchmark_pearce_singular()
-#   test_benchmark_poly_nf_elem_singular() # dito!
+   test_benchmark_fateman_singular()
+   test_benchmark_resultant_singular()
 
    println("")
 end
 
+#   test_benchmark_poly_nf_elem_singular() # No Singular analog for CyclotomicField???!

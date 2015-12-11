@@ -137,10 +137,10 @@ characteristic(c::SingularCoeffs) = libSingular.n_GetChar( get_raw_ptr(c) )
 
 # char const * * n_ParameterNames(const coeffs r)
 
-npars(c::SingularCoeffs) = libSingular.n_NumberOfParameters( get_raw_ptr(c) )
+ngens(c::SingularCoeffs) = libSingular.n_NumberOfParameters( get_raw_ptr(c) )
 
-function par(i::Int, c::SingularCoeffs) 
-    ((i >= 1) && (i <= npars(c))) && return c(libSingular.n_Param(i, get_raw_ptr(c)))
+function gen(i::Int, c::SingularCoeffs) 
+    ((i >= 1) && (i <= ngens(c))) && return c(libSingular.n_Param(i, get_raw_ptr(c)))
     error("Wrong parameter index")
 end 
 
@@ -218,8 +218,7 @@ function get_raw_ptr(::Singular_ZZ)
 end
 
 # BigInt
-# false
-const default_choice = false
+const default_choice = true # false - just for testing...
 SingularZZ(uq = default_choice) = ( uq ? Singular_ZZ() : Coeffs(libSingular.n_Z()) )
 
 # SingularField:
@@ -259,6 +258,12 @@ SingularRr(uq = default_choice) = ( uq ? Singular_Rr() : CoeffsField(libSingular
 
 # non-unique => NumberFElem
 SingularZp(p::Int) = CoeffsField(libSingular.n_Zp(), Ptr{Void}(p));
+
+function SingularGF(ch::Int, d::Int, s::AbstractString) 
+   ptr = @cxx nGFInitChar(ch, d, pointer(s))
+   @assert ptr != libSingular.coeffs(0)
+   return CoeffsField(ptr);
+end
 
 
 ###############################################################################

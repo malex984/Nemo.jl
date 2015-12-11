@@ -90,6 +90,14 @@ cxx"""
     { // TODO!
     }
 
+    coeffs nGFInitChar(int ch, int d, const char* s)
+    {
+	GFInfo par;
+	par.GFChar=ch;
+	par.GFDegree=d;
+	par.GFPar_name=s;
+	return nInitChar(n_GF, (void*)&par);
+    }
 """
 
    local const binSingular = joinpath(prefix, "bin", "Singular")
@@ -231,8 +239,15 @@ end
 
 # BigInt ?!
 # number n_InitMPZ(mpz_t n,     const coeffs r) # TODO: BigInt???
+
 function n_InitMPZ(b :: BigInt, cf :: coeffs)
    return @cxx n_InitMPZ(b, cf)
+end
+
+function n_MPZ(a :: number_ref, cf :: coeffs)
+    r = BigInt()
+    @cxx n_MPZ(r, a, cf)# TODO: FIXME: Got bad type information while compiling Cxx.CppNNS{Tuple{:n_MPZ}} (got BigInt for argument 1
+    return r
 end
 
 ## static FORCE_INLINE void number2mpz(number n, coeffs c, mpz_t m){ n_MPZ(m, n, c); }

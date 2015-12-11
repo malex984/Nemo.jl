@@ -63,7 +63,7 @@ characteristic(r::Ring) = @cxx rChar(get_raw_ptr(c))
 
 nvars(r::PRing) = @cxx rVar(get_raw_ptr(c))
 
-function var(i::Int, r::PRing)
+function gen(i::Int, r::PRing)
      ptr = @cxx test_create_poly(get_raw_ptr(cf))
 
 #    ((i >= 1) && (i <= nvars(r))) && return p_Var(i, get_raw_ptr(c)))
@@ -91,11 +91,6 @@ end
 #isdomain(c::Singular?) = libSingular.nCoeff_is_Domain(get_raw_ptr(c))
 
 show(io::IO, r::PRing) = print(io, string(r))
-
-#SingularQQ() = Coeffs(libSingular.n_Q(), Ptr{Void}(0)); # SingularRationalField()
-#SingularZZ() = Coeffs(libSingular.n_Z(), Ptr{Void}(0)); # SingularRing()
-
-
 
 ###############################################################################
 #
