@@ -189,8 +189,13 @@ function test_poly_truncation_singular()
 
    @test truncate(f, 1) == 3
 
-   # TODO: FIXME: mullow: mul!, addeq! UndefRefError: access to undefined reference
-#   @test _mullow(f, g, 4) == (x^2+x)*y^3+(x^4+3*x^2+4*x+1)*y^2+(x^4+x^3+2*x^2+7*x+5)*y+(3*x^3+6*x+6) 
+#   # TODO: FIXME: mullow: mul!, addeq! UndefRefError: access to undefined reference
+#   print("mullow(f, g, 4) ")
+#   mm = Nemo.mullow(f, g, 4)
+#   print("  :::  ")
+#   println(mm)
+#   @test 
+#   println( "DIFF: ",  (x^2+x)*y^3+(x^4+3*x^2+4*x+1)*y^2+(x^4+x^3+2*x^2+7*x+5)*y+(3*x^3+6*x+6) - mm )
 
    println("PASS")
 end
@@ -265,7 +270,13 @@ function test_poly_modular_arithmetic_singular()
    @test powmod(f, 3, h) == (69*x^2 + 243*x + 79)*y^3+(78*x^2 + 180*x + 63)*y^2+(27*x^2 + 42*x + 18)*y+(3*x^2 + 3*x + 2)
 
    iv = (QQ(707)//3530*x^2 + QQ(2151)//1765*x + QQ(123)//3530)*y+(QQ(-178)//1765*x^2 - QQ(551)//3530*x + QQ(698)//1765) 
-##   @test invmod(f,g) == iv ## TODO: FIXME: does not terminate with debug build:((((
+
+#   print("invmod(f,g) ")
+#   im = invmod(f, g) ## TODO: FIXME: does not terminate :((((
+#   print("  ::::   ")
+#   println(im)
+#   println( "DIFF: ", im - iv )  
+##   @test im == iv 
 
    println("PASS")
 end
@@ -321,21 +332,37 @@ function test_poly_euclidean_division_singular()
    qq = (5*x^2+2*x+6)*y+(2*x^2+5*x+2)
    bb = (4*x^2+4*x+4)*y+(3*x^2+5*x+6)
 
-   @test (qq * l + bb) != k 
-   @test (bb * l + qq) != k 
+   println("qq: ", qq)
+   println("bb: ", bb)
+
+#   @test (qq * l + bb) != k  ## ???
+#   @test (bb * l + qq) != k 
 
 #### TODO:FIXME: LoadError: Division by zero!
 #   m = mod(k,l)
 #   d = div(k,l)
 
-#   @test (d * l + m) == k 
+#   println("m: ", m)
+#   println("d: ", d)
+
+#   @test 
+#    println( "DIFF k: ",  (d * l + m) - k  )
+
 
 ###   @test mod(k,l) == (4*x^2+4*x+4)*y+(3*x^2+5*x+6) #### TODO: FIXME: WRONG???!!
 ###   @test div(k,l) == (5*x^2+2*x+6)*y+(2*x^2+5*x+2)
-###   q, b = divrem(k, l)  ### TODO: ERROR: Division by zero?
 
-#   @test q == qq
-#   @test b == bb
+   d, m = divrem(k, l)  ### TODO: ERROR: Division by zero?
+
+   println("m: ", m)
+   println("d: ", d)
+
+    println( "DIFF m: ",  m - b )
+    println( "DIFF d: ",  d - q  )
+    println( "DIFF k: ",  (d * l + m) - k  )
+
+#   @test q == d
+#   @test b == m
 
    println("PASS")
 end
@@ -407,12 +434,18 @@ function test_poly_evaluation_singular()
 
    @test evaluate(g, f) == x^5+4*x^4+7*x^3+7*x^2+4*x+4
    
-   ithree = ZZ(3);
-#   @test evaluate(g, ithree) == 12x + 6 # TODO: FIXME: BUG?
-# ERROR: LoadError: test error in expression: evaluate(g,ZZ(3)) == 12x + 6
+
+   ithree = R(3) # ZZ(3); S?
+#   print("evaluate(g, ithree) ")
+   ee = evaluate(g, ithree)  # TODO: FIXME: ????
 # MethodError: `evaluate` has no method matching evaluate(::Nemo.Poly{Nemo.Poly{Nemo.NumberElem}}, ::Nemo.NumberElem)
 #Closest candidates are:
 #  evaluate{T<:Nemo.RingElem}(::Nemo.PolyElem{T<:Nemo.RingElem}, !Matched::T<:Nemo.RingElem) ##????
+#   print( "  :::  ")
+#   println(ee)
+#   println("DIFF: ", ee - R(12x + 6)) # S? 
+
+   @test ee == R(12x + 6) # S?
 
    println("PASS")
 end
@@ -667,7 +700,7 @@ function test_poly_singular()
    test_poly_modular_arithmetic_singular() # ERROR: divexact? invmod!? :(
    test_poly_generic_eval_singular() # ERROR: LoadError: test error in expression: f(T(13)) == 20
 
-##   test_poly_euclidean_division_singular() # ERROR: ??? div | mod => /0 :-(
+   test_poly_euclidean_division_singular() # ERROR: ??? div | mod => /0 :-(
 
    println("")
 end

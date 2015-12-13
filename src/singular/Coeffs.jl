@@ -156,6 +156,8 @@ function _string(c::SingularCoeffs)
    mm = libSingular.nCoeffName(cf)
 
    return bytestring(mm) * "|[" * bytestring(m) * "]"
+
+   ### TODO: omFree m/mm???
 end
 
 function string(c::SingularRing)
@@ -194,9 +196,9 @@ function hash(a::SingularCoeffs)
    return hash(string(a))  ## TODO: string may be a bit too inefficient wherever hash is used...?
 end
 
-zero(a::SingularCoeffs) = a(0)
-one(a::SingularCoeffs) = a(1)
-mone(a::SingularCoeffs) = a(-1)
+zero(a::SingularCoeffs) = a(Int(0))
+one(a::SingularCoeffs) = a(Int(1))
+mone(a::SingularCoeffs) = a(Int(-1))
 
 
 ###############################################################################
@@ -212,7 +214,7 @@ immutable Singular_ZZ <: SingularUniqueRing
 end
 
 function get_raw_ptr(::Singular_ZZ)
-   ptr = libSingular.ptr_ZZ;
+   ptr = libSingular.ptr_ZZ
    @assert ptr != libSingular.coeffs(0)
    return ptr
 end
@@ -238,7 +240,7 @@ immutable Singular_Rr <: SingularUniqueField
 end
 
 function get_raw_ptr(::Singular_QQ)
-   ptr = libSingular.ptr_QQ;
+   ptr = libSingular.ptr_QQ
    @assert ptr != libSingular.coeffs(0)
    return ptr
 end
@@ -257,7 +259,9 @@ SingularCC(uq = default_choice) = ( uq ? Singular_CC() : CoeffsField(libSingular
 SingularRr(uq = default_choice) = ( uq ? Singular_Rr() : CoeffsField(libSingular.n_R()) ) # single prescision (6,6) real numbers
 
 # non-unique => NumberFElem
-SingularZp(p::Int) = CoeffsField(libSingular.n_Zp(), Ptr{Void}(p));
+SingularFp(p::Int) = CoeffsField(libSingular.n_Zp(), Ptr{Void}(p));
+
+SingularZp(p::Int) = Coeffs(libSingular.n_Zp(), Ptr{Void}(p));
 
 function SingularGF(ch::Int, d::Int, s::AbstractString) 
    ptr = @cxx nGFInitChar(ch, d, pointer(s))

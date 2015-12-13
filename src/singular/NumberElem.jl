@@ -6,7 +6,11 @@ type NumberElem{CF<:SingularRing} <: SingularRingElem # TODO: rename -> NumberRE
     ptr :: number
     ctx :: CF
 
-    function NumberElem(c::CF, p::number)
+    function NumberElem()
+    	error("Type NumberElem{$CF} requires context reference!")
+    end
+
+    function NumberElem(c::CF, p::number = number(0))
         z = new(p, c); finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
@@ -20,9 +24,10 @@ type NumberElem{CF<:SingularRing} <: SingularRingElem # TODO: rename -> NumberRE
     end
 
     function NumberElem(c::CF, b::BigInt)
-    	error("Sorry NumberElem(BigInt) seems to be unsupported ATM :(")
 #        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
-#        p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); return NumberElem{CF}(c, p)
+        p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); 
+	return NumberElem{CF}(c, p)
+    	error("Sorry NumberElem(BigInt) seems to be unsupported ATM :(")
     end
 end
 
@@ -31,7 +36,11 @@ type NumberFElem{CF<:SingularField} <: SingularFieldElem
     ptr :: number
     ctx :: CF
 
-    function NumberFElem(c::CF, p::number)
+    function NumberFElem()
+    	error("Type NumberFElem{$CF} requires context reference!")
+    end
+
+    function NumberFElem(c::CF, p::number = number(0))
         z = new(p, c); finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
@@ -57,11 +66,11 @@ end
 type Number_Elem{CF<:SingularUniqueRing} <: SingularUniqueRingElem  # TODO: rename -> NumberR_Elem?
     ptr :: number
 
-    function Number_Elem(p::number)
+    function Number_Elem(p::number = number(0))
         z = new(p); finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
-    function Number_Elem(::CF, p::number)
+    function Number_Elem(::CF, p::number = number(0))
     	return Number_Elem{CF}(p);
     end
 
@@ -69,8 +78,19 @@ type Number_Elem{CF<:SingularUniqueRing} <: SingularUniqueRingElem  # TODO: rena
     	p = libSingular.n_Init(x, get_raw_ptr(c)); return Number_Elem{CF}(p);
     end
 
+    function Number_Elem(c::CF, b::BigInt)
+#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
+        p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); 
+	return Number_Elem{CF}(p)
+    	error("Sorry Number_Elem(CF, BigInt) seems to be unsupported ATM :(")
+    end
+
     function Number_Elem(x::Int = 0)
-    	p = libSingular.n_Init(x, get_raw_ptr(CF())); return Number_Elem{CF}(p);
+	return Number_Elem{CF}(CF(), x)
+    end
+
+    function Number_Elem(b::BigInt)
+	return Number_Elem{CF}(CF(), b)
     end
 
     function Number_Elem(x::Number_Elem{CF})
@@ -78,28 +98,17 @@ type Number_Elem{CF<:SingularUniqueRing} <: SingularUniqueRingElem  # TODO: rena
         return Number_Elem{CF}(p)
     end
 
-    function Number_Elem(c::CF, b::BigInt)
-    	error("Sorry Number_Elem(CF, BigInt) seems to be unsupported ATM :(")
-#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
-#        p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); return Number_Elem{CF}(p)
-    end
-
-    function Number_Elem(b::BigInt)
-    	error("Sorry Number_Elem(BigInt) seems to be unsupported ATM :(")
-#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
-#        c = CF(); p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); return Number_Elem{CF}(p)
-    end
 end
 
 # without context... CF is unique!
 type NumberF_Elem{CF<:SingularUniqueField} <: SingularUniqueFieldElem
     ptr :: number
 
-    function NumberF_Elem(p::number)
+    function NumberF_Elem(p::number = number(0))
         z = new(p); finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
-    function NumberF_Elem(::CF, p::number)
+    function NumberF_Elem(::CF, p::number = number(0))
     	return NumberF_Elem{CF}(p);
     end
 
@@ -117,15 +126,15 @@ type NumberF_Elem{CF<:SingularUniqueField} <: SingularUniqueFieldElem
     end
 
     function NumberF_Elem(c::CF, b::BigInt)
-    	error("Sorry NumberF_Elem(CF, BigInt) seems to be unsupported ATM :(")
 #        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
-#        p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); return NumberF_Elem{CF}(p)
+        p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); 
+	return NumberF_Elem{CF}(p)
+
+    	error("Sorry NumberF_Elem(CF, BigInt) seems to be unsupported ATM :(")
     end
 
     function NumberF_Elem(b::BigInt)
-    	error("Sorry NumberF_Elem(BigInt) seems to be unsupported ATM :(")
-#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
-#        c = CF(); p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); return NumberF_Elem{CF}(p)
+        return NumberF_Elem{CF}(CF(), b)
     end
 end
 
@@ -136,17 +145,6 @@ end
 get_raw_ptr(n::SingularCoeffsElems) = n.ptr
 set_raw_ptr!(n::SingularCoeffsElems, p::libSingular.number) = n.ptr = p;
 
-
-#get_raw_ptr{CF<:SingularRing}(n::NumberElem{CF}) = n.ptr
-#get_raw_ptr{CF<:SingularField}(n::NumberFElem{CF}) = n.ptr
-#function set_raw_ptr!{CF<:SingularRing}(n::NumberElem{CF}, p::libSingular.number)
-#   n.ptr = p
-#end
-#function set_raw_ptr!{CF<:SingularRing}(n::NumberElem{CF}, p::libSingular.number)
-#   n.ptr = p
-#end
-
-
 ## Concrete: in general there may be no context attached!
 parent{CF<:SingularRing}(n::NumberElem{CF}) = n.ctx
 
@@ -154,7 +152,6 @@ function set_raw_ptr!{CF<:SingularRing}(n::NumberElem{CF}, p::libSingular.number
    n.ptr = p
    n.ctx = C
 end
-
 
 parent{CF<:SingularField}(n::NumberFElem{CF}) = n.ctx
 
@@ -234,7 +231,7 @@ end
 ###############################################################################
 
 ## TODO: remove this once destructors work properly!
-leftovers = ObjectIdDict() # dupes_counter = 0
+###leftovers = ObjectIdDict() # dupes_counter = 0
 
 function _SingularRingElem_clear_fn(n::SingularCoeffsElems)
    c = parent(n)
@@ -284,53 +281,46 @@ end
 
 #### Unique!!!
 
-convert{S <: SingularUniqueRing, T <: Integer}(::Type{Number_Elem{S}}, a::T) = Number_Elem{S}(a)
-convert{S <: SingularUniqueField, T <: Integer}(::Type{NumberF_Elem{S}}, a::T) = NumberF_Elem{S}(a)
+#convert{S <: SingularUniqueRing, T <: Integer}(::Type{Number_Elem{S}}, a::T) = Number_Elem{S}(a)
+#convert{S <: SingularUniqueField, T <: Integer}(::Type{NumberF_Elem{S}}, a::T) = NumberF_Elem{S}(a)
 
 ### convert(::Type{Rational{BigInt}}, a::fmpq) = Rational(a)
 
 function convert(::Type{BigInt}, a::SingularCoeffsElems)
 ##    error("Sorry BigInt(SingularCoeffsElems) seems to be unsupported ATM :(") # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
 
-    aa = get_raw_ptr(a);
-    aaa =  number_ref(aa); 
-    cf = get_raw_ptr(parent(a))
-
-    r = libSingular.n_MPZ(aaa, cf)# BigInt();
-
-#    @cxx n_MPZ(r, aaa, cf)# TODO: FIXME: Got bad type information while compiling Cxx.CppNNS{Tuple{:n_MPZ}} (got BigInt for argument 1w)
-
+    aaa =  number_ref(get_raw_ptr(a)); 
+    r = libSingular.n_MPZ(aaa, get_raw_ptr(parent(a))) # BigInt();
     set_raw_ptr!(a, aaa[]) # a.ptr = ptr
+
     return r
 end
 
 function convert(::Type{Int}, a::SingularCoeffsElems) 
 
-    cf = get_raw_ptr(parent(a));  aa = get_raw_ptr(a); 
-    return libSingular.n_Int(aa, cf)
-
-#    aaa = number_ref(aa); 
-    r = Int()
-    icxx"""{ number f = $(aa); $(r) = n_Int(f, $(cf)); $(aa) = f; }; """
-    # Got bad type information while compiling Cxx.CppNNS{Tuple{:n_Int}} 
-    # (got Base.RefValue{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)}} for argument 1)
-    set_raw_ptr!(a, aa)# aaa[] # a.ptr = ptr
-    return ret
+    cf = get_raw_ptr(parent(a));  
+    aa = number_ref(get_raw_ptr(a)) 
+    r = libSingular.n_Int(aa, cf)
+    set_raw_ptr!(a, aa[] ) # aaa[] # a.ptr = ptr
+    return r
 end
 
 function convert(::Type{UInt}, x::SingularCoeffsElems)
-   error("Sorry this functionality is not implemented yet :(") #   return ccall((:?_get_ui, :libflint), UInt, (Ptr{?}, ), &x)
+    r = convert(Int, x)
+    return UInt(r)
+
+   error("Sorry this functionality (convert into UInt) is not implemented yet :(") #   return ccall((:?_get_ui, :libflint), UInt, (Ptr{?}, ), &x)
 end
 
-function convert(::Type{Float64}, n::SingularCoeffsElems) # rounds to zero
-   error("Sorry this functionality is not implemented yet :(")
-end
+#function convert(::Type{Float64}, n::SingularCoeffsElems) # rounds to zero
+#   error("Sorry this functionality (convert into Float64) is not implemented yet :(")
+#end
 
-Base.promote_rule{S <: SingularRing, T <: Integer}(C::Type{NumberElem{S}}, ::Type{T}) = C # NumberElem{S}
-Base.promote_rule{S <: SingularField, T <: Integer}(C::Type{NumberFElem{S}}, ::Type{T}) = C # NumberFElem{S}
+Base.promote_rule{S <: SingularRing, T <: Integer}(C::Type{NumberElem{S}}, ::Type{T}) = NumberElem{S} # C # NumberElem{S}
+Base.promote_rule{S <: SingularField, T <: Integer}(C::Type{NumberFElem{S}}, ::Type{T}) = NumberFElem{S} # C # NumberFElem{S}
 
-Base.promote_rule{S <: SingularUniqueRing, T <: Integer}(C::Type{Number_Elem{S}}, ::Type{T}) =C # Number_Elem{S}
-Base.promote_rule{S <: SingularUniqueField, T <: Integer}(C::Type{NumberF_Elem{S}}, ::Type{T}) = C # NumberF_Elem{S}
+Base.promote_rule{S <: SingularUniqueRing, T <: Integer}(C::Type{Number_Elem{S}}, ::Type{T}) = Number_Elem{S} # C # Number_Elem{S}
+Base.promote_rule{S <: SingularUniqueField, T <: Integer}(C::Type{NumberF_Elem{S}}, ::Type{T}) = NumberF_Elem{S} # C # NumberF_Elem{S}
 
 
 ###############################################################################
@@ -344,7 +334,7 @@ Base.call(a::SingularCoeffs, b::AbstractString) = parseNumber(a, b)
 Base.call{CF<:SingularRing}(a::CF) = NumberElem{CF}(a)
 Base.call{CF<:SingularRing}(a::CF, b::Int) = NumberElem{CF}(a, b)
 Base.call{CF<:SingularRing}(a::CF, b::Integer) = NumberElem{CF}(a, BigInt(b))
-Base.call{CF<:SingularRing}(a::CF, b::number) = NumberElem{CF}(a, b)
+Base.call{CF<:SingularRing}(a::CF, b::libSingular.number) = NumberElem{CF}(a, b)
 
 function Base.call{CF<:SingularRing}(a::CF, b::NumberElem{CF}) 
    a != parent(b) && error("Operations on elements from different rings (mappings) are not supported yet!")
@@ -356,7 +346,7 @@ end
 Base.call{CF<:SingularUniqueRing}(::CF) = Number_Elem{CF}()
 Base.call{CF<:SingularUniqueRing}(::CF, b::Int) = Number_Elem{CF}(b)
 Base.call{CF<:SingularUniqueRing}(::CF, b::Integer) = Number_Elem{CF}(BigInt(b))
-Base.call{CF<:SingularUniqueRing}(::CF, b::number) = Number_Elem{CF}(b)
+Base.call{CF<:SingularUniqueRing}(::CF, b::libSingular.number) = Number_Elem{CF}(b)
 
 function Base.call{CF<:SingularUniqueRing}(::CF, b::Number_Elem{CF}) 
    return b 
@@ -368,7 +358,7 @@ end
 Base.call{CF<:SingularField}(a::CF) = NumberFElem{CF}(a)
 Base.call{CF<:SingularField}(a::CF, b::Int) = NumberFElem{CF}(a, b)
 Base.call{CF<:SingularField}(a::CF, b::Integer) = NumberFElem{CF}(a, BigInt(b))
-Base.call{CF<:SingularField}(a::CF, b::number) = NumberFElem{CF}(a, b)
+Base.call{CF<:SingularField}(a::CF, b::libSingular.number) = NumberFElem{CF}(a, b)
 function Base.call{CF<:SingularField}(a::CF, b::NumberFElem{CF}) 
    a != parent(b) && error("Operations on elements from different field (mappings) are not supported yet!")
    return b 
@@ -379,7 +369,7 @@ end
 Base.call{CF<:SingularUniqueField}(::CF) = NumberF_Elem{CF}()
 Base.call{CF<:SingularUniqueField}(::CF, b::Int) = NumberF_Elem{CF}(b)
 Base.call{CF<:SingularUniqueField}(::CF, b::Integer) = NumberF_Elem{CF}(BigInt(b))
-Base.call{CF<:SingularUniqueField}(::CF, b::number) = NumberF_Elem{CF}(b)
+Base.call{CF<:SingularUniqueField}(::CF, b::libSingular.number) = NumberF_Elem{CF}(b)
 
 function Base.call{CF<:SingularUniqueField}(::CF, b::NumberF_Elem{CF}) 
    return b 
@@ -393,17 +383,19 @@ end
 #
 ###############################################################################
 
+### Base.call(a::SingularCoeffs, b::AbstractString) = parseNumber(a, b)
+
 NumberElem{CF<:SingularRing}(c::CF, s::AbstractString) = parseNumber(c, s)
-NumberElem{CF<:SingularRing}(c::CF, z::Integer) = c(BigInt(z))
+#NumberElem{CF<:SingularRing}(c::CF, z::Integer) = c(BigInt(z))
 
 Number_Elem{CF<:SingularUniqueRing}(c::CF, s::AbstractString) = parseNumber(c, s)
-Number_Elem{CF<:SingularUniqueRing}(c::CF, z::Integer) = c(BigInt(z))
+#Number_Elem{CF<:SingularUniqueRing}(c::CF, z::Integer) = c(BigInt(z))
 
 NumberFElem{CF<:SingularField}(c::CF, s::AbstractString) = parseNumber(c, s)
-NumberFElem{CF<:SingularField}(c::CF, z::Integer) = c(BigInt(z))
+#NumberFElem{CF<:SingularField}(c::CF, z::Integer) = c(BigInt(z))
 
 NumberF_Elem{CF<:SingularUniqueField}(c::CF, s::AbstractString) = parseNumber(c, s)
-NumberF_Elem{CF<:SingularUniqueField}(c::CF, z::Integer) = c(BigInt(z))
+#NumberF_Elem{CF<:SingularUniqueField}(c::CF, z::Integer) = c(BigInt(z))
 
 
 ###############################################################################
@@ -414,9 +406,13 @@ NumberF_Elem{CF<:SingularUniqueField}(c::CF, z::Integer) = c(BigInt(z))
 
 function string(n::SingularCoeffsElems)
    libSingular.StringSetS("")
-   libSingular.n_Write( get_raw_ptr(n), get_raw_ptr(parent(n)) )
+   nn = get_raw_ptr(n)
+   nnn = number_ref(nn)	
+   libSingular.n_Write( nnn, get_raw_ptr(parent(n)), false )
+   set_raw_ptr!(n, nnn[])# n.ptr = ptr'
+
    m = libSingular.StringEndS()
-   s = bytestring(m)
+   s = bytestring(m) 
    libSingular.omFree(m)
 
    return s
@@ -491,6 +487,9 @@ canonical_unit(x::SingularCoeffsElems) = isnegative(x) ? mone(parent(x)) : one(p
 
 function muleq!(x :: SingularCoeffsElems, y :: SingularCoeffsElems)
             check_parent(x, y)
+
+###	    error("Sorry 'muleq!' is to be verified yet :(")
+
             cf = get_raw_ptr(parent(x))
             xx = number_ref(get_raw_ptr(x))
             yy = get_raw_ptr(y)
@@ -503,6 +502,9 @@ end
 
 function addeq!(x :: SingularCoeffsElems, y :: SingularCoeffsElems)
             check_parent(x, y)
+
+###	    error("Sorry 'addeq!' is to be verified yet :(")
+
             cf = get_raw_ptr(parent(x))
             xx = number_ref(get_raw_ptr(x))
             yy = get_raw_ptr(y)
@@ -521,6 +523,8 @@ end
 function mul!(c::SingularCoeffsElems, x::SingularCoeffsElems, y::SingularCoeffsElems)
     check_parent(x, y)
     
+###    error("Sorry 'mul!' is to be verified yet :(")
+
     C = parent(x)
     ptr   = @cxx n_Mult(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(C))
     
@@ -546,10 +550,12 @@ end
 for (fJ, fC) in ((:num, :n_GetNumerator), (:den, :n_GetDenom), (:normalise, :n_Normalize))
     @eval begin
         function ($fJ)(x :: SingularCoeffsElems)
+	    error("Sorry: $fJ has to be verified yet!")
+	 
             cf = get_raw_ptr(parent(x))
             p = get_raw_ptr(x)
 	    r = number_ref(p)
-	### TODO: FIXME:!!!!
+	### TODO: FIXME:!!!! ???
             ret = @cxx (libSingular.$fC)(r, cf) 
             set_raw_ptr!(x, r[])
 	    return ret
@@ -592,8 +598,8 @@ end
 # Metaprogram to define functions /, div, mod
 
 for (fJ, fC) in ((://, :n_Div), ## ?? /: floating point division?
-    (:div, :n_DivExact), ##### FIXME / TODO : Euclid domain???
-    (:mod, :n_Mod))
+    (:div, :n_ExactDiv), ##### FIXME / TODO : Euclid domain???
+    (:mod, :n_IntMod))
     @eval begin
         function ($fJ)(x::SingularCoeffsElems, y::SingularCoeffsElems)
             iszero(y) && throw(ErrorException("DivideError() in $fJ"))
@@ -667,11 +673,18 @@ end
 
 function divrem(x::SingularCoeffsElems, y::SingularCoeffsElems)
     iszero(y) && throw(ErrorException("DivideError() in divrem"))
-    div(x, y), mod(x, y) ### TODO: @cxx ??? mod (non-negative) vs rem (C semantics)??? s
+
+    C = parent(x)
+    CF = get_raw_ptr(C)
+
+    ## TODO: use n_QuotRem
+    return libSingular.n_QuotRem(gt_raw_ptr(a), get_raw_ptr(b), CF)
+
+#    div(x, y), mod(x, y) ### TODO: @cxx ??? mod (non-negative) vs rem (C semantics)??? s
 end
 
 function crt(r1::SingularCoeffsElems, m1::SingularCoeffsElems, r2::SingularCoeffsElems, m2::SingularCoeffsElems, signed=false)
-   error("Sorry this functionality is not implemented yet :(")
+   error("Sorry this functionality (crt) is not implemented yet :(")
 
 #   z = fmpz()
 #   ccall((:fmpz_CRT, :libflint), Void, (Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Cint), &z, &r1, &m1, &r2, &m2, signed)
@@ -682,7 +695,7 @@ function crt(r1::SingularCoeffsElems, m1::SingularCoeffsElems, r2::Int, m2::Int,
    r2 < 0 && throw(ErrorException("DivideError() in crt")) #throw(DomainError())
    m2 < 0 && throw(ErrorException("DivideError() in crt")) # throw(DomainError())
 
-   error("Sorry this functionality is not implemented yet :(")
+   error("Sorry this functionality (int crt) is not implemented yet :(")
 
 #   z = fmpz()
 #   ccall((:fmpz_CRT_ui, :libflint), Void, (Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Int, Int, Cint), &z, &r1, &m1, r2, m2, signed)
@@ -703,7 +716,7 @@ function gcdx(a::SingularCoeffsElems, b::SingularCoeffsElems)
         return a < 0 ? (-a, -one(c), zero(c)) : (a, one(c), zero(c))
     end
 
-    g, s, t = n_ExtGcd(get_raw_ptr(a), get_raw_ptr(b), get_raw_ptr(c));
+    g, s, t = libSingular.n_ExtGcd(get_raw_ptr(a), get_raw_ptr(b), get_raw_ptr(c));
 
 #    ccall((:fmpz_xgcd, :libflint), Void, (Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}), &g, &s, &t, &a, &b)
 
@@ -711,16 +724,29 @@ function gcdx(a::SingularCoeffsElems, b::SingularCoeffsElems)
 end
 
 function gcdinv(a::SingularCoeffsElems, b::SingularCoeffsElems)
-   error("Sorry this functionality is not implemented yet :(")
+    check_parent(a, b)
+    c = parent(a)
 
-#   a < 0 && throw(ErrorException("DivideError()")) # throw(DomainError())
-#   b < a && throw(ErrorException("DivideError()")) 
+
+    if iszero(b) # shortcut this to ensure consistent results with gcdx(a,b)
+        return a < 0 ? (-a, -one(c)) : (a, one(c))
+    end
+
+    # ???
+    a < 0 && throw(ErrorException("DivideError(): a < 0 (gcdinv)"))
+    b < a && throw(ErrorException("DivideError(): b < a (gcdinv)")) 
+
+    g, s, t = libSingular.n_ExtGcd(get_raw_ptr(a), get_raw_ptr(b), get_raw_ptr(c));
+
 #   g = fmpz()
 #   s = fmpz()
 #   ccall((:fmpz_gcdinv, :libflint), Void,
 #        (Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}),
 #        &g, &s, &a, &b)
 #   return g, s
+###   error("Sorry this functionality (gcdinv) is not implemented yet :(")
+
+    g, s
 end
 
 
@@ -796,7 +822,7 @@ function divisible(x::SingularCoeffsElems, y::SingularCoeffsElems)
    iszero(y) && throw(ErrorException("DivideError() in divisible"))  # throw(DivideError())
 
    # TODO?!
-   error("Sorry this functionality is not implemented yet :(") # Bool(ccall((:fmpz_divisible, :libflint), Cint, (Ptr{fmpz}, Ptr{fmpz}), &x, &y))
+   error("Sorry this functionality (divisible) is not implemented yet :(") # Bool(ccall((:fmpz_divisible, :libflint), Cint, (Ptr{fmpz}, Ptr{fmpz}), &x, &y))
 end
 
 function divisible(x::SingularCoeffsElems, y::Int)
@@ -814,7 +840,7 @@ end
 ###############################################################################
 
 function parseNumber(c::SingularCoeffs, s::AbstractString)
-   error("Sorry this functionality is not implemented yet :(")
+   error("Sorry this functionality (parseNumber) is not implemented yet :(")
 #    s = bytestring(s)
 #    sgn = s[1] == '-' ? -1 : 1
 #    i = 1 + (sgn == -1)
@@ -822,13 +848,6 @@ function parseNumber(c::SingularCoeffs, s::AbstractString)
 #    err == 0 || error("Invalid big integer: $(repr(s))")
 #    return sgn < 0 ? -z : z
 end
-
-#####################################################################! finish?
-
-
-
-
-
 
 #####################################################################! Julia/Cxx bugs:
 

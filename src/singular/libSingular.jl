@@ -67,18 +67,27 @@ cxx"""
 
     #include <polys/monomials/ring.h>
     #include <polys/monomials/p_polys.h>
-"""
 
-cxx"""
     static void _omFree(void* p){ omFree(p); }
     static void _PrintLn(){ PrintLn(); } 
     static void _PrintS(const void *p)
     { PrintS((const char*)(p));}
-    static int  _siRand(){ return siRand(); }
+    static long  _siRand(){ return siRand(); }
     static number _n_Power(number a, int b, const coeffs r)
     { number res; n_Power(a, b, &res, r); return res; }
     static void _n_Delete(number a,const coeffs r)
     {n_Delete(&a,r);}
+
+    static void _n_Write(number* n, const coeffs cf, int d)
+    { n_Write(*n, cf, d); } // return (n); }
+
+// static FORCE_INLINE long n_Int(number &n,       const coeffs r)
+    static long _n_Int(number *n, const coeffs cf)
+    { return (n_Int(*n, cf)); }
+
+// void n_MPZ(mpz_t result, number &n,       const coeffs r)
+//    static void _n_MPZ(void *r, number *n, const coeffs cf)
+//    { n_MPZ((mpz_t)r, *n, cf); }
 
     static ring test_create_ring2(const coeffs cf)
     { char* ns[] = {(char*)"x", (char*)"y"}; return rDefault( cf, 2, ns); }
@@ -86,8 +95,14 @@ cxx"""
     static poly test_create_poly(const long n, const ring r)
     {  return p_ISet(n, r); }
 
-    static void omalloc_mem_info_and_check()
-    { // TODO!
+    static void omalloc_mem_info_and_stats()
+    {
+       printf("Singular::omalloc INFO & STATs: \n");
+       fflush(stdout);
+       omPrintStats(stdout);
+       omPrintInfo(stdout);
+       printf("\n"); 
+       fflush(stdout);
     }
 
     coeffs nGFInitChar(int ch, int d, const char* s)
@@ -98,6 +113,7 @@ cxx"""
 	par.GFPar_name=s;
 	return nInitChar(n_GF, (void*)&par);
     }
+
 """
 
    local const binSingular = joinpath(prefix, "bin", "Singular")
@@ -127,14 +143,7 @@ cxx"""
 end
 
 function siInit(p)
-#   pp = pointer(p); # print("pp: $pp::::::")
-#   PrintLn();
-#   PrintS(pp); PrintLn();
-
    @cxx siInit(pointer(p))
-
-#   println("siInit - done!!!")
-#   return
 end
 
 
@@ -152,9 +161,12 @@ function omFree(m)
    @cxx _omFree(m)
 end 
 function siRand()
-   return @cxx siRand()
+   return Int(@cxx _siRand())
 end
 
+function omPrintInfoStats()
+   @cxx omalloc_mem_info_and_stats();
+end
 
 function StringSetS(m) 
    @cxx StringSetS(pointer(m))
@@ -241,22 +253,39 @@ end
 # number n_InitMPZ(mpz_t n,     const coeffs r) # TODO: BigInt???
 
 function n_InitMPZ(b :: BigInt, cf :: coeffs)
-   return @cxx n_InitMPZ(b, cf)
+   return icxx" return n_InitMPZ((mpz_t)$b, $cf); "
 end
 
+# void n_MPZ(mpz_t result, number &n,       const coeffs r)
 function n_MPZ(a :: number_ref, cf :: coeffs)
+##    r = BigInt(); icxx" n_MPZ($r, $a, $cf); "
+# TODO: FIXME: Got bad type information while compiling Cxx.CppNNS{Tuple{:n_MPZ}} (got BigInt for argument 1
+
+#    n :: number = a[]
     r = BigInt()
-    @cxx n_MPZ(r, a, cf)# TODO: FIXME: Got bad type information while compiling Cxx.CppNNS{Tuple{:n_MPZ}} (got BigInt for argument 1
+    icxx" n_MPZ((mpz_t)$r, $a, $cf); "
+
+#    @cxx _n_MPZ(Ptr{Void}(r), &n, cf);
+#    a[] = n;
+
     return r
 end
 
 ## static FORCE_INLINE void number2mpz(number n, coeffs c, mpz_t m){ n_MPZ(m, n, c); }
 ## static FORCE_INLINE number mpz2number(mpz_t m, coeffs c){ return n_InitMPZ(m, c); }
 
+function n_Int(n :: number_ref, cf :: coeffs) 
+    nn :: number = n[]
 
-function n_Int(n :: number, cf :: coeffs) 
-   return @cxx n_Int(n, cf)
+    r = (@cxx _n_Int(&nn, cf))
+
+    n[] = nn;
+    return r
+
+    # Got bad type information while compiling Cxx.CppNNS{Tuple{:n__Int}} 
+ # (got Base.RefValue{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)}} for argument 1
 end
+
 
 function n_Copy(n :: number, cf :: coeffs) 
    return @cxx n_Copy(n, cf)
@@ -349,10 +378,13 @@ n_Param(i::Int, cf :: coeffs) = @cxx n_Param(i, cf)
 
 
 
-# n_Write(number& n,  const coeffs r, const BOOLEAN bShortOut = TRUE)
-function n_Write(n, cf :: coeffs, bShortOut::Bool = true)
-   d :: Int = (bShortOut? 1 : 0) 
-   @cxx n_Write(n, cf, d)
+# void n_Write(number& n,  const coeffs r, const BOOLEAN bShortOut = TRUE)
+function n_Write( n::number_ref, cf :: coeffs, bShortOut::Bool = false )
+   const d :: Int = (bShortOut? 1 : 0)
+
+   nn :: number = n[]
+   @cxx _n_Write(&nn, cf, d);
+   n[] = nn
 end
 
 
@@ -395,6 +427,16 @@ for (f) in ((:n_Add), (:n_Sub), (:n_Div), (:n_Mult), (:n_ExactDiv),
     end
 end
 
+# Div(a,b) = QuotRem(a,b, &IntMod(a,b))
+# static FORCE_INLINE number  n_QuotRem(number a, number b, number *q, const coeffs r)
+# Div(a,b), IntMod(a,b)
+function n_QuotRem(a::number, b::number, cf::coeffs)
+    q :: number = number(0);
+    d :: number = (@cxx n_QuotRem(a, b, &q, cf));
+    return (d, q)
+end
+
+
 # void   n_Power(number a, int b, number *res, const coeffs r)
 function n_Power(a::number, b::Int, cf::coeffs)
     return @cxx _n_Power(a, b, cf)
@@ -433,7 +475,8 @@ end
 
 
 
-##### number n_ChineseRemainderSym(number *a, number *b, int rl, BOOLEAN sym,CFArray &inv_cache,const coeffs r)
+# number n_ChineseRemainderSym(number *a, number *b, int rl, BOOLEAN sym,CFArray &inv_cache,const coeffs r)
+
 ## nMapFunc n_SetMap(const coeffs src, const coeffs dst)
 ## number n_Random(siRandProc p, number p1, number p2, const coeffs cf)
 
