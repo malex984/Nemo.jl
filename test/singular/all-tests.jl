@@ -8,41 +8,16 @@ include("generic/Matrix-test.jl")
 include("generic/PowerSeries-test.jl")
 include("Benchmark-test.jl")
 
-#include("flint/fmpz-test.jl")
-#include("flint/fmpz_poly-test.jl")
-#include("flint/fmpz_mod_poly-test.jl")
-#include("flint/nmod_poly-test.jl")
-#include("flint/fmpq_poly-test.jl")
-#include("flint/fq_poly-test.jl")
-#include("flint/fq_nmod_poly-test.jl")
-#include("flint/fmpz_series-test.jl")
-#include("flint/fmpq_series-test.jl")
-#include("flint/fmpz_mod_series-test.jl")
-#include("flint/fq_series-test.jl")
-#include("flint/fq_nmod_series-test.jl")
-#include("flint/nmod_mat-test.jl")
-#include("flint/fmpz_mat-test.jl")
-
-#### TODO: remove those without analogs on Singular side!
-
-#   test_fmpz()
-#   test_fmpz_poly()
-#   test_fmpz_mod_poly()
-#   test_nmod_poly()
-#   test_fmpq_poly()
-#   test_fq_poly()
-#   test_fq_nmod_poly()
-#   test_fmpz_series()
-#   test_fmpq_series()
-#   test_fmpz_mod_series()
-#   test_fq_series()
-#   test_fq_nmod_series()
-#   test_nmod_mat()
-#   test_fmpz_mat()
+include("ZZ-test.jl")
+# include("QQ-test.jl") # test_QQ_singular() # TODO: SingularZZ <-> SingularQQ, embedding & maps... 
 
 function test_singular_wrappers()
    println("Printing Singular resources pathes...")  
    Nemo.libSingular.PrintResources("Singular Resources info: ")
+   println("PASS")
+
+   println("Printing Singular' omalloc info stats...")  
+   Nemo.libSingular.omPrintInfoStats()
    println("PASS")
 end
 
@@ -92,137 +67,22 @@ function _PolynomialRing(R::Nemo.Ring, s::AbstractString{})
 end
 
 
-function _mullow{T <: Nemo.SingularRingElem}(a::PolyElem{T}, b::PolyElem{T}, n::Int)
-   check_parent(a, b)
-   lena = length(a)
-   lenb = length(b)
-
-   if lena == 0 || lenb == 0
-      return zero(parent(a))
-   end
-
-   if n < 0
-      n = 0
-   end
-
-   lenz = min(lena + lenb - 1, n)
-
-   d = Array(T, lenz)
-
-   for i = 1:min(lena, lenz)
-      d[i] = coeff(a, i - 1)*coeff(b, 0)
-   end
-
-   if lenz > lena
-      for j = 2:min(lenb, lenz - lena + 1)
-          d[lena + j - 1] = coeff(a, lena - 1)*coeff(b, j - 1)
-      end
-   end
-
-   print("d: "); println(d);
-
-   t = T()
-   for i = 1:lena - 1
-      if lenz > i
-         for j = 2:min(lenb, lenz - i + 1)
-	    # d[i + j - 1] += ( coeff(a, i - 1) * b.coeffs[j] =: t )
-
-            mul!(t, coeff(a, i - 1), b.coeffs[j]) #??!
-            addeq!(d[i + j - 1], t)#??
-         end
-      end
-   end
-     
-   z = parent(a)(d)
-   
-   set_length!(z, normalise(z, lenz))
-
-   return z
-end
 
 
-function _pow_multinomial{T <: Nemo.SingularRingElem}(a::PolyElem{T}, e::Int)
-   e < 0 && throw(DomainError())
-   lena = length(a)
-   lenz = (lena - 1) * e + 1
-   res = Array(T, lenz)
-   for k = 1:lenz
-      res[k] = base_ring(a)()
-   end
-   d = base_ring(a)()
-   first = coeff(a, 0)
-   res[1] = first ^ e
-   for k = 1 : lenz - 1
-      u = -k
-      for i = 1 : min(k, lena - 1)
-         t = coeff(a, i) * res[(k - i) + 1]
-         u += e + 1
-         addeq!(res[k + 1], t * u) ## !!!
-      end
-      addeq!(d, first) ## !!!
-      res[k + 1] = divexact(res[k + 1], d) ## ?????!
-   end
-   z = parent(a)(res)
-   set_length!(z, normalise(z, lenz))
-   return z
-end
-
-function ^{T <: Nemo.SingularCoeffsElems}(a::PolyElem{T}, b::Int)
-   b < 0 && throw(DomainError())
-   # special case powers of x for constructing polynomials efficiently
-   if isgen(a)
-      d = Array(T, b + 1)
-      d[b + 1] = coeff(a, 1)
-      for i = 1:b
-         d[i] = coeff(a, 0)
-      end
-      z = parent(a)(d)
-      set_length!(z, b + 1)
-      return z
-   elseif length(a) == 0
-      return zero(parent(a))
-   elseif length(a) == 1
-      return parent(a)(coeff(a, 0)^b)
-   elseif b == 0
-      return one(parent(a))
-   else
-#      if T <: SingularFieldElem
-#         zn = 0
-#         while iszero(coeff(a, zn))
-#            zn += 1
-#         end
-#         if length(a) - zn < 8 && b > 4
-#             f = shift_right(a, zn)
-#             return shift_left(_pow_multinomial(f, b), zn*b)  ### BUG ???
-#         end
-#      end
-      bit = ~((~UInt(0)) >> 1)
-      while (UInt(bit) & b) == 0
-         bit >>= 1
-      end
-      z = a
-      bit >>= 1
-      while bit != 0
-         z = z*z
-         if (UInt(bit) & b) != 0
-            z *= a
-         end
-         bit >>= 1
-      end
-      return z
-   end
-end
 
 function test_generic_polys(C::Nemo.SingularCoeffs)
    println("test_generic_polys for 'C'...")
    println("C: ", C)
 
-   println("C(0): ", C(0))
-   println("zero(C): ", zero(0))
+   print("zero(C): ")
+   println(zero(C))
+
+   print("C(0): ")
+   println(C(Int(0)))
 
    print("R = C[x].... "); 
 
-   R, x = _PolynomialRing(C, "x")
+   R, x = PolynomialRing(C, "x")
 
    print("R(0): "); 
    println(R(0))
@@ -363,13 +223,17 @@ number test_coeffs(const coeffs C, long v)
  	const ch = Nemo.characteristic(C)
 	println("Char coeffs: ", ch)
 
-        zr = zero(C)
-	println("C(0): ", zr)
-
+	print("C(1): ")
         id = one(C)
-	println("C(1): ", id)
+	println(id)
+
+	print("C(0): ")
+        zr = zero(C)
+	println(zr) ## convert???!
+
         mid = C(-1)
-	println("C(-1): ", mid)
+	print("C(-1): ")
+	println(mid)
 
         @test (!Nemo.isone(zr)) && (Nemo.iszero(zr)) && (!Nemo.ispositive(zr)) && (!Nemo.isnegative(zr))
         @test Nemo.isone(id) && (!Nemo.iszero(id)) && Nemo.ispositive(id)
@@ -413,28 +277,44 @@ number test_coeffs(const coeffs C, long v)
 
 #	@test ((ch == 0) && (i == ii)) || ((ch > 0) && ((i - ii) % ch == 0)) #NOTE: HOW TO TEST IN GF(9)?
 
-        const P = Nemo.npars(C)
+        print("P: "); 
+        const P = Nemo.ngens(C)
+        println(P);
 
         for j = 1:P
-           k = C(0)
+	   print("k: "); 
+           k = C(Int(0))
+	   println(k);
 
            while( Nemo.iszero(k) )
-              k = C(Nemo.libSingular.siRand())
+              print("k: "); 
+	      k = C(Nemo.libSingular.siRand())
+   	      println(k);
            end
 
 #           p = par(i, C)
 #	   muleq!(p, k)
-           z = z + par(i, C) * k 
+
+	   print("k: "); 
+	   k = Nemo.gen(i, C) * k 
+ 	   println(k);
+
+	   print("z: "); 
+           z = z + k
+ 	   println(z);
+
 # addeq!(z, p)
         end
 
         for j = 0:(P+4)
-            println("Singular number output: ", z^j);
+            print("Singular number output: ")
+	    zz = z^j;
+  	    println(zz);
         end
 
-	@test z == C(nn)
+#	@test z == C(nn)
 
-##	Nemo.n_Delete(z, C.ptr)
+	Nemo.libSingular._n_Delete(nn, Nemo.get_raw_ptr(C))
 #	print("Deleted number: ")
 #	println(z);
 end	  
@@ -462,15 +342,15 @@ function test_singular_lowlevel_coeffs()
 ### TODO: separate creation for Coeffs & pass them into jtest_coeffs instead!
 
    ## z = 666 in ZZ
-   jtest_coeffs(ZZ, 666) 
+   jtest_coeffs(ZZ, 2) 
 
    # q = 66 in QQ
-   jtest_coeffs(QQ, 66)
+   jtest_coeffs(QQ, 2)
 
    ## zz = 6 in Zp{11}
-   jtest_coeffs(Z11, 11*3 + 6) 
+   jtest_coeffs(Z11, 11*3 + 2) 
 
-   jtest_coeffs(GF, 3*666 + 2) 
+###   jtest_coeffs(GF, 3*666 + 2) 
 
    test_generic_polys(ZZ)
 
@@ -478,7 +358,7 @@ function test_singular_lowlevel_coeffs()
 
    test_generic_polys(Z11)
 
-   test_generic_polys(GF)
+###   test_generic_polys(GF)
 end
 
 
@@ -541,9 +421,18 @@ function test_singular()
    println()
    test_singular_wrappers()
 
+   println()
+   test_poly_singular() # generic polynomials over SingularZZ() & sometimes over SingularQQ()...
+
+#   println()
+#   test_residue_singular() # no BigInts for Cxx :(
+
 
    println()
-   test_benchmarks_singular()
+   test_ZZ_singular()
+
+   println()
+   test_matrix_singular()
 
    println()
    test_singular_lowlevel_coeffs()
@@ -551,23 +440,19 @@ function test_singular()
    println()
    test_singular_polynomial_rings()
 
-   # generic polynomials over SingularZZ() & sometimes over SingularQQ()...
+   #### Fixed Generics: 
+   
    println()
-   test_poly_singular()
-
-
+   test_series_singular()
 
    println()
    test_fraction_singular()
 
    println()
-   test_residue_singular()
+   test_benchmarks_singular()
 
    println()
-   test_matrix_singular()
-
-   println()
-   test_series_singular()
+   Nemo.libSingular.omPrintInfoStats()
 
 
    println()
@@ -604,3 +489,35 @@ end
 #newTyp = icxx" return nRegister( n_unknown, (cfInitCharProc)$cjlInit); " 
 #newCoeff = icxx" return nInitChar( $newTyp, 0 ); "
 
+
+
+
+#include("flint/fmpz_poly-test.jl")
+#include("flint/fmpz_mod_poly-test.jl")
+#include("flint/nmod_poly-test.jl")
+#include("flint/fmpq_poly-test.jl")
+#include("flint/fq_poly-test.jl")
+#include("flint/fq_nmod_poly-test.jl")
+#include("flint/fmpz_series-test.jl")
+#include("flint/fmpq_series-test.jl")
+#include("flint/fmpz_mod_series-test.jl")
+#include("flint/fq_series-test.jl")
+#include("flint/fq_nmod_series-test.jl")
+#include("flint/nmod_mat-test.jl")
+#include("flint/fmpz_mat-test.jl")
+
+#### TODO: remove those without analogs on Singular side!
+
+#   test_fmpz_poly()
+#   test_fmpz_mod_poly()
+#   test_nmod_poly()
+#   test_fmpq_poly()
+#   test_fq_poly()
+#   test_fq_nmod_poly()
+#   test_fmpz_series()
+#   test_fmpq_series()
+#   test_fmpz_mod_series()
+#   test_fq_series()
+#   test_fq_nmod_series()
+#   test_nmod_mat()
+#   test_fmpz_mat()

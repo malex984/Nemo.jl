@@ -3,7 +3,7 @@ function test_residue_constructors_singular()
  
    const ZZ = Nemo.SingularZZ();
  
-   R = ResidueRing(ZZ, 16453889)
+   R = ResidueRing(ZZ, ZZ(16453889))
 
    @test isa(R, ResidueRing)
 
@@ -44,7 +44,7 @@ function test_residue_manipulation_singular()
  
    const ZZ = Nemo.SingularZZ();
  
-   R = ResidueRing(ZZ, 16453889)
+   R = ResidueRing(ZZ, ZZ(16453889))
 
    @test modulus(R) == 16453889
 
@@ -79,7 +79,7 @@ function test_residue_unary_ops_singular()
  
    const ZZ = Nemo.SingularZZ();
  
-   R = ResidueRing(ZZ, 16453889)
+   R = ResidueRing(ZZ, ZZ(16453889))
 
    @test -R(12345) == R(16441544)
 
@@ -96,7 +96,7 @@ function test_residue_binary_ops_singular()
  
    const ZZ = Nemo.SingularZZ();
  
-   R = ResidueRing(ZZ, 12)
+   R = ResidueRing(ZZ, ZZ(12))
 
    f = R(4)
    g = R(6)
@@ -107,7 +107,7 @@ function test_residue_binary_ops_singular()
 
    @test f*g == R(0)
 
-   Q = ResidueRing(ZZ, 7)
+   Q = ResidueRing(ZZ, ZZ(7))
    S, x = PolynomialRing(Q, "x")
    T = ResidueRing(S, x^3 + 3x + 1)
 
@@ -128,14 +128,14 @@ function test_residue_gcd_singular()
  
    const ZZ = Nemo.SingularZZ();
  
-   R = ResidueRing(ZZ, 12)
+   R = ResidueRing(ZZ, ZZ(12))
 
    f = R(4)
    g = R(6)
 
    @test gcd(f, g) == R(2)
 
-   Q = ResidueRing(ZZ, 7)
+   Q = ResidueRing(ZZ, ZZ(7))
    S, x = PolynomialRing(Q, "x")
    T = ResidueRing(S, x^3 + 3x + 1)
 
@@ -152,7 +152,7 @@ function test_residue_adhoc_binary_singular()
  
    const ZZ = Nemo.SingularZZ();
  
-   R = ResidueRing(ZZ, 7)
+   R = ResidueRing(ZZ, ZZ(7))
 
    a = R(3)
 
@@ -181,7 +181,7 @@ function test_residue_comparison_singular()
  
    const ZZ = Nemo.SingularZZ();
  
-   R = ResidueRing(ZZ, 7)
+   R = ResidueRing(ZZ, ZZ(7))
 
    a = R(3)
    b = a
@@ -213,7 +213,7 @@ function test_residue_adhoc_comparison_singular()
  
    const ZZ = Nemo.SingularZZ();
  
-   R = ResidueRing(ZZ, 7)
+   R = ResidueRing(ZZ, ZZ(7))
 
    a = R(3)
 
@@ -235,7 +235,7 @@ function test_residue_powering_singular()
  
    const ZZ = Nemo.SingularZZ();
  
-   R = ResidueRing(ZZ, 7)
+   R = ResidueRing(ZZ, ZZ(7))
 
    a = R(3)
 
@@ -256,13 +256,13 @@ function test_residue_inversion_singular()
  
    const ZZ = Nemo.SingularZZ();
  
-   R = ResidueRing(ZZ, 49)
+   R = ResidueRing(ZZ, ZZ(49))
 
    a = R(5)
 
    @test inv(a) == 10
 
-   R = ResidueRing(ZZ, 41)
+   R = ResidueRing(ZZ, ZZ(41))
    S, x = PolynomialRing(R, "x")
    T = ResidueRing(S, x^3 + 3x + 1)
 
@@ -278,14 +278,14 @@ function test_residue_exact_division_singular()
  
    const ZZ = Nemo.SingularZZ();
  
-   R = ResidueRing(ZZ, 49)
+   R = ResidueRing(ZZ, ZZ(49))
 
    a = R(5)
    b = R(3)
 
    @test divexact(a, b) == 18
 
-   R = ResidueRing(ZZ, 41)
+   R = ResidueRing(ZZ, ZZ(41))
    S, x = PolynomialRing(R, "x")
    T = ResidueRing(S, x^3 + 3x + 1)
 

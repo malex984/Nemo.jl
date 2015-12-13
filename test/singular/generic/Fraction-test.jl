@@ -10,7 +10,7 @@ function test_fraction_constructors_singular()
 
    @test isa(T(3), FractionElem)
 
-   @test isa(T(fmpz(7)), FractionElem)
+   @test isa(T(ZZ(7)), FractionElem)
 
    @test isa(T(x + 2), FractionElem)
 
@@ -46,8 +46,9 @@ function test_fraction_manipulation_singular()
  
    const ZZ = Nemo.SingularZZ();
 
-   R = FractionField(ZZ)
-   S, x = PolynomialRing(ZZ, "x")
+   R = FractionField(ZZ) # TODO: FIXME: QQ???
+
+   S, x = PolynomialRing(R, "x") #### ovr R not over ZZ? TODO: FIXME: ask!?
 
    @test den((x + 1)//(-x^2 + 1)) == x - 1
 
