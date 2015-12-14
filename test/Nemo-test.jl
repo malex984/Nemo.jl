@@ -17,7 +17,7 @@ function test_all()
 #   Nemo.with_singular() && Nemo.toggle_uq_default_choice()
 #   Nemo.with_singular() && test_singular()
 
-   test_groups(); test_rings(); test_fields(); test_benchmarks()
+##   test_groups(); test_rings(); test_fields(); test_benchmarks()
 
 #   if Nemo.with_singular()
 #      for (c,nn) in Nemo.leftovers
