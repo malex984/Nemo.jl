@@ -1,3 +1,44 @@
+#WARNING: New definition 
+#    randelem(Any, Int64) at /home/malex/.julia/v0.4/Nemo/src/../test/singular/generic/Matrix-test.jl:25
+#is ambiguous with: 
+#    randelem(Nemo.AnticNumberField, Any) at /home/malex/.julia/v0.4/Nemo/src/../test/generic/Matrix-test.jl:11.
+#To fix, define 
+#    randelem(Nemo.AnticNumberField, Int64)
+#before the new definition.
+
+#WARNING: New definition 
+#    randelem(Any, Int64) at /home/malex/.julia/v0.4/Nemo/src/../test/singular/generic/Matrix-test.jl:25
+#is ambiguous with: 
+#    randelem(Nemo.FmpzPolyRing, Any) at /home/malex/.julia/v0.4/Nemo/src/../test/generic/Matrix-test.jl:20.
+#To fix, define 
+#    randelem(Nemo.FmpzPolyRing, Int64)
+#before the new definition.
+
+#WARNING: New definition 
+#    randelem(Any, Int64) at /home/malex/.julia/v0.4/Nemo/src/../test/singular/generic/Matrix-test.jl:25
+#is ambiguous with: 
+#    randelem(Nemo.ResidueRing{Nemo.fmpz}, Any) at /home/malex/.julia/v0.4/Nemo/src/../test/generic/Matrix-test.jl:29.
+#To fix, define 
+#    randelem(Nemo.ResidueRing{Nemo.fmpz}, Int64)
+#before the new definition.
+
+function randelem{CF <: Nemo.SingularCoeffsElems}(R::CF, n :: Int) # ZZ?
+   return R(rand(-n:n))
+end
+
+#### TODO: FIXME: gen for all Singular Coeffs (return 0 if no params, or the first param by default...)
+#### TODO: moreover it seems that in case of params - there *must* be a base_ring != None!!?! 
+
+function randelem(R, n :: Int)
+   s = R(0)
+   x = gen(R) #?
+   for i = 1:3
+      s += randelem(base_ring(R), n)*x^(i-1)
+   end
+   return s
+end
+
+
 #function randpoly(S, d::Int, n::Int)
 #   r = S()
 #   x = gen(S)#?
@@ -17,18 +58,11 @@
 #   return s
 #end
 
-function randelem{CF <: Nemo.SingularCoeffsElems}(R::CF, n :: Int) # ZZ?
-   return R(rand(-n:n))
-end
 
-function randelem(R, n :: Int)
-   s = R(0)
-   x = gen(R)
-   for i = 1:3
-      s += randelem(base_ring(R), n)*x^(i-1)
-   end
-   return s
-end
+
+
+
+
 
 
 function test_matrix_constructors_singular()
