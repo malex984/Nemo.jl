@@ -2,14 +2,14 @@ using Base.Test
 using Cxx
 
 include("generic/Fraction-test.jl")
-#include("generic/Residue-test.jl") # TODO >= unary ops
+include("generic/Residue-test.jl") # TODO >= unary ops
 include("generic/Poly-test.jl")
 include("generic/Matrix-test.jl")
 include("generic/PowerSeries-test.jl")
 include("Benchmark-test.jl")
 
 include("ZZ-test.jl")
-# include("QQ-test.jl") # test_QQ_singular() # TODO: SingularZZ <-> SingularQQ, embedding & maps... 
+include("QQ-test.jl")
 
 function test_singular_wrappers()
    println("Printing Singular resources pathes...")  
@@ -423,31 +423,39 @@ function test_singular()
    println()
    test_singular_wrappers()
 
-   println()
-   test_singular_polynomial_rings()
-
-#   println()
-#   test_singular_lowlevel_coeffs()
-
+## TODO: check if coeffs_BIGINT === n_Z??!
 
    println()
-   test_ZZ_singular()
+   test_QQ_singular() # TODO: FIXME: SingularZZ <-> SingularQQ, embedding & maps... see in flint stuff: FlintInteger vs FlintRational
 
-   println()
-   test_poly_singular() # generic polynomials over SingularZZ() & sometimes over SingularQQ()...
+# NOTE: ATM no BigInts for Cxx.... ?!
+   test_residue_singular() 
 
    println()
    test_matrix_singular()
 
+############################################
+
+   println()
+   test_singular_lowlevel_coeffs()
+
+
+   println()
+   test_singular_polynomial_rings()
+
+   #### TODO: NOTE: check for previously commented out functions in the following:
+
+   println()
+   test_ZZ_singular()
 
    #### TODO: test_QQ_singular() # !?
    #### Fixed Generics: 
    
    println()
-   test_fraction_singular()
+   test_poly_singular() # generic polynomials over SingularZZ() & sometimes over SingularQQ()...
 
-# NOTE: ATM no BigInts for Cxx.... ?!
-#   test_residue_singular() 
+   println()
+   test_fraction_singular()
 
    println()
    test_series_singular()

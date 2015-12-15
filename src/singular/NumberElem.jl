@@ -139,6 +139,29 @@ type NumberF_Elem{CF<:SingularUniqueField} <: SingularUniqueFieldElem
 end
 
 #######################################################
+#######################################################
+
+
+typealias Singular_ZZElem Number_Elem{Singular_ZZ}
+typealias Singular_QQElem NumberF_Elem{Singular_QQ}
+
+function Singular_QQElem(a::Singular_ZZElem)
+   return Singular_QQElem( Int(a) ) # TODO: mapping!!! n_Z -> n_Q!?!!!
+end
+
+function Singular_QQElem(a::Singular_ZZElem, b::Singular_ZZElem)
+   return Singular_QQElem(a) // Singular_QQElem(b)
+end
+
+
+function Singular_QQElem(a::Int, b::Int)
+   return (Singular_QQElem(a) // Singular_QQElem(b))
+end
+
+
+
+
+#######################################################
 # Properties: 
 #######################################################
 
@@ -658,7 +681,7 @@ end
 #
 ###############################################################################
 
-function ^(x::SingularCoeffsElems, y::Int)
+function ^(x::SingularRingElems, y::Int)
     if y < 0;  throw(ErrorException("DivideError(): Negative power: " * string(y) * "!")); end
     if isone(x); return x; end
     if ismone(x); return isodd(y) ? x : -x; end
@@ -668,6 +691,21 @@ function ^(x::SingularCoeffsElems, y::Int)
     if y == 1; return x; end
     p = libSingular.n_Power(get_raw_ptr(x), y, get_raw_ptr(c))
     return c(p)
+end
+
+function ^(x::SingularFieldElems, y::Int)
+    if y < 0;  return parent(x)(1) // (x^(-y)); end
+
+    if isone(x); return x; end
+    if ismone(x); return isodd(y) ? x : -x; end
+    if y > typemax(UInt); throw(ErrorException("DivideError(): Power is too big: " * string(y) * ", sorry!" )); end
+
+    C = parent(x)
+    if y == 0; return one(C); end
+    if y == 1; return x; end
+
+    p = libSingular.n_Power(get_raw_ptr(x), y, get_raw_ptr(C))
+    return C(p)
 end
 
 

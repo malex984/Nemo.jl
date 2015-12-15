@@ -39,6 +39,7 @@ using Cxx
 #   abstract RingElem <: GroupElem
 #   abstract FieldElem <: RingElem
 
+#### T :: Type of base_elem, e.g. ZZ for QQ
 #   abstract PolyElem{T} <: RingElem
 #   abstract ResidueElem{T} <: RingElem
 #   abstract FractionElem{T} <: FieldElem
@@ -46,6 +47,9 @@ using Cxx
 #   abstract IntegerRingElem <: RingElem
 #   abstract FiniteFieldElem <: FieldElem
 #   abstract NumberFieldElem <: FieldElem
+
+
+
 
 abstract SingularRing <: Ring{Singular}
 abstract SingularRingElem <: RingElem
@@ -65,8 +69,11 @@ abstract SingularFieldElem <: FieldElem
 abstract SingularUniqueField <: SingularField
 abstract SingularUniqueFieldElem <: SingularFieldElem
 
-#####  All the basic coeffs on the Julia side: forcefully merge diverging type branches to share the low-level implementation
+#####  All the basic coeffs on the Julia side: 
+#####    forcefully merge diverging type branches to share the low-level implementation
 typealias SingularCoeffs Union{SingularRing,SingularField}
+
+
 typealias SingularCoeffsElems Union{SingularRingElem,SingularFieldElem}
 typealias SingularUniqueCoeffsElems Union{SingularUniqueRingElem,SingularUniqueFieldElem}
 
@@ -218,7 +225,87 @@ function ^{T <: SingularCoeffsElems}(a::PolyElem{T}, b::Int)
    end
 end
 
+#WARNING: New definition #is ambiguous with: 
 
+# promote_rule(Type{Nemo.Mat{#T<:Nemo.RingElem}}, Type{#T<:Nemo.RingElem})
+#      at /home/malex/.julia/v0.4/Nemo/src/generic/Matrix.jl:2357
+# promote_rule(Type{Nemo.Mat{#T<:Nemo.RingElem}}, Type{#S<:Union{Nemo.SingularRingElem, Nemo.SingularFieldElem}})
+#      at /home/malex/.julia/v0.4/Nemo/src/singular/SingularTypes.jl:225.
+#To fix, define before the new definition:
+
+# promote_rule(Type{Nemo.Mat{_<:Union{Nemo.SingularRingElem, Nemo.SingularFieldElem}}}, Type{_<:Union{Nemo.SingularRingElem, Nemo.SingularFieldElem}})
+
+Base.promote_rule{T <: SingularCoeffsElems}(::Type{Nemo.Mat{T}}, ::Type{T}) = Mat{T}
 Base.promote_rule{T <: RingElem, S <: SingularCoeffsElems}(::Type{Mat{T}}, ::Type{S}) = Mat{T}
+
+### TODO: the following will require retesting Fraction Field functionality as currently Singular_QQ and its elems are not FractionField/Elem!!! Q: how to reuse the implementation???
+### FractionField(base::Singular_ZZ) = Singular_QQ 
+
+
+
+call(a::Singular_QQ) = Singular_QQElem(0)
+call(a::Singular_QQ, b::Integer) = Singular_QQElem(b)
+
+call(a::Singular_QQ, b::Int, c::Int) = Singular_QQElem(b, c)
+
+call(a::Singular_QQ, b::Integer, c::Integer) = Singular_QQElem(b, c)
+
+call(a::Singular_QQ, b::Singular_ZZElem, c::Integer) = Singular_QQElem(b, Singular_ZZElem(c))
+call(a::Singular_QQ, b::Integer, c::Singular_ZZElem) = Singular_QQElem(Singular_ZZElem(b), c)
+
+call(::Singular_QQ, b::Singular_ZZElem, c::Singular_ZZElem) = Singular_QQElem(b, c)
+call(::Singular_QQ, b::Singular_QQElem) = b
+
+# Base.call(C::Singular_QQ, a, b) =  Singular_QQElem(a, b)
+call(C::Singular_QQ, a::Singular_ZZElem) = C(a, Singular_ZZElem(1))
+call{T}(C::Singular_QQ, a::FractionElem{T}) = C(num(a), den(a))
+
+convert(::Type{Singular_QQElem}, a::Integer) = Singular_QQElem(a)
+convert(::Type{Singular_QQElem}, a::Singular_ZZElem) = Singular_QQElem(a)
+
+Base.promote_rule{T <: Integer}(::Type{Singular_QQElem}, ::Type{T}) = Singular_QQElem
+Base.promote_rule(::Type{Singular_QQElem}, ::Type{Singular_ZZElem}) = Singular_QQElem
+
+
+call{T<:Integer}(a::Singular_QQ, b::Rational{T}) = Singular_QQElem(num(b), den(b)) 
+
+
+### :(((
+convert{T<:Integer}(C::Type{Rational{T}}, a::Singular_ZZElem) = C(T(Int(a)), T(Int(1)))
+convert{T<:Integer}(C::Type{Rational{T}}, a::Singular_QQElem) = C(T(Int(num(a))), T(Int(den(a))))
+
+# convert(::Type{Rational{T<:Integer}}, ::Nemo.Number_Elem{Nemo.Singular_ZZ})
+
++(a::Singular_QQElem, z::Singular_ZZElem) = a + parent(a)(z)
++(z::Singular_ZZElem, a::Singular_QQElem) = parent(a)(z) + a 
+
+-(a::Singular_QQElem, z::Singular_ZZElem) = a - parent(a)(z)
+-(z::Singular_ZZElem, a::Singular_QQElem) = parent(a)(z) - a
+
+*(a::Singular_QQElem, z::Singular_ZZElem) = a * parent(a)(z)
+*(z::Singular_ZZElem, a::Singular_QQElem) = parent(a)(z) * a
+
+//(a::Singular_QQElem, z::Singular_ZZElem) = a // parent(a)(z)
+//(z::Singular_ZZElem, a::Singular_QQElem) = parent(a)(z) // a
+
+
+//{T<:Integer}(z::Singular_ZZElem, a::T) = Singular_QQElem(z) // a
+//{T<:Integer}(z::T, a::Singular_ZZElem) = z // Singular_QQElem(a)
+
+isless(a::Singular_QQElem, z::Singular_ZZElem) = isless( a, parent(a)(z) )
+isless(z::Singular_ZZElem, a::Singular_QQElem) = isless( parent(a)(z), a )
+
+==(a::Singular_QQElem, z::Singular_ZZElem) = ( a == parent(a)(z) )
+==(z::Singular_ZZElem, a::Singular_QQElem) = ( parent(a)(z) == a )
+
+divexact(a :: Singular_QQElem,  b ::Singular_QQElem) = ( a // b )
+
+divexact(a::Singular_QQElem, z::Singular_ZZElem) = divexact( a, parent(a)(z) )
+divexact(z::Singular_ZZElem, a::Singular_QQElem) = divexact( parent(a)(z), a )
+
+
+mod(a::Singular_QQElem, z::Singular_ZZElem) = mod( a, parent(a)(z) )
+mod(z::Singular_ZZElem, a::Singular_QQElem) = mod( parent(a)(z), a )
+
 
 #end
