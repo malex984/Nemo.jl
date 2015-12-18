@@ -50,6 +50,18 @@ using Cxx
 
 
 
+abstract SingularPolyElem{T} <:  PolyElem{T}
+
+# RING
+abstract SingularResidueElem{T} <: ResidueElem{T}
+
+# FIELD
+abstract SingularNumberFieldElem <: NumberFieldElem
+abstract SingularFiniteFieldElem <: FiniteFieldElem
+
+# Unique: RING & FIELD
+abstract SingularIntegerRingElem <: IntegerRingElem # ZZ
+abstract SingularFractionElem{T} <: FractionElem{T} # QQ, T = ZZ!? 
 
 abstract SingularRing <: Ring{Singular}
 abstract SingularRingElem <: RingElem
@@ -71,14 +83,25 @@ abstract SingularUniqueFieldElem <: SingularFieldElem
 
 #####  All the basic coeffs on the Julia side: 
 #####    forcefully merge diverging type branches to share the low-level implementation
-typealias SingularCoeffs Union{SingularRing,SingularField}
 
 
-typealias SingularCoeffsElems Union{SingularRingElem,SingularFieldElem}
-typealias SingularUniqueCoeffsElems Union{SingularUniqueRingElem,SingularUniqueFieldElem}
+# SingularPolyElem{T}, SingularResidueElem{T}
+# SingularNumberFieldElem, SingularFiniteFieldElem
+# SingularIntegerRingElem, SingularFractionElem{T}
 
-typealias SingularRingElems Union{SingularRingElem,SingularUniqueRingElem}
-typealias SingularFieldElems Union{SingularFieldElem,SingularUniqueFieldElem}
+typealias SingularCoeffs Union{SingularRing, SingularField}
+
+typealias SingularRingElems Union{SingularRingElem, SingularUniqueRingElem, 
+	  SingularIntegerRingElem}
+
+typealias SingularFieldElems Union{SingularFieldElem, SingularUniqueFieldElem, 
+	  SingularNumberFieldElem, SingularFiniteFieldElem, SingularFractionElem }
+
+typealias SingularUniqueCoeffsElems Union{SingularUniqueRingElem, SingularUniqueFieldElem, 
+	  SingularIntegerRingElem, SingularFractionElem}
+
+
+typealias SingularCoeffsElems Union{SingularRingElems,SingularFieldElems}
 
 include("Coeffs.jl")
 include("NumberElem.jl")

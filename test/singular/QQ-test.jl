@@ -18,7 +18,9 @@ function test_QQ_constructors_singular()
 
    const QQ = Nemo.SingularQQ();
 
-   typealias FE FieldElem # !!!!! NOT FractionElem for now! :(
+#   typealias FE FieldElem # !!!!! NOT FractionElem for now! :(
+
+#   typealias FE FractionElem
 
    @test isa(QQ(), FE)
    @test isa(QQ(2), FE)
@@ -299,15 +301,15 @@ function test_QQ_modular_arithmetic_singular()
    b = ZZ(1)//2
 
 
-   print( "mod, (a: $a, b: $b)")
+   println( "mod, (a: $a, b: $b)")
    print(" mod(a,7) ")
    m = mod(a, 7)
-   print(": ", m)
+   println(": ", m)
 
 
    print(" mod(b, ZZ(5)) ")
    mm = mod(b, ZZ(5))
-   print(": ", mm)
+   println(": ", mm)
 
    @test iszero(m)
    @test iszero(mm)
@@ -327,9 +329,9 @@ function test_QQ_gcd_singular()
    a = -ZZ(2)//3
    b = ZZ(1)//2
 
-   print( "gcd(a: $a, b: $b)")
+   print( "\ngcd(a: $a, b: $b)")
    g = gcd(a, b)
-   print(": ", g)
+   println(": ", g)
 
 
 ##   @test g == ZZ(1)//6
