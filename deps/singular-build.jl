@@ -67,9 +67,9 @@ run(`$srcs/autogen.sh`)
 if !on_windows
    cd( mktempdir(tmp) )
    ## requires NTL on host system... TODO: install it as well?
-######   withenv(()->run(`$srcs/configure --prefix=$vdir --disable-static --disable-p-procs-static --enable-p-procs-dynamic --enable-shared --with-gmp=$vdir --with-flint=$vdir --with-ntl=$vdir --without-python --with-readline=no --disable-gfanlib --with-debug --enable-debug --disable-optimizationflags`), "LD_LIBRARY_PATH"=>"$vdir/lib", "LDFLAGS"=>LDFLAGS, "CFLAGS"=>LDFLAGS)
+  withenv(()->run(`$srcs/configure --prefix=$vdir --disable-static --disable-p-procs-static --enable-p-procs-dynamic --enable-shared --with-gmp=$vdir --with-flint=$vdir --with-ntl=$vdir --without-python --with-readline=no --disable-gfanlib --with-debug --enable-debug --disable-optimizationflags`), "LD_LIBRARY_PATH"=>"$vdir/lib", "LDFLAGS"=>LDFLAGS, "CFLAGS"=>LDFLAGS)
 
-   withenv(()->run(`$srcs/configure --prefix=$vdir --disable-static --disable-p-procs-static --enable-p-procs-dynamic --enable-shared --with-gmp=$vdir --with-flint=$vdir --with-ntl=$vdir --without-python --with-readline=no --disable-gfanlib --without-debug --disable-debug --enable-optimizationflags`), "LD_LIBRARY_PATH"=>"$vdir/lib", "LDFLAGS"=>LDFLAGS, "CFLAGS"=>LDFLAGS)
+######   withenv(()->run(`$srcs/configure --prefix=$vdir --disable-static --disable-p-procs-static --enable-p-procs-dynamic --enable-shared --with-gmp=$vdir --with-flint=$vdir --with-ntl=$vdir --without-python --with-readline=no --disable-gfanlib --without-debug --disable-debug --enable-optimizationflags`), "LD_LIBRARY_PATH"=>"$vdir/lib", "LDFLAGS"=>LDFLAGS, "CFLAGS"=>LDFLAGS)
    run(`make -j4`)
    run(`make install`)
    run(`rm -Rf $tmp`)

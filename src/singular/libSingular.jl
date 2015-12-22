@@ -13,6 +13,13 @@ using Cxx
 
 typealias n_coeffType Cxx.CppEnum{:n_coeffType} # pcpp"n_coeffType" # 
 
+typealias __mpz_struct pcpp"__mpz_struct"
+#Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:__mpz_struct},(false,false,false)},(false,false,false)}
+
+typealias mpz_t pcpp"mpz_t"
+#Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:mpz_t},(false,false,false)},(false,false,false)}
+
+
 ## todo: avoid the above!
 function n_Zp(); return(@cxx n_Zp); end # n_coeffType::
 # /**< \F{p < 2^31} */
@@ -54,6 +61,7 @@ function __libSingular_init__()
 
    cxxinclude(joinpath("Singular", "libsingular.h"), isAngled=false)
    cxxinclude(joinpath("omalloc", "omalloc.h"), isAngled=false)
+   cxxinclude(joinpath("gmp.h"), isAngled=false)
    cxxinclude(joinpath("reporter", "reporter.h"), isAngled=false)
    cxxinclude(joinpath("coeffs", "coeffs.h"), isAngled=false)
    cxxinclude(joinpath("polys", "monomials", "ring.h"), isAngled=false)
@@ -62,6 +70,7 @@ function __libSingular_init__()
 cxx"""
     #include "Singular/libsingular.h"
     #include "omalloc/omalloc.h"
+    #include "gmp.h"
     #include "reporter/reporter.h"
     #include "coeffs/coeffs.h"
 
@@ -75,8 +84,8 @@ cxx"""
     static long  _siRand(){ return siRand(); }
     static number _n_Power(number a, int b, const coeffs r)
     { number res; n_Power(a, b, &res, r); return res; }
-    static void _n_Delete(number a,const coeffs r)
-    {n_Delete(&a,r);}
+    static number _n_Delete(number a,const coeffs r)
+    {number t = a; n_Delete(&t,r); return (t);}
 
 
     static void _n_WriteLong(number* n, const coeffs cf)
@@ -96,6 +105,9 @@ cxx"""
 
     static void _n_Write(number* n, const coeffs cf, int d)
     { n_Write(*n, cf, d); }
+
+    static number _n_Neg(number n, const coeffs cf)
+    { number nn = n_Copy(n, cf); nn = n_InpNeg(nn, cf); return nn; }
 
 // static FORCE_INLINE long n_Int(number &n,       const coeffs r)
     static long _n_Int(number *n, const coeffs cf)
@@ -141,7 +153,9 @@ cxx"""
    # unique coeffs:
 
    # Ring:
-   global ptr_ZZ = nInitChar(n_Z(), Ptr{Void}(0)) 
+   global ptr_ZZ = (@cxx coeffs_BIGINT)
+
+# nInitChar(n_Z(), Ptr{Void}(0)) 
    @assert (ptr_ZZ != coeffs(0))
 
    # Fields:
@@ -262,13 +276,23 @@ function n_Init(i::Int, cf :: coeffs)
    return @cxx n_Init(i, cf)
 end
 
+### immutable _
 
 # BigInt ?!
 # number n_InitMPZ(mpz_t n,     const coeffs r) # TODO: BigInt???
 
 function n_InitMPZ(b :: BigInt, cf :: coeffs)
-#   bb = Ref(b)	 
-   return icxx""" return n_InitMPZ((mpz_t)$b, $cf); """ ## TODO!?
+#    println(mpz_t)
+#    println(__mpz_struct)
+
+    bb = __mpz_struct(pointer_from_objref(b))
+
+#    println()
+#    println(bb)
+#    println(typeof(bb))
+
+    return @cxx n_InitMPZ( bb, cf )
+###   return icxx""" return n_InitMPZ((mpz_t)$b, $cf); """ ## TODO!?
 end
 
 # void n_MPZ(mpz_t result, number &n,       const coeffs r)
@@ -277,13 +301,23 @@ function n_MPZ(a :: number_ref, cf :: coeffs)
 # TODO: FIXME: Got bad type information while compiling Cxx.CppNNS{Tuple{:n_MPZ}} (got BigInt for argument 1
 
 #    n :: number = a[]
-    r = Ref(BigInt())
-    icxx""" mpz_t t; n_MPZ(t, $a, $cf); $r = t;"""
+#    r = Ref{Ptr{Void}}(C_NULL)
 
-#    @cxx _n_MPZ(Ptr{Void}(r), &n, cf);
-#    a[] = n;
+     error("Sorry: n_MPZ - not yet ready");
 
-    return r[]
+    b = BigInt()
+    bb = pointer_from_objref(b)
+#    bbb = Ref(__mpz_struct(bb))
+
+    icxx""" mpz_t t; number n = $a; n_MPZ(t, n, $cf); $a = n; ((__mpz_struct *)($bb)) = t; """
+
+    println("bb [", typeof(bb), "] : ", bb)
+
+## unsafe_pointer_to_objref( 
+#     return unsafe_pointer_to_objref( bbb[] )
+#    return reinterpret(BigInt, bbb[] )
+
+    return b # bb[] 
 end
 
 ## static FORCE_INLINE void number2mpz(number n, coeffs c, mpz_t m){ n_MPZ(m, n, c); }
@@ -326,7 +360,7 @@ function n_Delete(n :: number_ref, cf :: coeffs)
 end
 
 function _n_Delete(n :: number, cf :: coeffs)
-   @cxx _n_Delete(n, cf)
+   return (@cxx _n_Delete(n, cf))
 end
 
 
@@ -568,7 +602,11 @@ end
 
 ### TODO: move above
 # number  n_InpNeg(number n, const coeffs r) # to be used only as: n = n_InpNeg(n, cf);
-n_InpNeg(x, cf :: coeffs) = return (x = @cxx n_InpNeg(x, cf))
+
+## normal function : -copy...
+function n_Neg(x :: number, cf :: coeffs) 
+   return @cxx _n_Neg(x, cf)
+end
 
 
 typealias ring Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:ip_sring},(false,false,false)},(false,false,false)}

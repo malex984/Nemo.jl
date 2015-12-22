@@ -3,8 +3,9 @@ function test_residue_constructors_singular()
  
    const ZZ = Nemo.SingularZZ();
  
-   R = ResidueRing(ZZ, ZZ(16453889))
+   R = ResidueRing(ZZ, 16453889)
 
+#   println("\nR: ", R)
    @test isa(R, ResidueRing)
 
    a = R(123)
@@ -25,6 +26,7 @@ function test_residue_constructors_singular()
 
    S, x = PolynomialRing(R, "x")
    T = ResidueRing(S, x^3 + 3x + 1)
+#   println("\nT: ", T)
 
    @test isa(T, ResidueRing)
 
@@ -78,14 +80,50 @@ function test_residue_unary_ops_singular()
    print("Residue.unary_ops / Singular Coeffs...")
  
    const ZZ = Nemo.SingularZZ();
+
+   R = ResidueRing(ZZ, 12)
+   m = modulus(R)
+
+##   println( "R: ", R )
+#   println( "m: ", m, " @@@ ", typeof(m) )
+
+#   println(mod(ZZ(10), m))
+#   println(mod(ZZ(-2), m))
+
+#   println(rem(ZZ(10), m))
+#   println(rem(ZZ(-2), m))
+
+
+   f = R(10)
+   g = R(-2)
+
+#   println( "f: ", f )
+#   println( "g: ", g )
+
+   @test iszero( f - g )
+   @test iszero( f + R(2) )
+
+   @test f == -R(2)
+   @test f == R(-2)
+
+
  
    R = ResidueRing(ZZ, ZZ(16453889))
 
+#   println("-R(12345)   ::: ", -R(12345)  )
+#   println(" R(16441544)::: ", R(16441544))
+   @test iszero( R(16441544) + R(12345) )
+   @test iszero( R(16441544) - (-R(12345)) )
    @test -R(12345) == R(16441544)
 
    S, x = PolynomialRing(R, "x")
    T = ResidueRing(S, x^3 + 3x + 1)
 
+#   println("-T(x^5 + 1):", -T(x^5 + 1))
+#   println("T(x^2+16453880*x+16453885):", T(x^2+16453880*x+16453885)) 
+
+   @test iszero( T(x^2+16453880*x+16453885) +   T(x^5 + 1)  ) 
+   @test iszero( T(x^2+16453880*x+16453885) - (-T(x^5 + 1)) ) 
    @test -T(x^5 + 1) == T(x^2+16453880*x+16453885)
 
    println("PASS")
@@ -101,10 +139,20 @@ function test_residue_binary_ops_singular()
    f = R(4)
    g = R(6)
 
+#   println( "R: ", R )
+#   println( "f: ", f )
+#   println( "g: ", g )
+
+   @test iszero( f + g - R(10) )
+   @test iszero( f - g - R(10) )
+   @test iszero( f * g - R(0)  )
+
+#   println( "f + g: ", f + g )
+#   println( "f - g: ", f - g )
+#   println( "f * g: ", f * g )
+
    @test f + g == R(10)
-
    @test f - g == R(10)
-
    @test f*g == R(0)
 
    Q = ResidueRing(ZZ, ZZ(7))
