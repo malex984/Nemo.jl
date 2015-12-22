@@ -41,6 +41,16 @@ function test_ZZ_constructors_singular()
    g = ZZ()
    @test isa(g, RingElem)
 
+   const bb =  parse(BigInt,"-12345678901234567890")
+
+   c = ZZ(bb)
+#   println("c: ", c)
+   @test isa(c, RingElem)
+
+#   bbb = BigInt(c)
+#   println("bbb: ", bbb)
+#   @test bbb == bb
+
    println("PASS")
 end
 
@@ -120,7 +130,7 @@ function test_ZZ_binary_ops_singular()
 #   @test b|a == 30
 #   @test b$a == 22
 
-   println("PASS")
+   println("PASS?")
 end
 
 function test_ZZ_division_singular()
@@ -268,9 +278,11 @@ function test_ZZ_comparison_singular()
 
    @test isequal(a, ZZ(-12))
 
-   @test cmpabs(a, b) == 1
-
    @test cmp(a, b) == -1
+
+##   println("a: $a, abs: ", abs(a))
+
+   @test cmpabs(a, b) == 1
 
    println("PASS")
 end
@@ -388,6 +400,26 @@ function test_ZZ_string_io_singular()
 end
 
 
+function test_ZZ_modular_arithmetic_singular()
+   print("ZZ.modular_arithmetic / Singular Coeffs...")
+
+   const ZZ = Nemo.SingularZZ()
+
+   @test powmod(ZZ(12), ZZ(110), ZZ(13)) == 1
+
+   @test powmod(ZZ(12), 110, ZZ(13)) == 1
+
+   @test invmod(ZZ(12), ZZ(13)) == 12
+
+#   @test sqrtmod(ZZ(12), ZZ(13)) == 5 ## ??
+
+#   @test crt(ZZ(5), ZZ(13), ZZ(7), ZZ(37), true) == 44 # TODO: FIXME: wrap it?
+#   @test crt(ZZ(5), ZZ(13), 7, 37, false) == 44
+
+   println("PASS?")
+end
+
+
 function test_ZZ_singular()
    test_ZZ_extended_gcd_singular()
 
@@ -410,7 +442,7 @@ function test_ZZ_singular()
    test_ZZ_abstract_types_singular()
    test_ZZ_exact_division_singular()
 #   test_ZZ_bases_singular() #  ### TODO: FIXME: Not yet :(
-#   test_ZZ_modular_arithmetic_singular()  ### TODO: FIXME: Not yet :(
+   test_ZZ_modular_arithmetic_singular()  ### TODO: FIXME: Not yet :(
 
    println("")
 end

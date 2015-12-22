@@ -420,50 +420,55 @@ end
 function test_singular()
    println("Singular unique rings & fields will use context-less implementation, right?  ", Nemo.uq_default_choice)
 
+   println(); gc(); test_ZZ_singular()
+
+   println(); gc(); test_QQ_singular() 
+
+#   println(); gc();                             test_benchmarks_singular()
+
    println()
+   gc()
    test_singular_wrappers()
 
 ## TODO: check if coeffs_BIGINT === n_Z??!
 
-   println()
-   test_QQ_singular() # TODO: FIXME: SingularZZ <-> SingularQQ, embedding & maps... see in flint stuff: FlintInteger vs FlintRational
 
-# NOTE: ATM no BigInts for Cxx.... ?!
+   println()
+   gc()
+   test_singular_lowlevel_coeffs()
+
+   println()
+   gc()
+   test_singular_polynomial_rings()
+
+   println()
+   gc()
+   test_fraction_singular()
+
+   println()
+   gc()
+   test_series_singular()
+
+
+   println()
+   gc()
    test_residue_singular() 
 
+   
    println()
+   gc()
+   test_poly_singular() # generic polynomials over SingularZZ() & sometimes over SingularQQ()...
+
+############################################
+
+   println()
+   gc()
    test_matrix_singular()
 
 ############################################
 
    println()
-   test_singular_lowlevel_coeffs()
-
-
-   println()
-   test_singular_polynomial_rings()
-
-   #### TODO: NOTE: check for previously commented out functions in the following:
-
-   println()
-   test_ZZ_singular()
-
-   #### TODO: test_QQ_singular() # !?
-   #### Fixed Generics: 
-   
-   println()
-   test_poly_singular() # generic polynomials over SingularZZ() & sometimes over SingularQQ()...
-
-   println()
-   test_fraction_singular()
-
-   println()
-   test_series_singular()
-
-   println()
-   test_benchmarks_singular()
-
-   println()
+   gc()
    Nemo.libSingular.omPrintInfoStats()
 
    println()

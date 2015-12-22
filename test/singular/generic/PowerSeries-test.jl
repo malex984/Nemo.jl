@@ -341,11 +341,11 @@ function test_series_adhoc_exact_division_singular()
    d = x + x^3 + O(x^6)
 
 
-  println()
-   print("divexact(a, 7) ");
+#  println()
+#   print("divexact(a, 7) ");
    de = divexact(a, 7)
-   print(" :????: ");
-   println(de);  #### TODO: FIXME: coeffs are invisible :(
+#   print(" :????: ");
+#   println(de);  #### TODO: FIXME: coeffs are invisible :(
    a7 = QQ(1)//7*x+QQ(1)//7*x^3+O(x^31)
 #   println(a7);
 
@@ -353,7 +353,7 @@ function test_series_adhoc_exact_division_singular()
 #   println(isequal(a7-de, a7));
 #   println(isequal(a7, de));
 
-#   @test isequal(de, a7)
+   @test isequal(de, a7)
 
 # ERROR: LoadError: test failed: isequal(divexact(a,7),QQ(1) // 7 * x + QQ(1) // 7 * x ^ 3 + O(x ^ 31))
 # in expression: isequal(divexact(a,7),QQ(1) // 7 * x + QQ(1) // 7 * x ^ 3 + O(x ^ 31))

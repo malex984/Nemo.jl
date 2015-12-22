@@ -1,11 +1,16 @@
 function test_QQ_constructors_singular()
    print("QQ.constructors() / Singular Coeffs...")
 
-
    const ZZ = Nemo.SingularZZ();
 
-   R = FractionField(ZZ) ### NOTE: this is NOT Singular QQ for now!
+   R = FractionField(ZZ)
+
+   println(R)
+   println(typeof(R))
+
+   @test typeof(R) <: Nemo.Field
    @test isa(R, Nemo.Field)
+
    @test isa(R(2), FractionElem)
    @test isa(R(), FractionElem)
    @test isa(R(2, 3), FractionElem)
@@ -14,13 +19,18 @@ function test_QQ_constructors_singular()
    @test isa(R(ZZ(2), ZZ(3)), FractionElem)
    @test isa(R(R(2)), FractionElem)
 
-#   @test isa(R(BigInt(1)//2), FractionElem) ## TODO: My BUG (some missing functionality?) or FractionField's?
+##   @test isa(R(BigInt(1)//2), FractionElem) 
 
    const QQ = Nemo.SingularQQ();
 
+   @test is(R, QQ)
+
 #   typealias FE FieldElem # !!!!! NOT FractionElem for now! :(
 
-#   typealias FE FractionElem
+   typealias FE FractionElem
+
+#   @test QQ <: Nemo.Field
+   @test typeof(QQ) <: Nemo.Field
 
    @test isa(QQ(), FE)
    @test isa(QQ(2), FE)
@@ -105,7 +115,7 @@ function test_QQ_binary_ops_singular()
    const QQ = Nemo.SingularQQ();
 
    a = QQ(-2, 3)
-   b = QQ(ZZ(5), 7) # ZZ(5)//7 ### TODO: FIXME: no automatic conversions yet!
+   b = ZZ(5)//7 
 
    @test a + b == QQ(1, 21)
 
@@ -254,7 +264,6 @@ function test_QQ_exact_division_singular()
    q = divexact(a, b)
 #   print(": ", q)
 
-#   @test q == -2 # TODO: FIXME: WTF????
    @test q == ZZ(-4)//3 # ??
    
    println("PASS")
@@ -312,10 +321,9 @@ function test_QQ_modular_arithmetic_singular()
    println(": ", mm)
 
    @test iszero(m)
+#   @test m == 4 #### TODO: FIXME: !!!! Singular mod == 0 for fields...?
    @test iszero(mm)
-
-#   @test mod(a, 7) == 4 #### TODO: FIXME: !!!! Singular mod == 0 for fields...?
-#   @test mod(b, ZZ(5)) == 3
+#   @test mm == 3
    
    println("PASS????")
 end
@@ -341,10 +349,8 @@ function test_QQ_gcd_singular()
 end
 
 function test_QQ_singular()
-
-   test_QQ_conversions_singular()  ### TODO: FIXME: Impelement...: e.g. via Int(Den) // Int(Num) ??  + mapings ZZ -> QQ
    test_QQ_constructors_singular()
-
+   test_QQ_conversions_singular()
    test_QQ_manipulation_singular()
    test_QQ_unary_ops_singular()
    test_QQ_binary_ops_singular()
@@ -360,12 +366,8 @@ function test_QQ_singular()
 
    test_QQ_modular_arithmetic_singular() # ?
 
-#   test_QQ_rational_reconstruction_singular() # CRT? or?
-
-###   test_QQ_shifting_singular()   # no shifting on Singular side :(
-###   test_QQ_special_functions_singular() # Nothing like that in the basic Singular interface!
-###   test_QQ_rational_enumeration_singular() # ....
-
-
    println("")
 end
+
+###   test_QQ_shifting_singular()   # no shifting on Singular side :(
+

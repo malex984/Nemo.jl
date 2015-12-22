@@ -1,13 +1,13 @@
 typealias number libSingular.number; typealias number_ref libSingular.number_ref; typealias number_ptr libSingular.number_ptr;
 
-## Generic with context! Integers...
+## Generic with context. e.g. generic Integers modulosomething ...
 # TODO: rename -> NumberRingElem
 type NumberElem{CF<:SingularRing} <: SingularRingElem # TODO: rename -> NumberRElem
     ptr :: number
     ctx :: CF
 
     function NumberElem()
-    	error("Type NumberElem{$CF} requires context reference!")
+    	error("Type NumberElem{$CF} requires context reference")
     end
 
     function NumberElem(c::CF, p::number = number(0))
@@ -24,7 +24,7 @@ type NumberElem{CF<:SingularRing} <: SingularRingElem # TODO: rename -> NumberRE
     end
 
     function NumberElem(c::CF, b::BigInt)
-#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
+#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?
         p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); 
 	return NumberElem{CF}(c, p)
     	error("Sorry NumberElem(BigInt) seems to be unsupported ATM :(")
@@ -37,7 +37,7 @@ type NumberFElem{CF<:SingularField} <: SingularFieldElem
     ctx :: CF
 
     function NumberFElem()
-    	error("Type NumberFElem{$CF} requires context reference!")
+    	error("Type NumberFElem{$CF} requires context reference")
     end
 
     function NumberFElem(c::CF, p::number = number(0))
@@ -55,14 +55,14 @@ type NumberFElem{CF<:SingularField} <: SingularFieldElem
     end
 
     function NumberFElem(c::CF, b::BigInt)
-        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
+        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?
         p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); 
 	return NumberFElem{CF}(c, p)
    	error("Sorry NumberFElem(BigInt) seems to be unsupported ATM :(")
     end
 end
 
-# without context... CF is unique!
+# without context... CF is unique, e.g. Singular's ZZ 
 type Number_Elem{CF<:SingularUniqueRing} <: SingularUniqueRingElem  # TODO: rename -> NumberR_Elem?
     ptr :: number
 
@@ -79,7 +79,7 @@ type Number_Elem{CF<:SingularUniqueRing} <: SingularUniqueRingElem  # TODO: rena
     end
 
     function Number_Elem(c::CF, b::BigInt)
-#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
+#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?
         p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); 
 	return Number_Elem{CF}(p)
     	error("Sorry Number_Elem(CF, BigInt) seems to be unsupported ATM :(")
@@ -100,7 +100,7 @@ type Number_Elem{CF<:SingularUniqueRing} <: SingularUniqueRingElem  # TODO: rena
 
 end
 
-# without context... CF is unique!
+# without context... CF is unique: e.g. QQ, RR, CC Rr?
 type NumberF_Elem{CF<:SingularUniqueField} <: SingularUniqueFieldElem
     ptr :: number
 
@@ -126,7 +126,7 @@ type NumberF_Elem{CF<:SingularUniqueField} <: SingularUniqueFieldElem
     end
 
     function NumberF_Elem(c::CF, b::BigInt)
-#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
+#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?
         p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); 
 	return NumberF_Elem{CF}(p)
 
@@ -142,22 +142,74 @@ end
 #######################################################
 
 
-typealias Singular_ZZElem Number_Elem{Singular_ZZ}
-typealias Singular_QQElem NumberF_Elem{Singular_QQ}
+# without context... CF  == Singular_ZZ is unique + its super type is known to Nemo...
+type Singular_ZZElem <: SingularIntegerRingElem
+    ptr :: number
 
-function Singular_QQElem(a::Singular_ZZElem)
-   return Singular_QQElem( Int(a) ) # TODO: mapping!!! n_Z -> n_Q!?!!!
+    function Singular_ZZElem(p::number = number(0))
+        z = new(p); finalizer(z, _SingularRingElem_clear_fn); return z
+    end
+
+    function Singular_ZZElem(x::Int)
+    	c = libSingular.ptr_ZZ;
+    	p = libSingular.n_Init(x, c); return Singular_ZZElem(p);
+    end
+
+    function Singular_ZZElem(b::BigInt)
+#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?
+    	c = libSingular.ptr_ZZ;
+        p = libSingular.n_InitMPZ(b, c); 
+	return Singular_ZZElem(p)
+    end
+
+    function Singular_ZZElem(x::Singular_ZZElem)
+    	c = libSingular.ptr_ZZ;
+	p = libSingular.n_Copy(get_raw_ptr(x), c); 
+        return Singular_ZZElem(p)
+    end
 end
 
-function Singular_QQElem(a::Singular_ZZElem, b::Singular_ZZElem)
-   return Singular_QQElem(a) // Singular_QQElem(b)
+# without context... CF == Singular_QQ is unique + FractionElem Nemo type
+type Singular_QQElem <: SingularFractionElem{Singular_ZZElem}
+    ptr :: number
+
+    function Singular_QQElem(p::number = number(0))
+        z = new(p); finalizer(z, _SingularRingElem_clear_fn); return z
+    end
+
+    function Singular_QQElem(x::Int)
+    	c = libSingular.ptr_QQ;
+    	p = libSingular.n_Init(x, c); return Singular_QQElem(p);
+    end
+
+    function Singular_QQElem(x::Singular_QQElem)
+    	c = libSingular.ptr_QQ;
+        p = libSingular.n_Copy(get_raw_ptr(x), c); 
+        return Singular_QQElem(p)
+    end
+
+    function Singular_QQElem(b::BigInt)
+#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?
+    	c = libSingular.ptr_QQ;
+        p = libSingular.n_InitMPZ(b, c); 
+	return Singular_QQElem(p)
+    end
+
+    function Singular_QQElem(a::Singular_ZZElem)
+        return Singular_QQElem( Int(a) ) # TODO: mapping: n_Z -> n_Q???
+    end
+
+    function Singular_QQElem(a::Singular_ZZElem, b::Singular_ZZElem)
+    	return Singular_QQElem(a) // Singular_QQElem(b)
+    end
+
+    function Singular_QQElem(a::Int, b::Int)
+    	return (Singular_QQElem(a) // Singular_QQElem(b))
+    end
+
 end
 
-
-function Singular_QQElem(a::Int, b::Int)
-   return (Singular_QQElem(a) // Singular_QQElem(b))
-end
-
+################################################################################
 
 
 
@@ -168,7 +220,7 @@ end
 get_raw_ptr(n::SingularCoeffsElems) = n.ptr
 set_raw_ptr!(n::SingularCoeffsElems, p::libSingular.number) = n.ptr = p;
 
-## Concrete: in general there may be no context attached!
+## Concrete: in general there may be no context attached
 parent{CF<:SingularRing}(n::NumberElem{CF}) = n.ctx
 
 function set_raw_ptr!{CF<:SingularRing}(n::NumberElem{CF}, p::libSingular.number, C::CF)
@@ -197,7 +249,16 @@ function set_raw_ptr!{CF<:SingularUniqueField}(n::NumberF_Elem{CF}, p::libSingul
    n.ptr = p
 end
 
+parent(n::Singular_ZZElem) = Singular_ZZ()
+parent(n::Singular_QQElem) = Singular_QQ()
 
+function set_raw_ptr!(n::Singular_ZZElem, p::libSingular.number, ::Singular_ZZ)
+   n.ptr = p
+end
+
+function set_raw_ptr!(n::Singular_QQElem, p::libSingular.number, ::Singular_QQ)
+   n.ptr = p
+end
 
 
 ###############################################################################
@@ -209,43 +270,49 @@ end
 base_ring(a::SingularCoeffs) = Union{}
 base_ring(a::SingularCoeffsElems) = Union{}
 
+base_ring(a::Singular_QQElem) = Singular_ZZElem
+
 # NumberElem{CF<:SingularRing}
 
 # Specials without context:
 elem_type{CF<:SingularUniqueRing}(C::CF) = Number_Elem{CF} # Yeah!
 elem_type{CF<:SingularUniqueField}(C::CF) = NumberF_Elem{CF}
 
-#elem_type(CF::SingularUniqueRing) = Number_Elem{Type{CF}} # Nope :(
-#elem_type(CF::SingularUniqueField) = NumberF_Elem{Type{CF}}
+elem_type(::Singular_ZZ) = Singular_ZZElem
+elem_type(::Singular_QQ) = Singular_QQElem
 
 # Generics
 elem_type{CF<:SingularRing}(C::CF) = NumberElem{CF} # Yeah!
 elem_type{CF<:SingularField}(C::CF) = NumberFElem{CF}
 
-#elem_type(CF::SingularRing) = NumberElem{Type{CF}} # Nope :(
-#elem_type(CF::SingularField) = NumberFElem{Type{CF}}
-
-
-function check_parent{CF<:SingularRing}(a::NumberElem{CF}, b::NumberElem{CF})
-   parent(a) != parent(b) && error("Operations on elements from distinct coeff.ringsare not supported")
-end
-
-function check_parent{CF<:SingularField}(a::NumberFElem{CF}, b::NumberFElem{CF})
-   parent(a) != parent(b) && error("Operations on elements from distinct coeff.fields are not supported")
-end
-
-function check_parent{CF<:SingularUniqueRing}(a::Number_Elem{CF}, b::Number_Elem{CF})
+function check_parent{T <: SingularUniqueCoeffsElems}(a::T, b::T)
    true
 end
 
-function check_parent{CF<:SingularUniqueField}(a::NumberF_Elem{CF}, b::NumberF_Elem{CF})
-   true
+function check_parent(a::SingularCoeffsElems, b::SingularCoeffsElems) 
+   parent(a) != parent(b) && error("Operations on elements with different parents are not supported")
 end
 
-#function check_parent(a::SingularCoeffsElems, b::SingularCoeffsElems) 
-#   parent(a) != parent(b) && error("Operations on elements from distinct fields are not supported")
-#end
 
+
+#WARNING: New definition 
+#    check_parent(#T<:Union{Nemo.SingularIntegerRingElem, Nemo.SingularUniqueFieldElem, Nemo.SingularUniqueRingElem, Nemo.SingularFrac#tionElem}, #T<:Union{Nemo.SingularIntegerRingElem, Nemo.SingularUniqueFieldElem, Nemo.SingularUniqueRingElem, Nemo.SingularFractionEl#em}) at /home/malex/.julia/v0.4/Nemo/src/singular/NumberElem.jl:289.
+#To fix, define 
+#    check_parent(_<:Nemo.SingularFractionElem, _<:Nemo.SingularFractionElem)
+#before the new definition.
+
+#WARNING: New definition 
+#    show_minus_one(Type{Nemo.FractionElem{#T<:Nemo.RingElem}}) at /home/malex/.julia/v0.4/Nemo/src/generic/Fraction.jl:138
+#is ambiguous with: 
+#    show_minus_one(Type{#CF<:Union{Nemo.SingularIntegerRingElem, Nemo.SingularNumberFieldElem, Nemo.SingularFiniteFieldElem, Nemo.Sin#gularFractionElem, Nemo.SingularRingElem, Nemo.SingularFieldElem}}) at /home/malex/.julia/v0.4/Nemo/src/singular/NumberElem.jl:519.
+#To fix, define 
+#    show_minus_one(Type{Nemo.SingularFractionElem{#T<:Nemo.RingElem}})
+#before the new definition.
+
+check_parent(::Singular_QQElem, ::Singular_QQElem) = true
+
+show_minus_one(::Type{Singular_QQElem}) = false
+show_minus_one(::Type{Singular_ZZElem}) = false
 
 ###############################################################################
 #
@@ -253,46 +320,21 @@ end
 #
 ###############################################################################
 
-## TODO: remove this once destructors work properly!
-###leftovers = ObjectIdDict() # dupes_counter = 0
-
 function _SingularRingElem_clear_fn(n::SingularCoeffsElems)
    c = parent(n)
    cf = get_raw_ptr(c)
 
    p = get_raw_ptr(n)
-#   p = &n
 
-   set_raw_ptr!(n, libSingular.number(0))#   n.ptr = number(0)
-
-   if libSingular.nCoeff_has_simple_Alloc(cf) # || ( (Int(p) & 255) != 0 )
+   # ( (Int(p) & 255) != 0 )
+   if libSingular.nCoeff_has_simple_Alloc(cf) || (p == number(0))
       return ;
    end
 
+   p = libSingular._n_Delete(p, cf)
 
-#   n_Delete(Ptr{number}(pointer(n)), cf)
-#   print("\n_SingularRingElem_clear_fn(n)...")
-
-#   ref = number_ref(p)
-   libSingular._n_Delete(p, cf)
+   set_raw_ptr!(n, number(0)) # p?
  
-#   if !haskey(leftovers, c) 
-#       leftovers[c] = Dict([ p => 1 ])
-#   else
-#       nn = leftovers[c]
-#
-#       if !haskey(nn, p)
-#           nn[p] = 1
-#       else ### :(
-#       	   nn[p] = nn[p] + 1;
-#       end
-#   end
-
-###   @cxx _n_Delete(p, cf)
-###    n_Delete(p, cf)
-
-#   println("DONE!")
-#   n.ptr = p ## not necessary?
 end
 
 
@@ -377,6 +419,17 @@ function Base.call{CF<:SingularUniqueRing}(::CF, b::Number_Elem{CF})
 end
 
 
+Base.call(::Singular_ZZ) = Singular_ZZElem()
+Base.call(::Singular_ZZ, b::Int) = Singular_ZZElem(b)
+Base.call(::Singular_ZZ, b::Integer) = Singular_ZZElem(BigInt(b))
+Base.call(::Singular_ZZ, b::libSingular.number) = Singular_ZZElem(b)
+
+function Base.call(::Singular_ZZ, b::Singular_ZZElem) 
+   return b 
+##   return deepcopy(b) # NOTE: fine no need in deepcopy!?? TODO?????
+end
+
+
 
 Base.call{CF<:SingularField}(a::CF) = NumberFElem{CF}(a)
 Base.call{CF<:SingularField}(a::CF, b::Int) = NumberFElem{CF}(a, b)
@@ -395,6 +448,16 @@ Base.call{CF<:SingularUniqueField}(::CF, b::Integer) = NumberF_Elem{CF}(BigInt(b
 Base.call{CF<:SingularUniqueField}(::CF, b::libSingular.number) = NumberF_Elem{CF}(b)
 
 function Base.call{CF<:SingularUniqueField}(::CF, b::NumberF_Elem{CF}) 
+   return b 
+##   return deepcopy(b) # NOTE: fine no need in deepcopy!?? TODO?????
+end
+
+Base.call(::Singular_QQ) = Singular_QQElem()
+Base.call(::Singular_QQ, b::Int) = Singular_QQElem(b)
+Base.call(::Singular_QQ, b::Integer) = Singular_QQElem(BigInt(b))
+Base.call(::Singular_QQ, b::libSingular.number) = Singular_QQElem(b)
+
+function Base.call(::Singular_QQ, b::Singular_QQElem) 
    return b 
 ##   return deepcopy(b) # NOTE: fine no need in deepcopy!?? TODO?????
 end
@@ -511,37 +574,28 @@ canonical_unit(x::SingularCoeffsElems) = isnegative(x) ? mone(parent(x)) : one(p
 function muleq!(x :: SingularCoeffsElems, y :: SingularCoeffsElems)
             check_parent(x, y)
 
-###	    error("Sorry 'muleq!' is to be verified yet :(")
-
             cf = get_raw_ptr(parent(x))
             xx = number_ref(get_raw_ptr(x))
             yy = get_raw_ptr(y)
 
-#	    @cxx (libSingular.$fC)(xx, yy, cf) 
-	    icxx" n_InpMult($xx, $yy, $cf);"
+	    icxx""" number x = $xx; n_InpMult(x, $yy, $cf); $xx = x; """
 
-	    set_raw_ptr!(x, xx[])#            x.ptr = ptr
+	    set_raw_ptr!(x, xx[])
 end
 
 function addeq!(x :: SingularCoeffsElems, y :: SingularCoeffsElems)
             check_parent(x, y)
 
-###	    error("Sorry 'addeq!' is to be verified yet :(")
-
             cf = get_raw_ptr(parent(x))
             xx = number_ref(get_raw_ptr(x))
             yy = get_raw_ptr(y)
 
-#  @cxx (libSingular.$fC)(xx, yy, cf) ### TODO: check me! reference!? ##????
-	    icxx" n_InpAdd($xx, $yy, $cf);"
+	    icxx""" number x = $xx; n_InpAdd(x, $yy, $cf); $xx = x; """
 
-#	    @cxx _n_Delete(xx, cf)
-# @cxx (libSingular.$fC)(xx, yy, cf) ### TODO: check me! reference!? ##????
-
-	    set_raw_ptr!(x, xx[])#            x.ptr = ptr
+	    set_raw_ptr!(x, xx[])
 end
 
-#    c = x * y
+#  c = T();  c = x * y ; M += c || M *= c
 ### mul!(x, x, x) ???
 function mul!(c::SingularCoeffsElems, x::SingularCoeffsElems, y::SingularCoeffsElems)
     check_parent(x, y)
@@ -549,10 +603,18 @@ function mul!(c::SingularCoeffsElems, x::SingularCoeffsElems, y::SingularCoeffsE
 ###    error("Sorry 'mul!' is to be verified yet :(")
 
     C = parent(x)
-    ptr   = @cxx n_Mult(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(C))
+    cf = get_raw_ptr(C)
+
+#    cc = get_raw_ptr(c) 
+    xx = get_raw_ptr(x) 
+    yy = get_raw_ptr(y) 
+
+#    @assert (cc == number(0)) || !( is(c,x) || is(c,y) )
+
+    ptr = libSingular.n_Mult(xx, yy, cf)
     
     #    old   = c.ptrw#    oldcf = get_raw_ptr(parent(c)) 
-    _SingularRingElem_clear_fn(c) ## BAD IDEA?
+##    _SingularRingElem_clear_fn(c) ## BAD IDEA? TODO: possible memory leak or corruption
 
     set_raw_ptr!(c, ptr, C) #    c.ctx = C#    c.ptr = ptr
 
@@ -600,7 +662,7 @@ end
 
 # Metaprogram to define functions +, -, *, gcd, lcm
                                  
-for (fJ, fC) in ((:+, :n_Add), (:-,:n_Sub), (:*, :n_Mult),
+for (fJ, fC) in ((:+, :n_Add), (:-, :n_Sub), (:*, :n_Mult),
                  (:gcd, :n_Gcd), (:lcm, :n_Lcm) )
     @eval begin
         function ($fJ)(x::SingularCoeffsElems, y::SingularCoeffsElems)
@@ -629,7 +691,7 @@ end
 # SingularRingElems
 for (fJ, fC) in ((://, :n_Div), ## ?? /: floating point division?
     (:div, :n_ExactDiv), ##### FIXME / TODO : Euclid domain???
-    (:mod, :n_IntMod))
+    (:_mod, :n_IntMod))
     @eval begin
         function ($fJ)(x::SingularCoeffsElems, y::SingularCoeffsElems)
             iszero(y) && throw(ErrorException("DivideError() in $fJ"))
@@ -642,33 +704,104 @@ for (fJ, fC) in ((://, :n_Div), ## ?? /: floating point division?
     end
 end
 
+function mod(x::SingularCoeffsElems, y::SingularCoeffsElems) 
+    iszero(y) && throw(ErrorException("DivideError() in % (mod)"))
+    check_parent(x, y)
+    m = _mod(x, y)
+    if m >= 0
+       return m
+    end
+    yy = abs(y)
+    m += yy
+    while m < 0
+    	m += yy
+    end
+    return m  
+end
+
+
+mod{T <: Integer}(x::SingularCoeffsElems, i::T) = mod(x,  parent(x)(i)) 
+mod{T <: Integer}(i::T, x::SingularCoeffsElems) = mod(parent(x)(i), x)
+
+
+function mulmod{T <: SingularCoeffsElems}(a::T, b::T, d::T)
+    check_parent(a, b)
+    return mod(a * b, d)
+end
+
+
+function powmod{T <: SingularCoeffsElems}(a::T, b::Int, d::T)
+   check_parent(a, d)
+   if iszero(a)
+      return zero(parent(a))
+   elseif b == 0
+      return one(parent(a))
+   else
+      if b < 0
+         a = invmod(a, d)
+         b = -b
+      end
+      bit = ~((~UInt(0)) >> 1)
+      while (UInt(bit) & b) == 0
+         bit >>= 1
+      end
+      z = a
+      bit >>= 1
+      while bit !=0
+         z = mulmod(z, z, d)
+         if (UInt(bit) & b) != 0
+            z = mulmod(z, a, d)
+         end
+         bit >>= 1
+      end
+      return z
+   end
+end
+
+function powmod{T <: SingularCoeffsElems}(a::T, p::SingularCoeffsElems, m::T)
+    return powmod(a, Int(p), m)
+end
+
+
+function invmod{T <: SingularCoeffsElems}(a::T, d::T)
+    check_parent(a, d)
+    g, i  = gcdinv(a, d)
+    (!isone(g)) && throw(ErrorException("DivideError() in % (invmod)"))
+    return mod(i, d) # mod(inv(a), d) # TODO: better generic implementation???
+end
+
 #    (:%,   :n_IntMod))
-rem(x::SingularRingElems, y::SingularRingElems) = mod(x, y) ### ??? TODO: IntMod vs QuotRem??!
-
-rem(x::SingularRingElem, i::Integer) = rem(x,  parent(x)(i)) 
-rem(i::Integer, x::SingularRingElem) = rem(parent(x)(i), x)
-
-function remQR(x::SingularRingElem, y::SingularRingElem)
+function rem(x::SingularCoeffsElems, y::SingularCoeffsElems) 
+	 # mod(x, y) ### ??? TODO: IntMod vs QuotRem??!
     iszero(y) && throw(ErrorException("DivideError() in % (rem)"))
+    check_parent(x, y)
+    return (x - div(x, y) * y)
+end
+
+rem{T <: Integer}(x::SingularCoeffsElems, i::T) = rem(x,  parent(x)(i)) 
+rem{T <: Integer}(i::T, x::SingularCoeffsElems) = rem(parent(x)(i), x)
+
+function remQR(x::SingularCoeffsElems, y::SingularCoeffsElems)
+    iszero(y) && throw(ErrorException("DivideError() in % (remQR)"))
     check_parent(x, y)
     C = parent(x); cf = get_raw_ptr(C);
 
     q, m = libSingular.n_QuotRem(get_raw_ptr(x), get_raw_ptr(y), cf);
 
-    libSingular._n_Delete(q, cf);
+    q = libSingular._n_Delete(q, cf);
     return C(m)
 end
 
 
-function divQR(x::SingularRingElem, y::SingularRingElem)
-    iszero(y) && throw(ErrorException("DivideError() in % (div)"))
+function divQR(x::SingularCoeffsElems, y::SingularCoeffsElems)
+    iszero(y) && throw(ErrorException("DivideError() in % (divQR)"))
     check_parent(x, y)
 
     C = parent(x); cf = get_raw_ptr(C)
 
     q, m = libSingular.n_QuotRem(get_raw_ptr(x), get_raw_ptr(y), cf);
 
-    libSingular._n_Delete(m, cf);
+    m = libSingular._n_Delete(m, cf);
     return C(q)
 end
 
@@ -715,8 +848,14 @@ end
 #
 ###############################################################################
 
-function -(x::SingularCoeffsElems)
-    return (zero(parent(x)) - x)   ### TODO: FIXME: deepcopy & n_InpNeg!
+function -(x::SingularCoeffsElems) 
+    C = parent(x)
+
+    ptr = libSingular.n_Neg( get_raw_ptr(x),  get_raw_ptr(C) )
+    
+    return C(ptr) 
+
+#    return (zero(parent(x)) - x)   ### TODO: FIXME: deepcopy & n_InpNeg!
 end
 
 function abs(x::SingularCoeffsElems)
@@ -754,7 +893,10 @@ function divrem(x::SingularRingElems, y::SingularRingElems)
 
     check_parent(x, y)
 
-    div(x, y), mod(x, y) ### TODO: @cxx ??? mod (non-negative) vs rem (C semantics)??? s
+    d = div(x, y)
+    r = x - d* y
+
+    d, r  ### TODO: @cxx ??? mod (non-negative) vs rem (C semantics)??? s
 
 #    C = parent(x); cf = get_raw_ptr(C)
 #    q, m = libSingular.n_QuotRem(get_raw_ptr(x), get_raw_ptr(y), cf);
@@ -818,24 +960,14 @@ function gcdinv(a::SingularCoeffsElems, b::SingularCoeffsElems)
         return a < 0 ? (-a, -one(c)) : (a, one(c))
     end
 
-    # ???
-#    a < 0 && throw(ErrorException("DivideError(): a < 0 (gcdinv)"))
-#    b < a && throw(ErrorException("DivideError(): b < a (gcdinv)")) 
+    a < 0 && throw(ErrorException("DivideError(): a < 0 (gcdinv)"))
+    b < a && throw(ErrorException("DivideError(): b < a (gcdinv)")) 
 
     cf = get_raw_ptr(c);
 
     g, s, t = libSingular.n_ExtGcd(get_raw_ptr(a), get_raw_ptr(b), cf);
 
-
-#   g = fmpz()
-#   s = fmpz()
-#   ccall((:fmpz_gcdinv, :libflint), Void,
-#        (Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}, Ptr{fmpz}),
-#        &g, &s, &a, &b)
-#   return g, s
-###   error("Sorry this functionality (gcdinv) is not implemented yet :(")
-
-    libSingular._n_Delete(t, cf)
+    t = libSingular._n_Delete(t, cf)
 
     c(g), c(s)
 end

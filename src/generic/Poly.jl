@@ -307,7 +307,7 @@ function mul_karatsuba{T <: RingElem}(a::Poly{T}, b::Poly{T})
    r = parent(a)(A)
 
    for i = 1:length(z1)
-      addeq!(r.coeffs[i + m], coeff(z1, i - 1))
+      r.coeffs[i + m] += coeff(z1, i - 1)#      addeq!(r.coeffs[i + m], coeff(z1, i - 1))
    end
 
    return r
@@ -406,8 +406,9 @@ function mul_classical{T <: RingElem}(a::Poly{T}, b::Poly{T})
    
    for i = 1:lena - 1
       for j = 2:lenb
-         mul!(t, coeff(a, i - 1), b.coeffs[j])
-         addeq!(d[i + j - 1], t)
+#         mul!(t, coeff(a, i - 1), b.coeffs[j])
+ #        addeq!(d[i + j - 1], t)
+	 d[i + j - 1] += ( coeff(a, i - 1) * b.coeffs[j] )
       end
    end
    
@@ -621,7 +622,7 @@ function mullow{T <: RingElem}(a::PolyElem{T}, b::PolyElem{T}, n::Int)
       n = 0
    end
 
-   t = T()
+##   t = T()
 
    lenz = min(lena + lenb - 1, n)
 
@@ -640,8 +641,9 @@ function mullow{T <: RingElem}(a::PolyElem{T}, b::PolyElem{T}, n::Int)
    for i = 1:lena - 1
       if lenz > i
          for j = 2:min(lenb, lenz - i + 1)
-            mul!(t, coeff(a, i - 1), b.coeffs[j])
-            addeq!(d[i + j - 1], t)
+##            mul!(t, coeff(a, i - 1), b.coeffs[j])
+##            addeq!(d[i + j - 1], t)
+	      d[i + j - 1] += ( coeff(a, i - 1) * b.coeffs[j] )
          end
       end
    end
@@ -1426,11 +1428,13 @@ function monomial_to_newton!{T <: RingElem}(P::Array{T, 1}, roots::Array{T, 1})
    n = length(roots)
    if n > 0
       R = parent(roots[1])
-      t = R()
+#      t = R()
       for i = 1:n - 1
+         d = roots[i]
          for j = n - 1:-1:i
-            mul!(t, P[j + 1], roots[i])
-            addeq!(P[j], t)
+#            mul!(t, P[j + 1], roots[i])
+#            addeq!(P[j], t)
+	     P[j] += (P[j + 1] * d)
          end
       end
    end
@@ -1441,12 +1445,13 @@ function newton_to_monomial!{T <: RingElem}(P::Array{T, 1}, roots::Array{T, 1})
    n = length(roots)
    if n > 0
       R = parent(roots[1])
-      t = R()
+#      t = R()
       for i = n - 1:-1:1
          d = -roots[i]
          for j = i:n - 1
-            mul!(t, P[j + 1], d)
-            addeq!(P[j], t)
+	    P[j] += (d * P[j + 1]) # =: t
+#            mul!(t, P[j + 1], d)
+#            addeq!(P[j], t)
          end
       end
    end

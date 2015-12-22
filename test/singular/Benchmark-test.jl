@@ -3,6 +3,7 @@ function test_benchmark_fateman_singular(CF_F, CF_S)
 
 ########################################################
    println("Benchmark.fateman / Flint...")
+   gc()
 
 
    R, x = PolynomialRing(CF_F, "x")
@@ -35,6 +36,7 @@ function test_benchmark_fateman_singular(CF_F, CF_S)
 ########################################################
 
    println("Benchmark.fateman / Singular Coeffs...")
+   gc()
 
 
    R, x = PolynomialRing(CF_S, "x")
@@ -65,12 +67,14 @@ function test_benchmark_fateman_singular(CF_F, CF_S)
 #   @test length(q) == 41
 # REAL Thing: p = ()^30 !?
 
+   gc()
    println("..........................................PASS")
 end
 
 function test_benchmark_pearce_singular(CF_F, CF_S)
 ########################################################
    println("Benchmark.pearce / Flint...")
+   gc()
  
    R, x = PolynomialRing(CF_F, "x")
    S, y = PolynomialRing(R, "y")
@@ -106,6 +110,7 @@ function test_benchmark_pearce_singular(CF_F, CF_S)
 ########################################################
 
    println("Benchmark.pearce / Singular Coeffs...")
+   gc()
 
    R, x = PolynomialRing(CF_S, "x")
    S, y = PolynomialRing(R, "y")
@@ -141,7 +146,9 @@ function test_benchmark_pearce_singular(CF_F, CF_S)
 
 ### Real thing ^ 16 - tooo long with Singular :( 
 
+   gc()
    println("..........................................PASS")
+
 end
 
 function test_benchmark_resultant_singular()
@@ -198,23 +205,6 @@ end
 
 function test_benchmarks_singular()
 
-
-   CF_F = Nemo.FlintZZ;
-   CF_S = Nemo.SingularZZ();
-
-   println("Testing Rings over Integers: ");
-
-   Nemo.libSingular.omPrintInfoStats()
-   test_benchmark_pearce_singular(CF_F, CF_S)
-
-   println("")
-   Nemo.libSingular.omPrintInfoStats()
-   println("")
-
-   test_benchmark_fateman_singular(CF_F, CF_S)
-   Nemo.libSingular.omPrintInfoStats()
-   println("")
-
    CF_F = Nemo.FlintQQ;
    CF_S = Nemo.SingularQQ();
 
@@ -231,6 +221,22 @@ function test_benchmarks_singular()
    Nemo.libSingular.omPrintInfoStats()
    println("")
 
+
+
+   CF_F = Nemo.FlintZZ;
+   CF_S = Nemo.SingularZZ();
+
+   println("Testing Rings over Integers: ");
+
+   Nemo.libSingular.omPrintInfoStats()
+   test_benchmark_pearce_singular(CF_F, CF_S)
+
+   println("")
+   Nemo.libSingular.omPrintInfoStats()
+   println("")
+
+   test_benchmark_fateman_singular(CF_F, CF_S)
+   Nemo.libSingular.omPrintInfoStats()
    println("")
 
    p = 32003;
@@ -250,9 +256,7 @@ function test_benchmarks_singular()
    Nemo.libSingular.omPrintInfoStats()
    println("")
 
-   println("")
-
-#   test_benchmark_resultant_singular() # ERROR: `start` has no method matching start(::Nemo.CoeffsField) ???
+###   test_benchmark_resultant_singular() # ERROR: `start` has no method matching start(::Nemo.CoeffsField) ???
    println("")
 end
 

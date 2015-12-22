@@ -81,6 +81,8 @@ abstract SingularFieldElem <: FieldElem
 abstract SingularUniqueField <: SingularField
 abstract SingularUniqueFieldElem <: SingularFieldElem
 
+typealias SingularCoeffs Union{SingularRing, SingularField}
+
 #####  All the basic coeffs on the Julia side: 
 #####    forcefully merge diverging type branches to share the low-level implementation
 
@@ -89,19 +91,17 @@ abstract SingularUniqueFieldElem <: SingularFieldElem
 # SingularNumberFieldElem, SingularFiniteFieldElem
 # SingularIntegerRingElem, SingularFractionElem{T}
 
-typealias SingularCoeffs Union{SingularRing, SingularField}
 
-typealias SingularRingElems Union{SingularRingElem, SingularUniqueRingElem, 
-	  SingularIntegerRingElem}
+typealias SingularRingElems Union{SingularRingElem, SingularUniqueRingElem, SingularIntegerRingElem}
 
-typealias SingularFieldElems Union{SingularFieldElem, SingularUniqueFieldElem, 
-	  SingularNumberFieldElem, SingularFiniteFieldElem, SingularFractionElem }
+typealias SingularFieldElems Union{SingularFieldElem, SingularUniqueFieldElem, SingularNumberFieldElem, SingularFiniteFieldElem, SingularFractionElem }
 
-typealias SingularUniqueCoeffsElems Union{SingularUniqueRingElem, SingularUniqueFieldElem, 
-	  SingularIntegerRingElem, SingularFractionElem}
+typealias SingularUniqueCoeffsElems Union{SingularUniqueRingElem, SingularUniqueFieldElem, SingularIntegerRingElem, SingularFractionElem}
 
-
+# *Any* smart wrapper of a Singular number in order to share the wrappers as much as possible :
 typealias SingularCoeffsElems Union{SingularRingElems,SingularFieldElems}
+
+#### Singular_ZZElem, Singular_QQElem 
 
 include("Coeffs.jl")
 include("NumberElem.jl")
@@ -139,7 +139,7 @@ function mullow{T <: SingularCoeffsElems}(a::PolyElem{T}, b::PolyElem{T}, n::Int
 
    lenz = min(lena + lenb - 1, n)
 
-   d = zeros(T, lenz) # no need in intialization... :(
+   d = zeros(T, lenz) # TODO: no real need in this intialization... :(
 
    for i = 1:min(lena, lenz)
       d[i] = coeff(a, i - 1)*coeff(b, 0)
@@ -151,7 +151,7 @@ function mullow{T <: SingularCoeffsElems}(a::PolyElem{T}, b::PolyElem{T}, n::Int
       end
    end
 
-   print("d: "); println(d);
+   println("MULLOW!!!!"); # println(d);
 
 #   t = T(0)
 
@@ -262,8 +262,9 @@ Base.promote_rule{T <: SingularCoeffsElems}(::Type{Nemo.Mat{T}}, ::Type{T}) = Ma
 Base.promote_rule{T <: RingElem, S <: SingularCoeffsElems}(::Type{Mat{T}}, ::Type{S}) = Mat{T}
 
 ### TODO: the following will require retesting Fraction Field functionality as currently Singular_QQ and its elems are not FractionField/Elem!!! Q: how to reuse the implementation???
-### FractionField(base::Singular_ZZ) = Singular_QQ 
 
+
+FractionField(::Singular_ZZ) = Singular_QQ() ## TODO: TEST ME!!!!
 
 
 call(a::Singular_QQ) = Singular_QQElem(0)
@@ -286,18 +287,21 @@ call{T}(C::Singular_QQ, a::FractionElem{T}) = C(num(a), den(a))
 convert(::Type{Singular_QQElem}, a::Integer) = Singular_QQElem(a)
 convert(::Type{Singular_QQElem}, a::Singular_ZZElem) = Singular_QQElem(a)
 
+Base.promote_rule{T <: Integer}(::Type{Singular_ZZElem}, ::Type{T}) = Singular_ZZElem
+
 Base.promote_rule{T <: Integer}(::Type{Singular_QQElem}, ::Type{T}) = Singular_QQElem
 Base.promote_rule(::Type{Singular_QQElem}, ::Type{Singular_ZZElem}) = Singular_QQElem
 
 
-call{T<:Integer}(a::Singular_QQ, b::Rational{T}) = Singular_QQElem(num(b), den(b)) 
 
-
-### :(((
+call{T<:Integer}(::Singular_QQ, b::Rational{T}) = Singular_QQElem(num(b), den(b)) 
 convert{T<:Integer}(C::Type{Rational{T}}, a::Singular_ZZElem) = C(T(Int(a)), T(Int(1)))
 convert{T<:Integer}(C::Type{Rational{T}}, a::Singular_QQElem) = C(T(Int(num(a))), T(Int(den(a))))
 
-# convert(::Type{Rational{T<:Integer}}, ::Nemo.Number_Elem{Nemo.Singular_ZZ})
+##call{T<:Integer}(::Singular_QQ, b::Rational{T}) = Singular_QQElem(num(b), den(b)) 
+
+
+
 
 +(a::Singular_QQElem, z::Singular_ZZElem) = a + parent(a)(z)
 +(z::Singular_ZZElem, a::Singular_QQElem) = parent(a)(z) + a 
@@ -329,6 +333,18 @@ divexact(z::Singular_ZZElem, a::Singular_QQElem) = divexact( parent(a)(z), a )
 
 mod(a::Singular_QQElem, z::Singular_ZZElem) = mod( a, parent(a)(z) )
 mod(z::Singular_ZZElem, a::Singular_QQElem) = mod( parent(a)(z), a )
+
+
+function ResidueRing(R::Singular_ZZ, el::Integer)
+   el == 0 && throw(DivideError())
+   
+   return ResidueRing{Singular_ZZElem}(R(el))
+end
+
+##### TODO: FIXME: 
+## gcd(a::Singular_QQElem, b::Singular_QQElem) = 1?
+## div(a::Singular_QQElem, b::Singular_QQElem) = a // b?
+## mod(a::Singular_QQElem, b::Singular_QQElem) = 0?
 
 
 #end
