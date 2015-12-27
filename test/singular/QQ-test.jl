@@ -5,8 +5,8 @@ function test_QQ_constructors_singular()
 
    R = FractionField(ZZ)
 
-   println(R)
-   println(typeof(R))
+#   println(R)
+#   println(typeof(R))
 
    @test typeof(R) <: Nemo.Field
    @test isa(R, Nemo.Field)
@@ -279,7 +279,6 @@ function test_QQ_adhoc_exact_division_singular()
 
    b = QQ(3)
 
-
    r = ZZ(-2)//9 
 
 #   print( "divexact($a, $b)")
@@ -294,8 +293,9 @@ function test_QQ_adhoc_exact_division_singular()
    @test divexact(a, 3) == r
    @test divexact(a, ZZ(3)) == r
 
-   @test divexact(3, a) == 1 // r # ZZ(-9)//2   
-   @test divexact(ZZ(3), a) == 1 // r # ZZ(-9)//2
+   @test divexact(3, a) == inv(r) # ZZ(-9)//2   
+
+   @test divexact(ZZ(3), a) == inv(r) # ZZ(-9)//2
    
    println("PASS")
 end
@@ -315,17 +315,16 @@ function test_QQ_modular_arithmetic_singular()
    m = mod(a, 7)
    println(": ", m)
 
-
    print(" mod(b, ZZ(5)) ")
    mm = mod(b, ZZ(5))
    println(": ", mm)
 
-   @test iszero(m)
-#   @test m == 4 #### TODO: FIXME: !!!! Singular mod == 0 for fields...?
-   @test iszero(mm)
-#   @test mm == 3
+#   @test iszero(m)
+   @test m == QQ(mod(Rational{Int}(Int(num(a)), Int(den(a))), 7))  #### TODO: FIXME: Flint QQ: 4???
+#   @test iszero(mm)
+   @test mm == QQ(mod(Rational{Int}(Int(num(b)), Int(den(b))), 5)) ## Flint QQ: 3???
    
-   println("PASS????")
+   println("PASS????") # Note: Not compatible with Flint QQ but with Rational{Int}...
 end
 
 function test_QQ_gcd_singular()
@@ -337,15 +336,14 @@ function test_QQ_gcd_singular()
    a = -ZZ(2)//3
    b = ZZ(1)//2
 
-   print( "\ngcd(a: $a, b: $b)")
+#   print( "\ngcd(a: $a, b: $b)")
    g = gcd(a, b)
-   println(": ", g)
+#   println(": ", g)
 
 
-##   @test g == ZZ(1)//6
-     @test g == 1 # ??
+   @test g == ZZ(1)//6
    
-   println("PASS???")
+   println("PASS")
 end
 
 function test_QQ_singular()

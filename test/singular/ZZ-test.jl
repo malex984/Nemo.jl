@@ -26,8 +26,8 @@ function test_ZZ_constructors_singular()
 #   b = ZZ(12.0)
 #   @test isa(b, RingElem)
 
-#   c = ZZ("-1234567876545678376545678900000000000000000000000000")
-#   @test isa(c, RingElem)
+   c = ZZ("-1234567876545678376545678900000000000000000000000000")
+   @test isa(c, RingElem)
 
    d = ZZ(a)
    @test isa(d, RingElem)

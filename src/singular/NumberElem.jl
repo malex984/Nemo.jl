@@ -13,22 +13,6 @@ type NumberElem{CF<:SingularRing} <: SingularRingElem # TODO: rename -> NumberRE
     function NumberElem(c::CF, p::number = number(0))
         z = new(p, c); finalizer(z, _SingularRingElem_clear_fn); return z
     end
-
-    function NumberElem(c::CF, x::Int = 0)
-    	p = libSingular.n_Init(x, get_raw_ptr(c)); return NumberElem{CF}(c, p);
-    end
-
-    function NumberElem(x::NumberElem{CF})
-        c = parent(x); p = libSingular.n_Copy(get_raw_ptr(x), get_raw_ptr(c)); 
-        return NumberElem{CF}(c, p)
-    end
-
-    function NumberElem(c::CF, b::BigInt)
-#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?
-        p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); 
-	return NumberElem{CF}(c, p)
-    	error("Sorry NumberElem(BigInt) seems to be unsupported ATM :(")
-    end
 end
 
 # with context...
@@ -465,6 +449,18 @@ end
 #
 ###############################################################################
 
+
+    NumberElem{CF <: SingularRing}(c::CF, x::Int = 0) = NumberElem{CF}(c, libSingular.n_Init(   x, get_raw_ptr(c)))
+    NumberElem{CF <: SingularRing}(c::CF, b::BigInt ) = NumberElem{CF}(c, libSingular.n_InitMPZ(b, get_raw_ptr(c)))
+
+    function NumberElem{CF <: SingularRing}(x::NumberElem{CF})
+        c = parent(x); p = libSingular.n_Copy(get_raw_ptr(x), get_raw_ptr(c)); 
+        return NumberElem{CF}(c, p)
+    end
+
+
+
+
 ### Base.call(a::SingularCoeffs, b::AbstractString) = parseNumber(a, b)
 
 NumberElem{CF<:SingularRing}(c::CF, s::AbstractString) = parseNumber(c, s)
@@ -628,18 +624,35 @@ end
 ### number n_GetDenom(number& n, const coeffs r)
 ### number n_GetNumerator(number& n, const coeffs r)
 
-for (fJ, fC) in ((:num, :_n_GetNumerator), (:den, :_n_GetDenom))
+for (fJ, fC) in ((:_num, :_n_GetNumerator), (:_den, :_n_GetDenom))
     @eval begin
         function ($fJ)(x :: SingularCoeffsElems)
 	    C = parent(x); r = number_ref(get_raw_ptr(x))
             ret = (libSingular.$fC)(r, get_raw_ptr(C))  # TODO: FIXME:!!!! ???
             set_raw_ptr!(x, r[])
-	    return C(ret) # TODO: result in the same Coeffs?? 
+	    return ret # TODO: result in the same Coeffs?? 
 
 #	    error("Sorry: $fJ has to be verified yet!")
         end
     end
 end
+
+
+function den(a::Singular_QQElem)
+    p = _den(a);
+    pp = libSingular.nApplyMapFunc( libSingular.setMap_QQ2ZZ, p, libSingular.ptr_QQ, libSingular.ptr_ZZ )
+    libSingular._n_Delete(p, libSingular.ptr_QQ)
+    return Singular_ZZElem(pp);
+end
+
+function num(a::Singular_QQElem)
+    p = _num(a);    
+    pp = libSingular.nApplyMapFunc( libSingular.setMap_QQ2ZZ, p, libSingular.ptr_QQ, libSingular.ptr_ZZ )
+    libSingular._n_Delete(p, libSingular.ptr_QQ)
+    return Singular_ZZElem(pp);
+end
+
+
 
 # , (:normalise, :n_Normalize)
 function normalize(x :: SingularCoeffsElems) #

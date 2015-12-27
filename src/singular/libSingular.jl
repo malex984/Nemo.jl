@@ -11,6 +11,8 @@ using Cxx
 # 2 into separate low-level functions
 # 3 back to types <: mathematical using those functions!
 
+typealias nMapFunc Cxx.CppFptr{Cxx.CppFunc{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Tuple{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}}}}
+
 typealias n_coeffType Cxx.CppEnum{:n_coeffType} # pcpp"n_coeffType" # 
 
 typealias __mpz_struct pcpp"__mpz_struct"
@@ -32,7 +34,6 @@ function n_R(); return(@cxx n_R); end #
 
 #function n_GF(); return(@cxx n_GF); end # 
 # , /**< \GF{p^n < 2^16} */
-
 
 #n_algExt() = (@cxx n_algExt) # ,  /**< used for all algebraic extensions, i.e.,the top-most extension in an extension tower is algebraic */
 #n_transExt() = (@cxx n_transExt) #,  /**< used for all transcendental extensions, i.e.,the top-most extension in an extension tower is transcendental */
@@ -133,7 +134,7 @@ cxx"""
        fflush(stdout);
     }
 
-    coeffs nGFInitChar(int ch, int d, const char* s)
+    static coeffs nGFInitChar(int ch, int d, const char* s)
     {
 	GFInfo par;
 	par.GFChar=ch;
@@ -141,6 +142,8 @@ cxx"""
 	par.GFPar_name=s;
 	return nInitChar(n_GF, (void*)&par);
     }
+
+    static number nApplyMapFunc(nMapFunc f, number n, const coeffs src, const coeffs dst){ return f(n, src, dst); }
 
 """
 
@@ -156,20 +159,28 @@ cxx"""
    global ptr_ZZ = (@cxx coeffs_BIGINT)
 
 # nInitChar(n_Z(), Ptr{Void}(0)) 
-   @assert (ptr_ZZ != coeffs(0))
+   @assert (ptr_ZZ != C_NULL)
 
    # Fields:
-   global ptr_QQ = nInitChar(n_Q(), Ptr{Void}(0))
-   @assert (ptr_QQ != coeffs(0))
+   global ptr_QQ = nInitChar(n_Q(), C_NULL) # Ptr{Void}(0))
+   @assert (ptr_QQ != C_NULL) 
 
-   global ptr_RR = nInitChar(n_long_R(), Ptr{Void}(0))
-   @assert (ptr_RR != coeffs(0))
+   global ptr_RR = nInitChar(n_long_R(), C_NULL) # Ptr{Void}(0))
+   @assert (ptr_RR != C_NULL)
 
-   global ptr_CC = nInitChar(n_long_C(), Ptr{Void}(0))
-   @assert (ptr_CC != coeffs(0))
+   global ptr_CC = nInitChar(n_long_C(), C_NULL) # Ptr{Void}(0))
+   @assert (ptr_CC != C_NULL)
 
-   global ptr_Rr = nInitChar(n_R(), Ptr{Void}(0)) # Numeric?!
-   @assert (ptr_Rr != coeffs(0))
+   global ptr_Rr = nInitChar(n_R(), C_NULL) # Ptr{Void}(0)) # Numeric?!
+   @assert (ptr_Rr != C_NULL) # coeffs(0))
+
+
+   global setMap_QQ2ZZ = n_SetMap(ptr_QQ, ptr_ZZ)
+   @assert (setMap_QQ2ZZ != C_NULL)
+
+   global setMap_ZZ2QQ = n_SetMap(ptr_ZZ, ptr_QQ)
+   @assert (setMap_ZZ2QQ != C_NULL)
+
 end
 
 function siInit(p)
@@ -226,11 +237,14 @@ typealias coeffs Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,f
 # cpcpp"coeffs" 
 # Ptr{Void}
 
-global ptr_ZZ = coeffs(0)
-global ptr_QQ = coeffs(0)
-global ptr_RR = coeffs(0)
-global ptr_CC = coeffs(0)
-global ptr_Rr = coeffs(0)
+global ptr_ZZ = C_NULL # coeffs(0)
+global ptr_QQ = C_NULL
+global ptr_RR = C_NULL
+global ptr_CC = C_NULL
+global ptr_Rr = C_NULL
+global setMap_QQ2ZZ = C_NULL
+global setMap_ZZ2QQ = C_NULL
+
 
 typealias const_coeffs coeffs # pcpp"const coeffs"
 # NOTE: no need in coeffs_ptr, right?
@@ -297,23 +311,14 @@ end
 
 # void n_MPZ(mpz_t result, number &n,       const coeffs r)
 function n_MPZ(a :: number_ref, cf :: coeffs)
-##    r = BigInt(); icxx""" n_MPZ($r, $a, $cf); """
-# TODO: FIXME: Got bad type information while compiling Cxx.CppNNS{Tuple{:n_MPZ}} (got BigInt for argument 1
-
-#    n :: number = a[]
-#    r = Ref{Ptr{Void}}(C_NULL)
 
     b = BigInt()
     bb = pointer_from_objref(b)
 
-# mpz_t t; ((__mpz_struct *)($bb)) = t; 
-    icxx""" number n = $a; n_MPZ((__mpz_struct *)$bb, n, $cf); $a = n; """
+#  number n = $a; $a = n; 
+    icxx""" n_MPZ((__mpz_struct *)$bb, $a, $cf); """
 
-    println("bb [", typeof(bb), "] : ", bb)
-
-## unsafe_pointer_to_objref( 
-#     return unsafe_pointer_to_objref( bbb[] )
-#    return reinterpret(BigInt, bbb[] )
+###    println("bb [", typeof(bb), "] : ", bb)
 
     return b # bb[] 
 #     error("Sorry: n_MPZ - not yet ready");
@@ -454,21 +459,17 @@ end
 
 
 # number n_GetNumerator(number& n, const coeffs r)
-# number n_GetDenom(number& n, const coeffs r)
-
 function _n_GetNumerator(x :: number_ref, cf :: coeffs)
     return icxx""" return n_GetNumerator($x, $cf); """
-#	    xx :: number = x[];
-#            ret :: number = @cxx ($f)(&xx, cf);
-#	    x[] = xx;
-#	    ret
 end
 
+# number n_GetDenom(number& n, const coeffs r)
 function _n_GetDenom(x :: number_ref, cf :: coeffs)
     return icxx""" return n_GetDenom($x, $cf); """
 end
 
 
+#### The following are not used ATM
 # void   n_WriteShort(number& n,  const coeffs r)
 # void   n_WriteLong(number& n,  const coeffs r)
 #for (f) in ((:n_WriteLong), (:n_WriteShort))
@@ -584,6 +585,12 @@ end
 # number n_ChineseRemainderSym(number *a, number *b, int rl, BOOLEAN sym,CFArray &inv_cache,const coeffs r)
 
 ## nMapFunc n_SetMap(const coeffs src, const coeffs dst)
+n_SetMap(src :: coeffs, dst :: coeffs) = @cxx n_SetMap(src, dst)
+
+###    static number nApplyMapFunc(nMapFunc f, number n, const coeffs src, const coeffs dst){ return f(n, src, dst); }
+nApplyMapFunc(f :: nMapFunc, n :: number, src :: coeffs, dst :: coeffs) = @cxx nApplyMapFunc(f, n, src, dst)
+
+
 ## number n_Random(siRandProc p, number p1, number p2, const coeffs cf)
 
 ### void n_WriteFd(number a, FILE *f, const coeffs r)

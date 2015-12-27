@@ -299,8 +299,8 @@ Base.promote_rule(::Type{Singular_QQElem}, ::Type{Singular_ZZElem}) = Singular_Q
 
 
 call{T<:Integer}(::Singular_QQ, b::Rational{T}) = Singular_QQElem(num(b), den(b)) 
-convert{T<:Integer}(C::Type{Rational{T}}, a::Singular_ZZElem) = C(T(Int(a)), T(Int(1)))
-convert{T<:Integer}(C::Type{Rational{T}}, a::Singular_QQElem) = C(T(Int(num(a))), T(Int(den(a))))
+convert{T<:Integer}(C::Type{Rational{T}}, a::Singular_ZZElem) = C(T(a), T(1))
+convert{T<:Integer}(C::Type{Rational{T}}, a::Singular_QQElem) = C(T(num(a)), T(den(a)))
 
 ##call{T<:Integer}(::Singular_QQ, b::Rational{T}) = Singular_QQElem(num(b), den(b)) 
 
@@ -329,14 +329,12 @@ isless(z::Singular_ZZElem, a::Singular_QQElem) = isless( parent(a)(z), a )
 ==(a::Singular_QQElem, z::Singular_ZZElem) = ( a == parent(a)(z) )
 ==(z::Singular_ZZElem, a::Singular_QQElem) = ( parent(a)(z) == a )
 
-divexact(a :: Singular_QQElem,  b ::Singular_QQElem) = ( a // b )
+divexact(a :: Singular_QQElem, b :: Singular_QQElem) = ( a // b )
 
-divexact(a::Singular_QQElem, z::Singular_ZZElem) = divexact( a, parent(a)(z) )
-divexact(z::Singular_ZZElem, a::Singular_QQElem) = divexact( parent(a)(z), a )
+divexact(a :: Singular_QQElem, z :: Singular_ZZElem) = divexact( a, parent(a)(z) )
+divexact(z :: Singular_ZZElem, a :: Singular_QQElem) = divexact( parent(a)(z), a )
 
 
-mod(a::Singular_QQElem, z::Singular_ZZElem) = mod( a, parent(a)(z) )
-mod(z::Singular_ZZElem, a::Singular_QQElem) = mod( parent(a)(z), a )
 
 
 function ResidueRing(R::Singular_ZZ, el::Integer)
@@ -348,9 +346,19 @@ end
 ##### TODO: FIXME: common den -> ZZ & add that den.!
 ## add den & num : QQ -> ZZ! mappings!?
 
-## gcd(a::Singular_QQElem, b::Singular_QQElem) = 1?
-## div(a::Singular_QQElem, b::Singular_QQElem) = a // b?
-## mod(a::Singular_QQElem, b::Singular_QQElem) = 0?
+mod(a::Singular_QQElem, z::Integer) = mod(a, Singular_ZZElem(z))
+div(a::Singular_QQElem, b::Singular_QQElem) = error("Error: no 'div' for Singular Rationals")
 
+
+function gcd(a::Singular_QQElem, b::Singular_QQElem)
+    aa = den(a)
+    bb = den(b)
+    return Singular_QQElem(gcd(bb* num(a), aa*num(b)), aa * bb)
+end
+
+function mod(a::Singular_QQElem, z::Singular_ZZElem)
+    aa = den(a)
+    return Singular_QQElem(mod(num(a), aa*z), aa)
+end
 
 #end
