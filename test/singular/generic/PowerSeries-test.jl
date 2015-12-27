@@ -360,14 +360,13 @@ function test_series_adhoc_exact_division_singular()
 
 
 
-   print("divexact(d, 9) ");
+#   print("divexact(d, 9) ");
    de = divexact(d, 9) 
-   print(" :????: ");
-   println(de);
+#   print(" :????: ");
+#   println(de);
 
 #   println(QQ(1)//9*x+QQ(1)//9*x^3+O(x^6) - de);
-#   @test 
-#     println( isequal(de, QQ(1)//9*x+QQ(1)//9*x^3+O(x^6)) )
+   @test isequal( de, QQ(1)//9*x+QQ(1)//9*x^3+O(x^6) ) 
 
 
 #   print("divexact((t + 1)*a, t + 1) ");

@@ -285,34 +285,30 @@ elem_type(::Singular_QQ) = Singular_QQElem
 elem_type{CF<:SingularRing}(C::CF) = NumberElem{CF} # Yeah!
 elem_type{CF<:SingularField}(C::CF) = NumberFElem{CF}
 
-function check_parent{T <: SingularUniqueCoeffsElems}(a::T, b::T)
-   true
+
+##
+
+
+
+
+show_minus_one(::Type{Singular_ZZElem}) = false
+show_minus_one(::Type{Singular_QQElem}) = false
+
+show_minus_one{T <: RingElem}(::Type{SingularFractionElem{T}}) = false
+
+check_parent(::Singular_QQElem, ::Singular_QQElem) = true
+
+check_parent{T <: SingularUniqueCoeffsElems}(a::T, b::T) = true
+
+function check_parent(a::SingularFractionElem, b::SingularFractionElem)
+   parent(a) != parent(b) && error("Operations on elements with different parents are not supported")
 end
+
 
 function check_parent(a::SingularCoeffsElems, b::SingularCoeffsElems) 
    parent(a) != parent(b) && error("Operations on elements with different parents are not supported")
 end
 
-
-
-#WARNING: New definition 
-#    check_parent(#T<:Union{Nemo.SingularIntegerRingElem, Nemo.SingularUniqueFieldElem, Nemo.SingularUniqueRingElem, Nemo.SingularFrac#tionElem}, #T<:Union{Nemo.SingularIntegerRingElem, Nemo.SingularUniqueFieldElem, Nemo.SingularUniqueRingElem, Nemo.SingularFractionEl#em}) at /home/malex/.julia/v0.4/Nemo/src/singular/NumberElem.jl:289.
-#To fix, define 
-#    check_parent(_<:Nemo.SingularFractionElem, _<:Nemo.SingularFractionElem)
-#before the new definition.
-
-#WARNING: New definition 
-#    show_minus_one(Type{Nemo.FractionElem{#T<:Nemo.RingElem}}) at /home/malex/.julia/v0.4/Nemo/src/generic/Fraction.jl:138
-#is ambiguous with: 
-#    show_minus_one(Type{#CF<:Union{Nemo.SingularIntegerRingElem, Nemo.SingularNumberFieldElem, Nemo.SingularFiniteFieldElem, Nemo.Sin#gularFractionElem, Nemo.SingularRingElem, Nemo.SingularFieldElem}}) at /home/malex/.julia/v0.4/Nemo/src/singular/NumberElem.jl:519.
-#To fix, define 
-#    show_minus_one(Type{Nemo.SingularFractionElem{#T<:Nemo.RingElem}})
-#before the new definition.
-
-check_parent(::Singular_QQElem, ::Singular_QQElem) = true
-
-show_minus_one(::Type{Singular_QQElem}) = false
-show_minus_one(::Type{Singular_ZZElem}) = false
 
 ###############################################################################
 #

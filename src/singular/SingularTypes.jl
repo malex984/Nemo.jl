@@ -41,13 +41,17 @@ using Cxx
 
 #### T :: Type of base_elem, e.g. ZZ for QQ
 #   abstract PolyElem{T} <: RingElem
-#   abstract ResidueElem{T} <: RingElem
+
+#   abstract ResidueElem{T} <: RingElem # Zp?
+
 #   abstract FractionElem{T} <: FieldElem
 
 #   abstract IntegerRingElem <: RingElem
-#   abstract FiniteFieldElem <: FieldElem
-#   abstract NumberFieldElem <: FieldElem
 
+#   abstract NumberFieldElem <: FieldElem # Alg Ext!
+
+
+#   abstract FiniteFieldElem <: FieldElem
 
 
 abstract SingularPolyElem{T} <:  PolyElem{T}
@@ -341,7 +345,9 @@ function ResidueRing(R::Singular_ZZ, el::Integer)
    return ResidueRing{Singular_ZZElem}(R(el))
 end
 
-##### TODO: FIXME: 
+##### TODO: FIXME: common den -> ZZ & add that den.!
+## add den & num : QQ -> ZZ! mappings!?
+
 ## gcd(a::Singular_QQElem, b::Singular_QQElem) = 1?
 ## div(a::Singular_QQElem, b::Singular_QQElem) = a // b?
 ## mod(a::Singular_QQElem, b::Singular_QQElem) = 0?

@@ -139,9 +139,23 @@ characteristic(c::SingularCoeffs) = libSingular.n_GetChar( get_raw_ptr(c) )
 
 ngens(c::SingularCoeffs) = libSingular.n_NumberOfParameters( get_raw_ptr(c) )
 
-function gen(i::Int, c::SingularCoeffs) 
+function geni(i::Int, c::SingularCoeffs) 
     ((i >= 1) && (i <= ngens(c))) && return c(libSingular.n_Param(i, get_raw_ptr(c)))
     error("Wrong parameter index")
+end 
+
+
+function gen(c::SingularCoeffs) 
+    const n = ngens(c)
+    @assert (n >= 0)
+    (n == 0) && return one(c)
+    g = geni(1, c)
+    if n > 1 
+        for i in 2:n 
+	    g += geni(i, c)
+	end
+    end
+    return g
 end 
 
 
@@ -266,6 +280,7 @@ SingularRr() = ( uq_default_choice ? Singular_Rr() : CoeffsField(libSingular.n_R
 # non-unique => NumberFElem
 SingularFp(p::Int) = CoeffsField(libSingular.n_Zp(), Ptr{Void}(p));
 
+# Residue Ring (== Fp)... 
 SingularZp(p::Int) = Coeffs(libSingular.n_Zp(), Ptr{Void}(p));
 
 function SingularGF(ch::Int, d::Int, s::AbstractString) 

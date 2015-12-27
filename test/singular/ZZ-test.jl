@@ -47,9 +47,9 @@ function test_ZZ_constructors_singular()
 #   println("c: ", c)
    @test isa(c, RingElem)
 
-#   bbb = BigInt(c)
+   bbb = BigInt(c)
 #   println("bbb: ", bbb)
-#   @test bbb == bb
+   @test bbb == bb
 
    println("PASS")
 end
