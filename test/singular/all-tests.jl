@@ -418,20 +418,21 @@ end
 
 
 function test_singular()
+
    println("Singular unique rings & fields will use context-less implementation, right?  ", Nemo.uq_default_choice)
+
+
+   println(); gc(); test_singular_wrappers()
+
+   println(); gc(); test_matrix_singular()
+
+############################################
 
    println(); gc(); test_ZZ_singular()
 
    println(); gc(); test_QQ_singular() 
 
 #   println(); gc();                             test_benchmarks_singular()
-
-   println()
-   gc()
-   test_singular_wrappers()
-
-## TODO: check if coeffs_BIGINT === n_Z??!
-
 
    println()
    gc()
@@ -461,11 +462,7 @@ function test_singular()
 
 ############################################
 
-   println()
-   gc()
-   test_matrix_singular()
-
-############################################
+## NOTE: coeffs_BIGINT !== n_Z ... ?
 
    println()
    gc()

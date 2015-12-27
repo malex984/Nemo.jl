@@ -303,13 +303,11 @@ function n_MPZ(a :: number_ref, cf :: coeffs)
 #    n :: number = a[]
 #    r = Ref{Ptr{Void}}(C_NULL)
 
-     error("Sorry: n_MPZ - not yet ready");
-
     b = BigInt()
     bb = pointer_from_objref(b)
-#    bbb = Ref(__mpz_struct(bb))
 
-    icxx""" mpz_t t; number n = $a; n_MPZ(t, n, $cf); $a = n; ((__mpz_struct *)($bb)) = t; """
+# mpz_t t; ((__mpz_struct *)($bb)) = t; 
+    icxx""" number n = $a; n_MPZ((__mpz_struct *)$bb, n, $cf); $a = n; """
 
     println("bb [", typeof(bb), "] : ", bb)
 
@@ -318,6 +316,9 @@ function n_MPZ(a :: number_ref, cf :: coeffs)
 #    return reinterpret(BigInt, bbb[] )
 
     return b # bb[] 
+#     error("Sorry: n_MPZ - not yet ready");
+
+
 end
 
 ## static FORCE_INLINE void number2mpz(number n, coeffs c, mpz_t m){ n_MPZ(m, n, c); }
