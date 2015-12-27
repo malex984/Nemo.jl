@@ -418,55 +418,35 @@ end
 
 
 function test_singular()
-
    println("Singular unique rings & fields will use context-less implementation, right?  ", Nemo.uq_default_choice)
-
 
    println(); gc(); test_singular_wrappers()
 
-   println(); gc(); test_matrix_singular()
-
-############################################
+   println(); gc(); test_singular_lowlevel_coeffs()
 
    println(); gc(); test_ZZ_singular()
 
    println(); gc(); test_QQ_singular() 
 
-#   println(); gc();                             test_benchmarks_singular()
+   println(); gc(); test_fraction_singular()
 
-   println()
-   gc()
-   test_singular_lowlevel_coeffs()
+   println(); gc(); test_series_singular()
 
-   println()
-   gc()
-   test_singular_polynomial_rings()
+   println(); gc(); test_residue_singular() 
 
-   println()
-   gc()
-   test_fraction_singular()
-
-   println()
-   gc()
-   test_series_singular()
-
-
-   println()
-   gc()
-   test_residue_singular() 
-
-   
-   println()
-   gc()
-   test_poly_singular() # generic polynomials over SingularZZ() & sometimes over SingularQQ()...
+   println(); gc(); test_poly_singular()
 
 ############################################
-
 ## NOTE: coeffs_BIGINT !== n_Z ... ?
 
-   println()
-   gc()
-   Nemo.libSingular.omPrintInfoStats()
+   println(); gc(); test_matrix_singular()
+
+   println();  gc(); test_singular_polynomial_rings()
+
+
+   println(); gc(); test_benchmarks_singular()
+
+   println(); gc(); Nemo.libSingular.omPrintInfoStats()
 
    println()
 end

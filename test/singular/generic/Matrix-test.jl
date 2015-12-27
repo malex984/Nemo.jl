@@ -236,35 +236,35 @@ function test_matrix_adhoc_exact_division_singular()
    R, t = PolynomialRing(QQ, "t")
    S = MatrixSpace(R, 3, 3)
 
-   println(S)
+#   println(S)
 
    A = S([t + 1 t R(1); t^2 t t; R(-2) t + 2 t^2 + t + 1])
-   println("A: \n", A)
+#   println("A: \n", A)
 
-   println("5A/5: \n", divexact(5*A, 5))	
+#   println("5A/5: \n", divexact(5*A, 5))	
    @test divexact(5*A, 5) == A
 
-   println("A*(1+t)/(1+t): \n", divexact((1 + t)*A, 1 + t))
+#   println("A*(1+t)/(1+t): \n", divexact((1 + t)*A, 1 + t))
    @test divexact((1 + t)*A, 1 + t) == A
 
-   print("12A/(12): ")
+#   print("12A/(12): ")
    a = divexact(12*A, (12))
-   println("  :::  ")
-   println(a)
-   @test a == A
-
-   print("12A/R(12): ")
-   a = divexact(12*A, R(12))
-   println("  :::  ")
-   println(a)
-   @test a == A
-
-
-#   print("12A/ZZ(12): ")
-#   a = divexact(12*A, ZZ(12)) ## TODO: FIXME: ZZ & QQ do not work here :(
 #   println("  :::  ")
 #   println(a)
-#   @test a == A
+   @test a == A
+
+#   print("12A/R(12): ")
+   a = divexact(12*A, R(12))
+#   println("  :::  ")
+#   println(a)
+   @test a == A
+
+
+
+
+#   print("12A/ZZ|QQ(12): ")
+#   a = divexact(12*A, ZZ(12)) ## TODO: FIXME: ZZ & QQ do not work here :(
+#   a = divexact(12*A, QQ(12)) ## TODO: FIXME: ZZ & QQ do not work here :(
 
    println("PASS?")
 end
