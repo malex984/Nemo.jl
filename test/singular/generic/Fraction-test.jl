@@ -46,13 +46,59 @@ function test_fraction_manipulation_singular()
  
    const ZZ = Nemo.SingularZZ();
 
-   R = FractionField(ZZ) # TODO: FIXME: QQ???
+   R = FractionField(ZZ) 
+
+#   println("\nR: ", R, " @ ", typeof(R))
 
    S, x = PolynomialRing(R, "x") #### ovr R not over ZZ? TODO: FIXME: ask!?
 
-   @test den((x + 1)//(-x^2 + 1)) == x - 1
+#   println("S: ", S, " @ ", typeof(S))
 
-   @test num((x + 1)//(-x^2 + 1)) == -1
+   u = (x + 1)
+   v = (-x^2 + 1)
+#   println("Tu: ", typeof(u), ", Tv: ", typeof(v))
+#   println("u: ", u, ", v: ", v)
+
+#   println("Cu: ", content(u))
+#   println("Cv: ", content(v))
+
+#   print("gcd(u, v): ")
+   g = gcd(u, v)
+#   println(g)
+
+#   print("divexact(u, g): ")
+   uu = divexact(u, g)
+#   println(uu)
+
+#   print("divexact(v, g): ")
+   vv = divexact(v, g)
+#   println(vv)
+
+
+#   print("a = u // v")
+   a = u // v
+#   print(" ::: ")
+#   println(a)
+#   println("num(a): ", num(a))
+#   println("den(a): ", den(a))
+
+#   println("den(a) - ((x - 1)): ", den(a) - (x - 1))
+#   println("num(a) - ((-1)): ", num(a) - (- 1))
+
+
+#   print("a' = (...) // (...)")
+   a = (x + 1)//(-x^2 + 1)
+#   print(" ::: ")
+#   println(a)
+#   println("num(a): ", num(a))
+#   println("den(a): ", den(a))
+
+#   println("den(a) - ((x - 1)): ", den(a) - (x - 1))
+#   println("num(a) - ((-1)): ", num(a) - (- 1))
+
+
+   @test den(a) == (x - 1)
+   @test num(a) == -1
 
    @test iszero(zero(R))
 

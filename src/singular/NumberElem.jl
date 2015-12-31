@@ -3,16 +3,41 @@ typealias number libSingular.number; typealias number_ref libSingular.number_ref
 ## Generic with context. e.g. generic Integers modulosomething ...
 # TODO: rename -> NumberRingElem
 type NumberElem{CF<:SingularRing} <: SingularRingElem # TODO: rename -> NumberRElem
-    ptr :: number
+    ptr :: libSingular.number
     ctx :: CF
 
     function NumberElem()
     	error("Type NumberElem{$CF} requires context reference")
     end
 
-    function NumberElem(c::CF, p::number = number(0))
+    function NumberElem(c :: CF)
+        z = new(number(0), c); finalizer(z, _SingularRingElem_clear_fn); return z
+    end
+
+    function NumberElem(c :: CF, p :: libSingular.number)
         z = new(p, c); finalizer(z, _SingularRingElem_clear_fn); return z
     end
+    
+    function NumberElem(c :: CF, x::Int)
+        p :: libSingular.number = libSingular.n_Init(x, get_raw_ptr(c))
+    	return NumberElem{CF}(c, p)
+    end
+
+function NumberElem(c::CF, b::BigInt) 
+    p :: libSingular.number = libSingular.n_InitMPZ(b, get_raw_ptr(c))
+    return NumberElem{CF}(c, p)
+end
+
+function NumberElem(x::NumberElem{CF})
+    c = parent(x); p :: libSingular.number = libSingular.n_Copy(get_raw_ptr(x), get_raw_ptr(c)); 
+    return NumberElem{CF}(c, p)
+end
+
+	#{CF<:SingularRing}
+    NumberElem(c::CF, z::Integer) = NumberElem{CF}(c, BigInt(z))
+    NumberElem(c::CF, s::AbstractString) = parseNumber(c, s)
+
+
 end
 
 # with context...
@@ -24,11 +49,15 @@ type NumberFElem{CF<:SingularField} <: SingularFieldElem
     	error("Type NumberFElem{$CF} requires context reference")
     end
 
-    function NumberFElem(c::CF, p::number = number(0))
+    function NumberFElem(c::CF)
+        z = new(number(0), c); finalizer(z, _SingularRingElem_clear_fn); return z
+    end
+
+    function NumberFElem(c::CF, p::number)
         z = new(p, c); finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
-    function NumberFElem(c::CF, x::Int = 0)
+    function NumberFElem(c::CF, x::Int)
     	p = libSingular.n_Init(x, get_raw_ptr(c)); 
 	return NumberFElem{CF}(c, p);
     end
@@ -50,15 +79,23 @@ end
 type Number_Elem{CF<:SingularUniqueRing} <: SingularUniqueRingElem  # TODO: rename -> NumberR_Elem?
     ptr :: number
 
-    function Number_Elem(p::number = number(0))
+    function Number_Elem()
+        z = new(number(0)); finalizer(z, _SingularRingElem_clear_fn); return z
+    end
+
+    function Number_Elem(::CF)
+    	return Number_Elem{CF}()
+    end
+
+    function Number_Elem(p::number)
         z = new(p); finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
-    function Number_Elem(::CF, p::number = number(0))
+    function Number_Elem(::CF, p::number)
     	return Number_Elem{CF}(p);
     end
 
-    function Number_Elem(c::CF, x::Int = 0)
+    function Number_Elem(c::CF, x::Int)
     	p = libSingular.n_Init(x, get_raw_ptr(c)); return Number_Elem{CF}(p);
     end
 
@@ -69,7 +106,7 @@ type Number_Elem{CF<:SingularUniqueRing} <: SingularUniqueRingElem  # TODO: rena
     	error("Sorry Number_Elem(CF, BigInt) seems to be unsupported ATM :(")
     end
 
-    function Number_Elem(x::Int = 0)
+    function Number_Elem(x::Int)
 	return Number_Elem{CF}(CF(), x)
     end
 
@@ -88,19 +125,28 @@ end
 type NumberF_Elem{CF<:SingularUniqueField} <: SingularUniqueFieldElem
     ptr :: number
 
-    function NumberF_Elem(p::number = number(0))
+    function NumberF_Elem()
+        z = new(number(0)); finalizer(z, _SingularRingElem_clear_fn); return z
+    end
+
+    function NumberF_Elem(p::number)
         z = new(p); finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
-    function NumberF_Elem(::CF, p::number = number(0))
+
+    function NumberF_Elem(::CF)
+    	return NumberF_Elem{CF}();
+    end
+
+    function NumberF_Elem(::CF, p::number)
     	return NumberF_Elem{CF}(p);
     end
 
-    function NumberF_Elem(c::CF, x::Int = 0)
+    function NumberF_Elem(c::CF, x::Int)
     	p = libSingular.n_Init(x, get_raw_ptr(c)); return NumberF_Elem{CF}(p);
     end
 
-    function NumberF_Elem(x::Int = 0)
+    function NumberF_Elem(x::Int)
     	p = libSingular.n_Init(x, get_raw_ptr(CF())); return NumberF_Elem{CF}(p);
     end
 
@@ -130,7 +176,11 @@ end
 type Singular_ZZElem <: SingularIntegerRingElem
     ptr :: number
 
-    function Singular_ZZElem(p::number = number(0))
+    function Singular_ZZElem()
+        z = new(number(0)); finalizer(z, _SingularRingElem_clear_fn); return z
+    end
+
+    function Singular_ZZElem(p::number)
         z = new(p); finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
@@ -157,7 +207,11 @@ end
 type Singular_QQElem <: SingularFractionElem{Singular_ZZElem}
     ptr :: number
 
-    function Singular_QQElem(p::number = number(0))
+    function Singular_QQElem()
+        z = new(number(0)); finalizer(z, _SingularRingElem_clear_fn); return z
+    end
+
+    function Singular_QQElem(p::number)
         z = new(p); finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
@@ -450,21 +504,7 @@ end
 ###############################################################################
 
 
-    NumberElem{CF <: SingularRing}(c::CF, x::Int = 0) = NumberElem{CF}(c, libSingular.n_Init(   x, get_raw_ptr(c)))
-    NumberElem{CF <: SingularRing}(c::CF, b::BigInt ) = NumberElem{CF}(c, libSingular.n_InitMPZ(b, get_raw_ptr(c)))
-
-    function NumberElem{CF <: SingularRing}(x::NumberElem{CF})
-        c = parent(x); p = libSingular.n_Copy(get_raw_ptr(x), get_raw_ptr(c)); 
-        return NumberElem{CF}(c, p)
-    end
-
-
-
-
 ### Base.call(a::SingularCoeffs, b::AbstractString) = parseNumber(a, b)
-
-NumberElem{CF<:SingularRing}(c::CF, s::AbstractString) = parseNumber(c, s)
-#NumberElem{CF<:SingularRing}(c::CF, z::Integer) = c(BigInt(z))
 
 Number_Elem{CF<:SingularUniqueRing}(c::CF, s::AbstractString) = parseNumber(c, s)
 #Number_Elem{CF<:SingularUniqueRing}(c::CF, z::Integer) = c(BigInt(z))
@@ -550,70 +590,6 @@ canonical_unit(x::SingularCoeffsElems) = isnegative(x) ? mone(parent(x)) : one(p
 ## 
 
 
-
-###############################################################################
-#
-#   Unsafe functions  for performance
-#
-###############################################################################
-
-### void n_InpMult(number &a, number b, const coeffs r)
-### void n_InpAdd(number &a, number b, const coeffs r)
-
-
-##### TODO: FIX/VERIFY !!!!!!!!!!!!!!!!!!!!!! #####
-
-function muleq!(x :: SingularCoeffsElems, y :: SingularCoeffsElems)
-            check_parent(x, y)
-
-            cf = get_raw_ptr(parent(x))
-            xx = number_ref(get_raw_ptr(x))
-            yy = get_raw_ptr(y)
-
-	    icxx""" number x = $xx; n_InpMult(x, $yy, $cf); $xx = x; """
-
-	    set_raw_ptr!(x, xx[])
-end
-
-function addeq!(x :: SingularCoeffsElems, y :: SingularCoeffsElems)
-            check_parent(x, y)
-
-            cf = get_raw_ptr(parent(x))
-            xx = number_ref(get_raw_ptr(x))
-            yy = get_raw_ptr(y)
-
-	    icxx""" number x = $xx; n_InpAdd(x, $yy, $cf); $xx = x; """
-
-	    set_raw_ptr!(x, xx[])
-end
-
-#  c = T();  c = x * y ; M += c || M *= c
-### mul!(x, x, x) ???
-function mul!(c::SingularCoeffsElems, x::SingularCoeffsElems, y::SingularCoeffsElems)
-    check_parent(x, y)
-    
-###    error("Sorry 'mul!' is to be verified yet :(")
-
-    C = parent(x)
-    cf = get_raw_ptr(C)
-
-#    cc = get_raw_ptr(c) 
-    xx = get_raw_ptr(x) 
-    yy = get_raw_ptr(y) 
-
-#    @assert (cc == number(0)) || !( is(c,x) || is(c,y) )
-
-    ptr = libSingular.n_Mult(xx, yy, cf)
-    
-    #    old   = c.ptrw#    oldcf = get_raw_ptr(parent(c)) 
-##    _SingularRingElem_clear_fn(c) ## BAD IDEA? TODO: possible memory leak or corruption
-
-    set_raw_ptr!(c, ptr, C) #    c.ctx = C#    c.ptr = ptr
-
-##    @cxx n_Delete(&old, oldcf)
-##    muleq!(c, y)
-end
-
 ###############################################################################
 #
 #   ? DEN ? NUM ? NORM ?
@@ -637,6 +613,9 @@ for (fJ, fC) in ((:_num, :_n_GetNumerator), (:_den, :_n_GetDenom))
     end
 end
 
+
+den(a::Singular_ZZElem) = one(parent(a))
+num(a::Singular_ZZElem) = a # NOTE: TODO: not a deep copy, right?!
 
 function den(a::Singular_QQElem)
     p = _den(a);
@@ -1075,8 +1054,11 @@ end
 #
 ###############################################################################
 
-function parseNumber(c::SingularCoeffs, s::AbstractString)
-   error("Sorry this functionality (parseNumber) is not implemented yet :(")
+function parseNumber(c::SingularCoeffs, s::AbstractString) # TODO: FIXME: wrap properly!
+    return c(parse(BigInt,s))   
+
+    error("Sorry this functionality (parseNumber) is not implemented yet :(")
+
 #    s = bytestring(s)
 #    sgn = s[1] == '-' ? -1 : 1
 #    i = 1 + (sgn == -1)
@@ -1118,3 +1100,68 @@ end
 #### julia-debug: codegen.cpp:3005: llvm::Value* emit_assignment(llvm::Value*, jl_value_t*, jl_value_t*, bool, bool, jl_codectx_t*): 
 #### Assert on `rval->getType() == jl_pvalue_llvmt || rval->getType() == NoopType' failed.
 #end
+
+
+
+###############################################################################
+#
+#   Unsafe functions  for performance
+#
+###############################################################################
+
+### void n_InpMult(number &a, number b, const coeffs r)
+### void n_InpAdd(number &a, number b, const coeffs r)
+
+##### TODO: FIX/VERIFY !!!!!!!!!!!!!!!!!!!!!! #####
+
+#### Internal!!!
+function muleq!(x :: SingularCoeffsElems, y :: SingularCoeffsElems)
+#	if is(x, y) # IN-PLACE: x := x^2 
+    @assert parent(x) == parent(y)#        check_parent(x, y)
+
+    cf = get_raw_ptr(parent(x)); yy = get_raw_ptr(y)
+
+    xx = number_ref(get_raw_ptr(x))
+    icxx""" n_InpMult($xx, $yy, $cf); """
+    set_raw_ptr!(x, xx[]);
+end
+
+function addeq!(x :: SingularCoeffsElems, y :: SingularCoeffsElems)
+#	if is(x, y) # IN-PLACE: x = 2 * x
+    @assert parent(x) == parent(y)#        check_parent(x, y)
+
+    cf = get_raw_ptr(parent(x)); yy = get_raw_ptr(y)
+
+    xx = number_ref(get_raw_ptr(x))
+    icxx""" n_InpAdd($xx, $yy, $cf); """
+    set_raw_ptr!(x, xx[]);
+end
+
+# c = T(); c = x * y ; M += c   
+# NOTE: usually in a loop => on the next cycle c is initialized => free its data!
+function mul!(c::SingularCoeffsElems, x::SingularCoeffsElems, y::SingularCoeffsElems)
+    if is(c,x) 
+        return muleq!(c, y)
+    end
+    if is(c,y) 
+        return muleq!(c, x) # NOTE: Commutative multiplication!???
+    end
+
+    @assert !(is(c,x) || is(c,y))
+    @assert parent(x) == parent(y)#    check_parent(x, y)
+    
+    C = parent(x); cf = get_raw_ptr(C);
+
+    xx = get_raw_ptr(x); yy = get_raw_ptr(y);
+
+    ptr = libSingular.n_Mult(xx, yy, cf);
+
+    cc = get_raw_ptr(c);
+
+    if cc != number(0)
+        libSingular._n_Delete(cc, get_raw_ptr(parent(c)));
+    end
+    
+    set_raw_ptr!(c, ptr, C)
+end
+

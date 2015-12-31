@@ -430,21 +430,20 @@ function test_singular()
 
    println(); gc(); test_fraction_singular()
 
-   println(); gc(); test_series_singular()
-
    println(); gc(); test_residue_singular() 
 
+   println(); gc(); test_series_singular()
+
    println(); gc(); test_poly_singular()
+
+   println(); gc(); test_matrix_singular()
+
+   println(); gc(); test_benchmarks_singular()
 
 ############################################
 ## NOTE: coeffs_BIGINT !== n_Z ... ?
 
-   println(); gc(); test_matrix_singular()
-
    println();  gc(); test_singular_polynomial_rings()
-
-
-   println(); gc(); test_benchmarks_singular()
 
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
 
