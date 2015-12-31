@@ -37,7 +37,7 @@ function //{T <: RingElem}(x::T, y::T)
    g = gcd(x, y)
    z = Fraction{T}(divexact(x, g), divexact(y, g))
    try
-      z.parent = FractionDict[R]
+      z.parent = FractionDict[R] ### TODO: FIXME: R???!
    catch
       z.parent = FractionField(parent(x))
    end

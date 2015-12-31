@@ -7,8 +7,9 @@
 # export SingularField, SingularFieldElem, Coeffs, NumberElem, \
 # SingularQQ, SingularZZ
 # export elem_type, base_ring, check_parent, show
-# export characteristic 
-export mullow
+# export characteristic
+export mullow, den, num
+export mul!, addeq!
 
 using Cxx
 
