@@ -422,6 +422,12 @@ function test_singular()
 
    println(); gc(); test_singular_wrappers()
 
+   println(); gc(); test_poly_singular()
+
+   println(); gc(); test_matrix_singular() # ??
+
+   println(); gc(); test_benchmarks_singular() # S.f.QQ :(
+
    println(); gc(); test_singular_lowlevel_coeffs()
 
    println(); gc(); test_ZZ_singular()
@@ -434,16 +440,7 @@ function test_singular()
 
    println(); gc(); test_series_singular()
 
-   println(); gc(); test_poly_singular()
-
-   println(); gc(); test_matrix_singular()
-
-   println(); gc(); test_benchmarks_singular()
-
-############################################
-## NOTE: coeffs_BIGINT !== n_Z ... ?
-
-   println();  gc(); test_singular_polynomial_rings()
+   println(); gc(); test_singular_polynomial_rings()
 
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
 
