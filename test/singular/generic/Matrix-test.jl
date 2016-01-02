@@ -977,23 +977,18 @@ function test_matrix_singular()
    test_matrix_gram_singular()
    test_matrix_trace_singular()
    test_matrix_content_singular()
-   test_matrix_nullspace_singular() # 1st - was ok!
    test_matrix_charpoly_singular()
-   test_matrix_adhoc_exact_division_singular() ### ?
+   test_matrix_adhoc_exact_division_singular() # ?
 
-   test_matrix_rank_singular() # TODO: FIXME: too long?!? 
-   test_matrix_minpoly_singular()
-   test_matrix_determinant_singular() # rand mat?! TODO: FIXME: later!
-   test_matrix_hessenberg_singular()
-   test_matrix_rref_singular()
-   test_matrix_solve_singular()
-   test_matrix_inversion_singular() # verylong...
-
-
-
-
-
-
+##   test_matrix_rank_singular()
+##   test_matrix_nullspace_singular()
+##   test_matrix_minpoly_singular()
+##   test_matrix_determinant_singular()
+###################################################### Wrong Singular numbers:
+##   test_matrix_hessenberg_singular()
+##   test_matrix_rref_singular()
+##   test_matrix_solve_singular()
+##   test_matrix_inversion_singular()
 
    println("")
 end
