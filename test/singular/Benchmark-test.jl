@@ -205,24 +205,6 @@ end
 
 function test_benchmarks_singular()
 
-   CF_F = Nemo.FlintQQ;
-   CF_S = Nemo.SingularQQ();
-
-   println("Testing Rings over Rationals: ");
-
-   Nemo.libSingular.omPrintInfoStats()
-   test_benchmark_pearce_singular(CF_F, CF_S)
-
-   println("")
-   Nemo.libSingular.omPrintInfoStats()
-   println("")
-
-   test_benchmark_fateman_singular(CF_F, CF_S)
-   Nemo.libSingular.omPrintInfoStats()
-   println("")
-
-
-
    CF_F = Nemo.FlintZZ;
    CF_S = Nemo.SingularZZ();
 
@@ -255,6 +237,26 @@ function test_benchmarks_singular()
    test_benchmark_fateman_singular(CF_F, CF_S)
    Nemo.libSingular.omPrintInfoStats()
    println("")
+
+
+
+
+   CF_F = Nemo.FlintQQ;
+   CF_S = Nemo.SingularQQ();
+
+   println("Testing Rings over Rationals: ");
+
+   Nemo.libSingular.omPrintInfoStats()
+   test_benchmark_pearce_singular(CF_F, CF_S)
+
+   println("")
+   Nemo.libSingular.omPrintInfoStats()
+   println("")
+
+   test_benchmark_fateman_singular(CF_F, CF_S)
+   Nemo.libSingular.omPrintInfoStats()
+   println("")
+
 
 ###   test_benchmark_resultant_singular() # ERROR: `start` has no method matching start(::Nemo.CoeffsField) ???
    println("")
