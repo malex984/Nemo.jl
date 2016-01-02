@@ -191,6 +191,24 @@ function test_poly_truncation_singular()
 
    # TODO: FIXME: mullow: mul!, addeq! UndefRefError: access to undefined reference
 #   print("mullow(f, g, 4) ")
+
+   println("coeff(f, 0): ", coeff(f, 0)) # 3
+   println("coeff(g, 2): ", coeff(g, 2)) # x+1
+
+   println("g.coeffs[2]: ", g.coeffs[2]) # x+1
+
+
+   tt = R()
+   print("tt: ")
+#   Nemo.mul!(tt, R(3), x + R(1))#   
+   Nemo.mul!(tt, coeff(f, 0), coeff(g, 2)) # 3 * (x + 1)
+   println(tt)
+
+   t = R()
+   print("t: ")
+   Nemo.mul!(t, coeff(f, 0), g.coeffs[2])
+   println(t)
+
    mm = Nemo.mullow(f, g, 4)
 #   print("  :::  ")
 #   println(mm)
@@ -729,6 +747,7 @@ function test_poly_generic_eval_singular()
 end
 
 function test_poly_singular()
+   test_poly_truncation_singular()  # # TODO: FIXME: mullow: mul!, addeq! UndefRefError: access to undefined reference
 
    test_poly_constructors_singular()
    test_poly_manipulation_singular()
@@ -757,13 +776,11 @@ function test_poly_singular()
    test_poly_integral_singular()
    test_poly_modular_arithmetic_singular()
    test_poly_special_singular()
-   test_poly_truncation_singular()  # # TODO: FIXME: mullow: mul!, addeq! UndefRefError: access to undefined reference
+   test_poly_euclidean_division_singular() # ERROR: ??? :-( inv? ERROR: LoadError: Impossible inverse in inv...?
+   test_poly_generic_eval_singular() # ERROR: LoadError: test error in expression: f(T(13)) == 20
 
 ## TODO: FIXME: the following seg.fault!!!!
-#   test_poly_euclidean_division_singular() # ERROR: ??? :-( inv? ERROR: LoadError: Impossible inverse in inv...?
-#   test_poly_mul_karatsuba_singular() # seg fault?
-#   test_poly_generic_eval_singular() # ERROR: LoadError: test error in expression: f(T(13)) == 20
-
+##   test_poly_mul_karatsuba_singular() # seg fault?
 
    println("")
 end
