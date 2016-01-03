@@ -190,7 +190,7 @@ function test_poly_truncation_singular()
    @test truncate(f, 1) == 3
 
    # TODO: FIXME: mullow: mul!, addeq! UndefRefError: access to undefined reference
-   print("mullow($f, $g, 4) ")
+#   print("mullow($f, $g, 4) ")
 
 #   println("coeff(f, 0): ", coeff(f, 0)) # 3
 #   println("coeff(g, 2): ", coeff(g, 2)) # x+1
@@ -209,8 +209,8 @@ function test_poly_truncation_singular()
 #   println(t)
 
    mm = Nemo.mullow(f, g, 4)
-   print("  :::  ")
-   println(mm)
+#   print("  :::  ")
+#   println(mm)
    @test (x^2+x)*y^3+(x^4+3*x^2+4*x+1)*y^2+(x^4+x^3+2*x^2+7*x+5)*y+(3*x^3+6*x+6) == mm 
 #   println( "DIFF: ",  (x^2+x)*y^3+(x^4+3*x^2+4*x+1)*y^2+(x^4+x^3+2*x^2+7*x+5)*y+(3*x^3+6*x+6) - mm )
 
@@ -336,7 +336,8 @@ function test_poly_euclidean_division_singular()
 
    const ZZ = Nemo.SingularZZ();
 
-   R = ResidueRing(ZZ, ZZ(7))
+#   R = Nemo.SingularZp(7); ### TODO: FIXME: Something is wrong with Zp Ring: no mod/div :(
+   R = ResidueRing(ZZ, 7)
    S, x = PolynomialRing(R, "x")
    T = ResidueRing(S, x^3 + 3x + 1)
    U, y = PolynomialRing(T, "y")
@@ -344,63 +345,10 @@ function test_poly_euclidean_division_singular()
    k = y^3 + x*y^2 + (x + 1)*y + 3
    l = (x + 1)*y^2 + (x^3 + 2x + 2)
 
-   println(divrem(k, l)) # ERROR: LoadError: Impossible inverse in inv
-   println(mod(k, l)) # ERROR: LoadError: Impossible inverse in inv  # gcdinv: <0?
-
    @test divrem(k, l) == ((5*x^2+2*x+6)*y+(2*x^2+5*x+2), (4*x^2+4*x+4)*y+(3*x^2+5*x+6))
-   @test mod(k, l) == (4*x^2+4*x+4)*y+(3*x^2+5*x+6)    #### TODO: FIXME!??
+   @test mod(k, l) == (4*x^2+4*x+4)*y+(3*x^2+5*x+6)
 
    println("PASS")
-
-   return  #################################################
-
-   # ResidueRing(ZZ, ZZ(7)) # Need to be a Nemo Ring....!!!!
-   R = Nemo.SingularZp(7); ### TODO: FIXME: Something is wrong with Zp Ring: no mod/div :(
-
-   S, x = PolynomialRing(R, "x")
-
-   T = ResidueRing(S, x^3 + 3x + 1) #?
-
-   U, y = PolynomialRing(T, "y")
-
-   k = y^3 + x*y^2 + (x + 1)*y + 3
-   l = (x + 1)*y^2 + (x^3 + 2x + 2)
-
-   qq = (5*x^2+2*x+6)*y+(2*x^2+5*x+2)
-   bb = (4*x^2+4*x+4)*y+(3*x^2+5*x+6)
-
-   println("qq: ", qq)
-   println("bb: ", bb)
-
-#   @test (qq * l + bb) != k  ## ???
-#   @test (bb * l + qq) != k 
-
-#### TODO:FIXME: LoadError: Division by zero!
-#   m = mod(k,l)
-#   d = div(k,l)
-
-#   println("m: ", m)
-#   println("d: ", d)
-
-#   @test 
-#    println( "DIFF k: ",  (d * l + m) - k  )
-
-
-###   @test mod(k,l) == (4*x^2+4*x+4)*y+(3*x^2+5*x+6) #### TODO: FIXME: WRONG???!!
-###   @test div(k,l) == (5*x^2+2*x+6)*y+(2*x^2+5*x+2)
-
-   d, m = divrem(k, l)  ### TODO: ERROR: Division by zero?
-
-   println("m: ", m)
-   println("d: ", d)
-
-    println( "DIFF m: ",  m - b )
-    println( "DIFF d: ",  d - q  )
-    println( "DIFF k: ",  (d * l + m) - k  )
-
-#   @test q == d
-#   @test b == m
-
 end
 
 function test_poly_pseudodivision_singular()
@@ -746,19 +694,6 @@ function test_poly_generic_eval_singular()
 end
 
 function test_poly_singular()
-   test_poly_truncation_singular()  # # TODO: FIXME: mullow: mul!, addeq! UndefRefError: access to undefined reference
-## TODO: FIXME: the following seg.fault!!!!
-   test_poly_mul_karatsuba_singular() # seg fault?
-   test_poly_euclidean_division_singular() # ERROR: ??? :-( inv? ERROR: LoadError: Impossible inverse in inv...?
-
-   test_poly_newton_representation_singular()
-   test_poly_mul_ks_singular()
-   test_poly_content_primpart_gcd_singular()
-   test_poly_integral_singular()
-   test_poly_modular_arithmetic_singular()
-   test_poly_special_singular()
-   test_poly_generic_eval_singular() # ERROR: LoadError: test error in expression: f(T(13)) == 20
-
    test_poly_constructors_singular()
    test_poly_manipulation_singular()
    test_poly_binary_ops_singular()
@@ -779,6 +714,19 @@ function test_poly_singular()
    test_poly_discriminant_singular()
    test_poly_gcdx_singular()
    test_poly_interpolation_singular()
+
+   test_poly_truncation_singular()  # # TODO: FIXME: mullow: mul!, addeq! UndefRefError: access to undefined reference
+   test_poly_mul_karatsuba_singular() # seg fault?
+
+   test_poly_newton_representation_singular()
+   test_poly_mul_ks_singular()
+   test_poly_content_primpart_gcd_singular()
+   test_poly_integral_singular()
+   test_poly_modular_arithmetic_singular()
+   test_poly_special_singular()
+
+   test_poly_generic_eval_singular() # ERROR: LoadError: test error in expression: f(T(13)) == 20
+   test_poly_euclidean_division_singular() # ERROR: ??? :-( inv? ERROR: LoadError: Impossible inverse in inv...?
 
    println("")
 end
