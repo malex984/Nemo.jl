@@ -1,5 +1,4 @@
 function randelem(R::Nemo.SingularCoeffs, n :: Int)
-
    s = R(rand(-n:n))
    
    const p = Nemo.ngens(R)
@@ -17,9 +16,6 @@ end
 function randelem(R::ResidueRing{Nemo.Singular_ZZElem}, n)
    return R(rand(-n:n))
 end
-
-#### TODO: FIXME: gen for all Singular Coeffs (return 0 if no params, or the first param by default...)
-#### TODO: moreover it seems that in case of params - there *must* be a base_ring != None!!?! 
 
 function test_matrix_constructors_singular()
    print("Matrix.constructors / Singular Coeffs...")
@@ -236,33 +232,18 @@ function test_matrix_adhoc_exact_division_singular()
    R, t = PolynomialRing(QQ, "t")
    S = MatrixSpace(R, 3, 3)
 
-#   println(S)
-
    A = S([t + 1 t R(1); t^2 t t; R(-2) t + 2 t^2 + t + 1])
-#   println("A: \n", A)
-
-#   println("5A/5: \n", divexact(5*A, 5))	
    @test divexact(5*A, 5) == A
 
-#   println("A*(1+t)/(1+t): \n", divexact((1 + t)*A, 1 + t))
    @test divexact((1 + t)*A, 1 + t) == A
 
-#   print("12A/(12): ")
    a = divexact(12*A, (12))
-#   println("  :::  ")
-#   println(a)
    @test a == A
 
-#   print("12A/R(12): ")
    a = divexact(12*A, R(12))
-#   println("  :::  ")
-#   println(a)
    @test a == A
 
-
-
-
-#   print("12A/ZZ|QQ(12): ")
+#   print("12A/ZZ|QQ(12): ") ## ?
 #   a = divexact(12*A, ZZ(12)) ## TODO: FIXME: ZZ & QQ do not work here :(
 #   a = divexact(12*A, QQ(12)) ## TODO: FIXME: ZZ & QQ do not work here :(
 
@@ -325,23 +306,17 @@ function test_matrix_determinant_singular()
    const QQ = Nemo.SingularQQ();
 
    S, z = PolynomialRing(ZZ, "z")
-#   println(S)
 
    for dim = 0:10
       R = MatrixSpace(S, dim, dim)
-#      println(R)
       M = randmat(R, 3, 20)
-#      println(M)
       @test determinant(M) == Nemo.determinant_clow(M)
    end
 
    S, x = PolynomialRing(ResidueRing(ZZ, ZZ(1009)*ZZ(2003)), "x")
-#   println(S)
    for dim = 0:10
       R = MatrixSpace(S, dim, dim)
-#      println(R)
       M = randmat(R, 5, 100)
-#      println(M)
       @test determinant(M) == Nemo.determinant_clow(M)
    end
 
@@ -349,12 +324,9 @@ function test_matrix_determinant_singular()
 
    R, x = PolynomialRing(ZZ, "x");
    S, y = PolynomialRing(R , "y");
-#   println(S)
    for dim = 0:10
       T = MatrixSpace(S, dim, dim)
-#      println(T)
       M = randmat(T, 20)
-#      println(M)
       @test determinant(M) == Nemo.determinant_clow(M)
    end
 
@@ -364,9 +336,7 @@ function test_matrix_determinant_singular()
    for dim = 0:5# 10
 #      S = MatrixSpace(K, dim, dim)
       S = MatrixSpace(R, dim, dim)
-#      println(S)
       M = randmat(S, 100)
-#      println(M)
       @test determinant(M) == Nemo.determinant_clow(M)
    end
 
@@ -434,7 +404,7 @@ function test_matrix_rank_singular()
    R = MatrixSpace(S, 5, 5)
 
    for i = 0:5
-      M = randmat_with_rank(R, 5, 100, i);  ### TODO: FIXME ????!!!!
+      M = randmat_with_rank(R, 5, 100, i);
 
       @test rank(M) == i
    end
@@ -505,8 +475,6 @@ function test_matrix_solve_singular()
 #   x, d = solve(M, b)
 #
 #   @test M*x == d*b
-
-
 
 
    S, x = PolynomialRing(ResidueRing(ZZ, ZZ(20011)*ZZ(10007)), "x")
@@ -590,17 +558,10 @@ function test_matrix_nullspace_singular()
    S, y = PolynomialRing(R, "y")
 
    T = MatrixSpace(S, 5, 5)
-#   println(T)
 
    for i = 0:5
-   
       M = randmat_with_rank(T, 20, i)
-#      println(i, "  :::  ", M)
-
-      n, N = nullspace(M)   # TODO: BUG for i == 2?!
-
-#      println(n);      println(N);
-
+      n, N = nullspace(M)
       @test n == 5 - i
       @test rank(N) == n
       @test iszero(M*N)
@@ -612,8 +573,6 @@ function test_matrix_nullspace_singular()
 
    for i = 0:5
       M = randmat_with_rank(R, 3, 20, i)
-#      println(M)
-
       n, N = nullspace(M)
 
       @test n == 5 - i
@@ -623,12 +582,9 @@ function test_matrix_nullspace_singular()
 
    S, x = PolynomialRing(ResidueRing(ZZ, ZZ(20011)*ZZ(10007)), "x")
    R = MatrixSpace(S, 5, 5)
-#   println(R)
 
    for i = 0:5
       M = randmat_with_rank(R, 5, 100, i)
-#      println(i, "  :::  ", M)
-
       n, N = nullspace(M)
       @test n == 5 - i
       @test rank(N) == n
@@ -658,29 +614,21 @@ function test_matrix_inversion_singular()
    const QQ = Nemo.SingularQQ();
 
    S, x = PolynomialRing(ResidueRing(ZZ, ZZ(20011)*ZZ(10007)), "x")
-#   println(S)
 
    for dim = 1:10
       R = MatrixSpace(S, dim, dim)
-#      println(R)
-      
       M = randmat_with_rank(R, 5, 100, dim);
-#      println(M)
-      
       X, d = inv(M)
 
       @test M*X == d*one(R)
    end
 
    S, z = PolynomialRing(ZZ, "z")
-#   println(S)
 
    for dim = 1:10
       R = MatrixSpace(S, dim, dim)
-#      println(R)
       
       M = randmat_with_rank(R, 3, 20, dim);
-#      println(M)
       
       X, d = inv(M)
 
@@ -698,14 +646,11 @@ function test_matrix_inversion_singular()
 
    R, x = PolynomialRing(ZZ, "x")
    S, y = PolynomialRing(R, "y")
-#   println(S)
    
    for dim = 1:10
       T = MatrixSpace(S, dim, dim)
-#      println(T)
      
       M = randmat_with_rank(T, 20, dim)
-#      println(M)
   
       X, d = inv(M)
 
@@ -721,21 +666,14 @@ function test_matrix_hessenberg_singular()
    const ZZ = Nemo.SingularZZ();
 #   const QQ = Nemo.SingularQQ();
 
-   R = ResidueRing(ZZ, ZZ(18446744073709551629)) ## BigInt???
-#   println("R: ", R)
+   R = ResidueRing(ZZ, ZZ(18446744073709551629)) ## BigInt?
+#      U, x = PolynomialRing(R, "x")
 
    for dim = 0:5
       S = MatrixSpace(R, dim, dim)
 
-#      U, x = PolynomialRing(R, "x")
-#       println("S: ", S, ".... dim: $dim")
-
       for i = 1:10
-#         println("i: $i, M: ")
          M = randmat(S, 5)
-
-#	 println(M)
-
          A = hessenberg(M)
 
          @test is_hessenberg(A)
@@ -765,15 +703,13 @@ function test_matrix_charpoly_singular()
 
    p1 = charpoly(U, M)
 
-   for i = 1:1#0
-      similarity!(M, rand(1:rows(M)), randelem(R, 3)) # R(...)?
+   for i = 1:1 # 0
+      similarity!(M, rand(1:rows(M)), randelem(R, 3))
    end
 
    p2 = charpoly(U, M)
 
    @test p1 == p2
-
-##   return 
 
    R = ResidueRing(ZZ, ZZ(18446744073709551629))
 
@@ -813,19 +749,6 @@ function test_matrix_charpoly_singular()
 
 end
 
-
-   function test_minpoly(T, M, m)
-      p = minpoly(T, M)
-      if p != m
-      	 println("T: ", T)
-	 println("M: ", M)
-      	 println("m: ", m)
-         println("p: ", p)
-	 println("diff: ", p - m, " :: iszero?: ", iszero(p - m))
-      end
-      @test p == m
-   end
-
 function test_matrix_minpoly_singular()
    print("Matrix.minpoly / Singular Coeffs...")
  
@@ -836,8 +759,6 @@ function test_matrix_minpoly_singular()
    S, y = PolynomialRing(R, "y")
    T = MatrixSpace(S, 6, 6)
 
-#   println(T)
-
    M = T()
    for i = 1:3
       for j = 1:3
@@ -846,17 +767,14 @@ function test_matrix_minpoly_singular()
       end
    end
 
-#   println(M);
    U, z = PolynomialRing(S, "z")
    f = minpoly(U, M)
-#   println(f)
 
    @test degree(f) <= 3
 
    R, x = PolynomialRing(ZZ, "x")
    T = MatrixSpace(R, 6, 6)
 
-#   println(T);
    M = T()
    for i = 1:3
       for j = 1:3
@@ -867,19 +785,13 @@ function test_matrix_minpoly_singular()
 
    U, z = PolynomialRing(R, "z")
    
-#   println(U);
-#   println("M: ",M);
    p1 = minpoly(U, M)
-#   println("p1: ", p1);
-#   println()
  
    for i = 1:1#10? 2 - already tooooo long!!! TODO: FIXME!!!
       similarity!(M, rand(1:rows(M)), randelem(R, 3))# R()??
    end
 
-#   println("simlarity! M: ", M);
    p2 = minpoly(U, M)
-#   println("p2: ", p2);
 
    @test p1 == p2
 
@@ -900,8 +812,7 @@ function test_matrix_minpoly_singular()
           0 5 13;
           0 16 2]
 
-#   test_minpoly(T, M, y^2+96*y+8)
-   @test minpoly(T, M) == y^2+96*y+8 ###TODO: FIXME: test failed: y^3+23*y^2-30*y-31 == y^2-7*y+8 :((((
+   @test minpoly(T, M) == y^2+96*y+8 
 
    R = Nemo.SingularFp(3) # FiniteField(3, 1, "x")
    T, y = PolynomialRing(R, "y")
@@ -912,7 +823,6 @@ function test_matrix_minpoly_singular()
          2 1 2 0]
 
    @test minpoly(T, M) == y^2 + 2y
-#   test_minpoly(T, M, y^2 + 2y)
 
    R = Nemo.SingularFp(13) # FiniteField(13, 1, "x")
    T, y = PolynomialRing(R, "y")
@@ -922,7 +832,6 @@ function test_matrix_minpoly_singular()
          8 12 5]
 
    @test minpoly(T, M) == y^2+10*y
-#   test_minpoly(T, M, y^2+10*y)
 
    M = R[4 0 9 5;
          1 0 1 9;
@@ -930,7 +839,6 @@ function test_matrix_minpoly_singular()
          0 0 3 10]
 
    @test minpoly(T, M) == y^2 + 9y
-#   test_minpoly(T, M,  y^2 + 9y)
 
    M = R[2 7 0 0 0 0;
          1 0 0 0 0 0;
@@ -940,7 +848,6 @@ function test_matrix_minpoly_singular()
          0 0 0 0 1 0]
 
    @test minpoly(T, M) == (y^2+9*y+10)*(y^2+11*y+6)
-#   test_minpoly(T, M, (y^2+9*y+10)*(y^2+11*y+6) )
 
    M = R[2 7 0 0 0 0;
          1 0 1 0 0 0;
@@ -950,20 +857,16 @@ function test_matrix_minpoly_singular()
          0 0 0 0 1 0]
 
    @test minpoly(T, M) == (y^2+9*y+10)*(y^2+11*y+6)^2
-#   test_minpoly(T, M, (y^2+9*y+10)*(y^2+11*y+6)^2)
 
    S = MatrixSpace(R, 1, 1)
    M = S()
 
    @test minpoly(T, M) == y
-#   test_minpoly(T, M, y)
 
    S = MatrixSpace(R, 0, 0)
    M = S()
 
    @test minpoly(T, M) == 1
-#   test_minpoly(T, M, 1)
-
 
    println("PASS")   
 end
@@ -986,17 +889,14 @@ function test_matrix_singular()
    test_matrix_adhoc_exact_division_singular()
    test_matrix_rref_singular()
 
-   test_matrix_hessenberg_singular()
 #=================================================================================#
-   test_matrix_minpoly_singular() # TODO: FIXME: wrong test - due to unsafe mul!, addeq!
+   test_matrix_hessenberg_singular()
+   test_matrix_minpoly_singular()
    test_matrix_rank_singular()
    test_matrix_nullspace_singular()
-#=================================================================================#
-## Wrong Singular numbers?
    test_matrix_solve_singular()
-   test_matrix_determinant_singular() ## TODO: seg.fault?
-#=================================================================================#
-   test_matrix_inversion_singular() ## TODO: too long?
+   test_matrix_determinant_singular() ## NOTE prev. seg.fault?
+   test_matrix_inversion_singular()
 
    println("")
 end

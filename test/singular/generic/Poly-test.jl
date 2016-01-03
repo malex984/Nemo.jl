@@ -188,31 +188,7 @@ function test_poly_truncation_singular()
    g = (x + 1)*y + (x^3 + 2x + 2)
 
    @test truncate(f, 1) == 3
-
-   # TODO: FIXME: mullow: mul!, addeq! UndefRefError: access to undefined reference
-#   print("mullow($f, $g, 4) ")
-
-#   println("coeff(f, 0): ", coeff(f, 0)) # 3
-#   println("coeff(g, 2): ", coeff(g, 2)) # x+1
-#  println("g.coeffs[2]: ", g.coeffs[2]) # x+1
-
-
-#   tt = R()
-#   print("tt: ")
-#   Nemo.mul!(tt, R(3), x + R(1))#   
-#   Nemo.mul!(tt, coeff(f, 0), coeff(g, 2)) # 3 * (x + 1)
-#   println(tt)
-
-#   t = R()
-#   print("t: ")
-#   Nemo.mul!(t, coeff(f, 0), g.coeffs[2])
-#   println(t)
-
-   mm = Nemo.mullow(f, g, 4)
-#   print("  :::  ")
-#   println(mm)
-   @test (x^2+x)*y^3+(x^4+3*x^2+4*x+1)*y^2+(x^4+x^3+2*x^2+7*x+5)*y+(3*x^3+6*x+6) == mm 
-#   println( "DIFF: ",  (x^2+x)*y^3+(x^4+3*x^2+4*x+1)*y^2+(x^4+x^3+2*x^2+7*x+5)*y+(3*x^3+6*x+6) - mm )
+   @test (x^2+x)*y^3+(x^4+3*x^2+4*x+1)*y^2+(x^4+x^3+2*x^2+7*x+5)*y+(3*x^3+6*x+6) == Nemo.mullow(f, g, 4)
 
    println("PASS")
 end
@@ -288,12 +264,8 @@ function test_poly_modular_arithmetic_singular()
 
    iv = (QQ(707)//3530*x^2 + QQ(2151)//1765*x + QQ(123)//3530)*y+(QQ(-178)//1765*x^2 - QQ(551)//3530*x + QQ(698)//1765) 
 
-#   print("invmod(f,g) ")
-#   im = invmod(f, g) ## TODO: FIXME: does not terminate :((((
-#   print("  ::::   ")
-#   println(im)
-#   println( "DIFF: ", im - iv )  
-#   @test im == iv 
+   im = invmod(f, g) ## ?
+   @test im == iv 
 
    println("PASS")
 end
@@ -428,14 +400,7 @@ function test_poly_evaluation_singular()
    @test evaluate(g, f) == x^5+4*x^4+7*x^3+7*x^2+4*x+4
 
    ithree = R(3) # ZZ(3); S?
-#   print("evaluate(g, ithree) ")
-   ee = evaluate(g, ithree)  # TODO: FIXME: ????
-# MethodError: `evaluate` has no method matching evaluate(::Nemo.Poly{Nemo.Poly{Nemo.NumberElem}}, ::Nemo.NumberElem)
-#Closest candidates are:
-#  evaluate{T<:Nemo.RingElem}(::Nemo.PolyElem{T<:Nemo.RingElem}, !Matched::T<:Nemo.RingElem) ##????
-#   print( "  :::  ")
-#   println(ee)
-#   println("DIFF: ", ee - R(12x + 6)) # S? 
+   ee = evaluate(g, ithree)
    @test ee == R(12x + 6) # S?
 
    println("PASS")
@@ -614,28 +579,12 @@ function test_poly_mul_karatsuba_singular()
    
    f = x + y + 2z^2 + 1
    
-#   print("\nmc")
-   mc = mul_classical(f^10, f^10) ## TODO: too long!?
-#   print(":::")
-#   println(length(mc))
-
-#   print("mk")
-   mk = mul_karatsuba(f^10, f^10) ## TODO: FIXME: Fails!?
-#   print(":::")
-#   println(length(mk))
-
+   mc = mul_classical(f^10, f^10)
+   mk = mul_karatsuba(f^10, f^10)
    @test mk == mc
 
-#   print("mc'")
    mc = mul_classical(f^10, f^30)
-#   print(":::")
-#   println(length(mc))
-
-#   print("mk'")
    mk = mul_karatsuba(f^10, f^30)
-#   print(":::")
-#   println(length(mk))
-
    @test mk == mc
 
    println("PASS")
