@@ -190,28 +190,27 @@ function test_poly_truncation_singular()
    @test truncate(f, 1) == 3
 
    # TODO: FIXME: mullow: mul!, addeq! UndefRefError: access to undefined reference
-#   print("mullow(f, g, 4) ")
+   print("mullow($f, $g, 4) ")
 
-   println("coeff(f, 0): ", coeff(f, 0)) # 3
-   println("coeff(g, 2): ", coeff(g, 2)) # x+1
+#   println("coeff(f, 0): ", coeff(f, 0)) # 3
+#   println("coeff(g, 2): ", coeff(g, 2)) # x+1
+#  println("g.coeffs[2]: ", g.coeffs[2]) # x+1
 
-   println("g.coeffs[2]: ", g.coeffs[2]) # x+1
 
-
-   tt = R()
-   print("tt: ")
+#   tt = R()
+#   print("tt: ")
 #   Nemo.mul!(tt, R(3), x + R(1))#   
-   Nemo.mul!(tt, coeff(f, 0), coeff(g, 2)) # 3 * (x + 1)
-   println(tt)
+#   Nemo.mul!(tt, coeff(f, 0), coeff(g, 2)) # 3 * (x + 1)
+#   println(tt)
 
-   t = R()
-   print("t: ")
-   Nemo.mul!(t, coeff(f, 0), g.coeffs[2])
-   println(t)
+#   t = R()
+#   print("t: ")
+#   Nemo.mul!(t, coeff(f, 0), g.coeffs[2])
+#   println(t)
 
    mm = Nemo.mullow(f, g, 4)
-#   print("  :::  ")
-#   println(mm)
+   print("  :::  ")
+   println(mm)
    @test (x^2+x)*y^3+(x^4+3*x^2+4*x+1)*y^2+(x^4+x^3+2*x^2+7*x+5)*y+(3*x^3+6*x+6) == mm 
 #   println( "DIFF: ",  (x^2+x)*y^3+(x^4+3*x^2+4*x+1)*y^2+(x^4+x^3+2*x^2+7*x+5)*y+(3*x^3+6*x+6) - mm )
 
@@ -748,6 +747,17 @@ end
 
 function test_poly_singular()
    test_poly_truncation_singular()  # # TODO: FIXME: mullow: mul!, addeq! UndefRefError: access to undefined reference
+## TODO: FIXME: the following seg.fault!!!!
+   test_poly_mul_karatsuba_singular() # seg fault?
+   test_poly_euclidean_division_singular() # ERROR: ??? :-( inv? ERROR: LoadError: Impossible inverse in inv...?
+
+   test_poly_newton_representation_singular()
+   test_poly_mul_ks_singular()
+   test_poly_content_primpart_gcd_singular()
+   test_poly_integral_singular()
+   test_poly_modular_arithmetic_singular()
+   test_poly_special_singular()
+   test_poly_generic_eval_singular() # ERROR: LoadError: test error in expression: f(T(13)) == 20
 
    test_poly_constructors_singular()
    test_poly_manipulation_singular()
@@ -769,18 +779,6 @@ function test_poly_singular()
    test_poly_discriminant_singular()
    test_poly_gcdx_singular()
    test_poly_interpolation_singular()
-
-   test_poly_newton_representation_singular()
-   test_poly_mul_ks_singular()
-   test_poly_content_primpart_gcd_singular()
-   test_poly_integral_singular()
-   test_poly_modular_arithmetic_singular()
-   test_poly_special_singular()
-   test_poly_euclidean_division_singular() # ERROR: ??? :-( inv? ERROR: LoadError: Impossible inverse in inv...?
-   test_poly_generic_eval_singular() # ERROR: LoadError: test error in expression: f(T(13)) == 20
-
-## TODO: FIXME: the following seg.fault!!!!
-##   test_poly_mul_karatsuba_singular() # seg fault?
 
    println("")
 end
