@@ -72,10 +72,8 @@ type NumberFElem{CF<:SingularField} <: SingularFieldElem
     end
 
     function NumberFElem(c::CF, b::BigInt)
-        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?
         p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); 
 	return NumberFElem{CF}(c, p)
-   	error("Sorry NumberFElem(BigInt) seems to be unsupported ATM :(")
     end
 end
 
@@ -107,10 +105,8 @@ type Number_Elem{CF<:SingularUniqueRing} <: SingularUniqueRingElem  # TODO: rena
     end
 
     function Number_Elem(c::CF, b::BigInt)
-#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?
         p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); 
 	return Number_Elem{CF}(p)
-    	error("Sorry Number_Elem(CF, BigInt) seems to be unsupported ATM :(")
     end
 
     function Number_Elem(x::Int)
@@ -165,12 +161,9 @@ type NumberF_Elem{CF<:SingularUniqueField} <: SingularUniqueFieldElem
         return NumberF_Elem{CF}(p)
     end
 
-    function NumberF_Elem(c::CF, b::BigInt)
-#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?
+    function NumberF_Elem(c::CF, b::BigInt) # TODO: remove unnecessary constructors with CF input!
         p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); 
 	return NumberF_Elem{CF}(p)
-
-    	error("Sorry NumberF_Elem(CF, BigInt) seems to be unsupported ATM :(")
     end
 
     function NumberF_Elem(b::BigInt)
@@ -206,7 +199,6 @@ type Singular_ZZElem <: SingularIntegerRingElem
     end
 
     function Singular_ZZElem(b::BigInt)
-#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?
     	const c = libSingular.ptr_ZZ;
         const p = libSingular.n_InitMPZ(b, c); 
 	return Singular_ZZElem(p)
@@ -420,22 +412,21 @@ end
 
 ### convert(::Type{Rational{BigInt}}, a::fmpq) = Rational(a)
 
-function convert(::Type{BigInt}, a::SingularCoeffsElems)
-##    error("Sorry BigInt(SingularCoeffsElems) seems to be unsupported ATM :(") # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?!
-
-    aaa =  number_ref(get_raw_ptr(a)); 
-    r = libSingular.n_MPZ(aaa, get_raw_ptr(parent(a))) # BigInt();
-    set_raw_ptr!(a, aaa[]) # a.ptr = ptr
-
+function convert(::Type{BigInt}, _a::SingularCoeffsElems)
+#    a = _a;
+    a = deepcopy(_a) ## ?
+    aa =  number_ref(get_raw_ptr(a)); 
+    r = libSingular.n_MPZ(aa, get_raw_ptr(parent(a)))
+    set_raw_ptr!(a, aa[]) ## TODO: FIXME: unsafe!!!!?
     return r
 end
 
-function convert(::Type{Int}, a::SingularCoeffsElems) 
-
-    cf = get_raw_ptr(parent(a));  
+function convert(::Type{Int}, _a::SingularCoeffsElems) 
+#    a = _a; #    
+     a = deepcopy(_a) ## ?
     aa = number_ref(get_raw_ptr(a)) 
-    r = libSingular.n_Int(aa, cf)
-    set_raw_ptr!(a, aa[] ) # aaa[] # a.ptr = ptr
+    r = libSingular.n_Int(aa, get_raw_ptr(parent(a)))
+    set_raw_ptr!(a, aa[]) ## TODO: FIXME: unsafe!!!!?
     return r
 end
 
@@ -558,11 +549,15 @@ NumberF_Elem{CF<:SingularUniqueField}(c::CF, s::AbstractString) = parseNumber(c,
 ###############################################################################
 
 function string(n::SingularCoeffsElems)
+   return string!(deepcopy(n)) ## ?
+end
+
+function string!(n::SingularCoeffsElems)
    libSingular.StringSetS("")
-   nn = get_raw_ptr(n)
-   nnn = number_ref(nn)	
-   libSingular.n_Write( nnn, get_raw_ptr(parent(n)), false )
-   set_raw_ptr!(n, nnn[])# n.ptr = ptr'
+
+   nn = number_ref(get_raw_ptr(n))	
+   libSingular.n_Write( nn, get_raw_ptr(parent(n)), false )
+   set_raw_ptr!(n, nn[]) ## TODO: FIXME: unsafe...
 
    m = libSingular.StringEndS()
    s = bytestring(m) 
@@ -602,11 +597,19 @@ end
 
 ###### TODO: Q: Is this correct????!
 # {CF} ???
-deepcopy(a::SingularRingElem) = NumberElem(a)
-deepcopy(a::SingularUniqueRingElem) = Number_Elem(a)
 
-deepcopy(a::SingularFieldElem) = NumberFElem(a)
-deepcopy(a::SingularUniqueFieldElem) = NumberF_Elem(a)
+
+#deepcopy(a::SingularRingElem) = NumberElem(a)
+#deepcopy(a::SingularUniqueRingElem) = Number_Elem(a)
+
+#deepcopy(a::SingularFieldElem) = NumberFElem(a)
+#deepcopy(a::SingularUniqueFieldElem) = NumberF_Elem(a)
+
+deepcopy(a::SingularCoeffsElems) = elem_type(parent(a))(a)
+#    const N = elem_type(parent(a));
+#    println(typeof(a), " -> ", N)
+
+#deepcopy(a::Singular_QQElem) = Singular_QQElem(a)
 
 
 #### #wrong for ZZ???
@@ -635,13 +638,14 @@ canonical_unit(x::SingularCoeffsElems) = isnegative(x) ? mone(parent(x)) : one(p
 ### number n_GetDenom(number& n, const coeffs r)
 ### number n_GetNumerator(number& n, const coeffs r)
 
-for (fJ, fC) in ((:_num, :_n_GetNumerator), (:_den, :_n_GetDenom))
+for (fJ, fC) in ((:_num!, :_n_GetNumerator), (:_den!, :_n_GetDenom))
     @eval begin
         function ($fJ)(x :: SingularCoeffsElems)
-	    C = parent(x); r = number_ref(get_raw_ptr(x))
-            ret = (libSingular.$fC)(r, get_raw_ptr(C))  # TODO: FIXME:!!!! ???
-            set_raw_ptr!(x, r[])
-	    return ret # TODO: result in the same Coeffs?? 
+	    r = number_ref(get_raw_ptr(x));
+            ret = (libSingular.$fC)(r, get_raw_ptr(parent(x)))
+            set_raw_ptr!(x, r[]) ## TODO: FIXME: unsafe!
+
+	    return ret # NOTE: result in the same Coeff.domain! 
         end
     end
 end
@@ -650,15 +654,19 @@ end
 den(a::Singular_ZZElem) = one(parent(a))
 num(a::Singular_ZZElem) = a # NOTE: TODO: not a deep copy, right?!
 
-function den(a::Singular_QQElem)
-    p = _den(a);
+function den(_a::Singular_QQElem)
+#    a = _a; 
+    a = deepcopy(_a);
+    p = _den!(a);
     pp = libSingular.nApplyMapFunc( libSingular.setMap_QQ2ZZ, p, libSingular.ptr_QQ, libSingular.ptr_ZZ )
     libSingular._n_Delete(p, libSingular.ptr_QQ)
     return Singular_ZZElem(pp);
 end
 
-function num(a::Singular_QQElem)
-    p = _num(a);    
+function num(_a::Singular_QQElem)
+#    a = _a; 
+    a = deepcopy(_a);
+    p = _num!(a);    
     pp = libSingular.nApplyMapFunc( libSingular.setMap_QQ2ZZ, p, libSingular.ptr_QQ, libSingular.ptr_ZZ )
     libSingular._n_Delete(p, libSingular.ptr_QQ)
     return Singular_ZZElem(pp);
@@ -667,10 +675,10 @@ end
 
 
 # , (:normalise, :n_Normalize)
-function normalize(x :: SingularCoeffsElems) #
-   cf = get_raw_ptr(parent(x)); r = number_ref(get_raw_ptr(x));
-   ret = libSingular.n_Normalize(r, cf); # TODO: FIXME:!!!! ???
-   set_raw_ptr!(x, r[])
+function normalize!(x :: SingularCoeffsElems) #
+   r = number_ref(get_raw_ptr(x));
+   libSingular.n_Normalize(r, get_raw_ptr(parent(x)));
+   set_raw_ptr!(x, r[]) # NOTE: unsafe!
    return x
 end
 
@@ -862,21 +870,15 @@ function ^(x::SingularFieldElems, y::Int)
     return C(p)
 end
 
-
-###############################################################################
-#
+#=============================================================================
 #   Unary operators and functions
-#
-###############################################################################
+==============================================================================#
 
 function -(x::SingularCoeffsElems) 
     C = parent(x)
-
     ptr = libSingular.n_Neg( get_raw_ptr(x),  get_raw_ptr(C) )
-    
     return C(ptr) 
-
-#    return (zero(parent(x)) - x)   ### TODO: FIXME: deepcopy & n_InpNeg!
+#    return (zero(parent(x)) - x)   ### TODO: FIXME: deepcopy & n_InpNeg!?
 end
 
 function abs(x::SingularCoeffsElems)
@@ -1156,8 +1158,8 @@ function muleq!(x :: SingularCoeffsElems, y :: SingularCoeffsElems)
 
     xx = number_ref(get_raw_ptr(x))
 #    println("muleq! $x: [$xx] *= $y [$yy]: ")
-    icxx""" n_InpMult($xx, $yy, $cf); """
-    set_raw_ptr!(x, xx[]);
+    icxx""" n_InpMult($xx, $yy, $cf); """ # TODO: move to libSingular!
+    set_raw_ptr!(x, xx[]); # NOTE: unsafe!!
 
 #    println("muleq! ---> $x [$xx]")
 end
@@ -1170,8 +1172,8 @@ function addeq!(x :: SingularCoeffsElems, y :: SingularCoeffsElems)
 
     xx = number_ref(get_raw_ptr(x))
 #    println("addeq! $x: [$xx] += $y [$yy]: ")
-    icxx""" n_InpAdd($xx, $yy, $cf); """
-    set_raw_ptr!(x, xx[]);
+    icxx""" n_InpAdd($xx, $yy, $cf); """ # TODO: move to libSingular!
+    set_raw_ptr!(x, xx[]); # NOTE: unsafe!
 
 #    println("addeq! ---> $x [$xx]")
 end
