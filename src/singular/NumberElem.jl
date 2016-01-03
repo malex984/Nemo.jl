@@ -413,8 +413,8 @@ end
 ### convert(::Type{Rational{BigInt}}, a::fmpq) = Rational(a)
 
 function convert(::Type{BigInt}, _a::SingularCoeffsElems)
-#    a = _a;
-    a = deepcopy(_a) ## ?
+    a = _a;
+#    a = deepcopy(_a) ## ?
     aa =  number_ref(get_raw_ptr(a)); 
     r = libSingular.n_MPZ(aa, get_raw_ptr(parent(a)))
     set_raw_ptr!(a, aa[]) ## TODO: FIXME: unsafe!!!!?
@@ -422,8 +422,8 @@ function convert(::Type{BigInt}, _a::SingularCoeffsElems)
 end
 
 function convert(::Type{Int}, _a::SingularCoeffsElems) 
-#    a = _a; #    
-     a = deepcopy(_a) ## ?
+    a = _a; #    
+#     a = deepcopy(_a) ## ?
     aa = number_ref(get_raw_ptr(a)) 
     r = libSingular.n_Int(aa, get_raw_ptr(parent(a)))
     set_raw_ptr!(a, aa[]) ## TODO: FIXME: unsafe!!!!?
@@ -549,7 +549,7 @@ NumberF_Elem{CF<:SingularUniqueField}(c::CF, s::AbstractString) = parseNumber(c,
 ###############################################################################
 
 function string(n::SingularCoeffsElems)
-   return string!(deepcopy(n)) ## ?
+   return string!(n) # deepcopy(n)) ## ?
 end
 
 function string!(n::SingularCoeffsElems)
@@ -655,8 +655,8 @@ den(a::Singular_ZZElem) = one(parent(a))
 num(a::Singular_ZZElem) = a # NOTE: TODO: not a deep copy, right?!
 
 function den(_a::Singular_QQElem)
-#    a = _a; 
-    a = deepcopy(_a);
+    a = _a; 
+#    a = deepcopy(_a);
     p = _den!(a);
     pp = libSingular.nApplyMapFunc( libSingular.setMap_QQ2ZZ, p, libSingular.ptr_QQ, libSingular.ptr_ZZ )
     libSingular._n_Delete(p, libSingular.ptr_QQ)
@@ -664,8 +664,8 @@ function den(_a::Singular_QQElem)
 end
 
 function num(_a::Singular_QQElem)
-#    a = _a; 
-    a = deepcopy(_a);
+    a = _a; 
+#    a = deepcopy(_a);
     p = _num!(a);    
     pp = libSingular.nApplyMapFunc( libSingular.setMap_QQ2ZZ, p, libSingular.ptr_QQ, libSingular.ptr_ZZ )
     libSingular._n_Delete(p, libSingular.ptr_QQ)

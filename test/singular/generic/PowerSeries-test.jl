@@ -335,79 +335,43 @@ function test_series_adhoc_exact_division_singular()
    R, t = PolynomialRing(QQ, "t")
    S, x = PowerSeriesRing(R, 30, "x")
 
+   println();   println(S)
+
    a = x + x^3
    b = O(x^4)
    c = 1 + x + 2x^2 + O(x^5)
    d = x + x^3 + O(x^6)
 
-
-#  println()
-#   print("divexact(a, 7) ");
    de = divexact(a, 7)
-#   print(" :????: ");
-#   println(de);  #### TODO: FIXME: coeffs are invisible :(
    a7 = QQ(1)//7*x+QQ(1)//7*x^3+O(x^31)
-#   println(a7);
-
-#   println(a7 - de);
-#   println(isequal(a7-de, a7));
-#   println(isequal(a7, de));
-
    @test isequal(de, a7)
 
-# ERROR: LoadError: test failed: isequal(divexact(a,7),QQ(1) // 7 * x + QQ(1) // 7 * x ^ 3 + O(x ^ 31))
-# in expression: isequal(divexact(a,7),QQ(1) // 7 * x + QQ(1) // 7 * x ^ 3 + O(x ^ 31))
-
-
-
-#   print("divexact(d, 9) ");
    de = divexact(d, 9) 
-#   print(" :????: ");
-#   println(de);
+   @test isequal( de, QQ(1)//9*x+QQ(1)//9*x^3+O(x^6) )  
 
-#   println(QQ(1)//9*x+QQ(1)//9*x^3+O(x^6) - de);
-   @test isequal( de, QQ(1)//9*x+QQ(1)//9*x^3+O(x^6) ) 
-
-
-#   print("divexact((t + 1)*a, t + 1) ");
    de = divexact((t + 1)*a, t + 1)
-#   print(" ::: ");
-#   println(de);
-#   println(a - de);
-  @test isequal(de, a)
+   @test isequal(de, a)
 
+   de = divexact(b, QQ(11)) #### TODO: FIXME: Too long!?
+   @test isequal(de, 0+O(x^4)) 
 
+   de = divexact(c, QQ(2))  ### Tooo long!???
+   @test isequal(de, QQ(1)//2+QQ(1)//2*x+x^2+O(x^5))
 
-#   print("divexact(b, QQ(11)) ");
-#   de = divexact(b, QQ(11)) #### TODO: FIXME: Too long!?
-#   print(" ::: ");
-#   println(de);
-#
-#   println( 0+O(x^4) - de);
-##   @test 
-#   println( isequal(de, 0+O(x^4)) )
+#=
+   print("p = K*a ");
+   K = S(94872394861923874346987123694871329847)
+   print(" ::: ");
+   p = K*a ## TODO: FIXME: BUG!!!!!!!!!!!
+   println(p);
 
+   print("divexact(K*a, K) ");
+   de = divexact(p, K)  
+   println(" ::: ", de);
+   @test isequal(de, a)
+=#
 
-#   print("divexact(c, QQ(2)) ");
-#   de = divexact(c, QQ(2))  ### Tooo long!???
-#   print(" ::: ");
-#   println(de);
-#
-#   println( QQ(1)//2+QQ(1)//2*x+x^2+O(x^5) - de);
-##   @test 
-#    println( isequal(de, QQ(1)//2+QQ(1)//2*x+x^2+O(x^5)) )
-
-#   print("divexact(....a, ....) ");
-#   de = divexact(94872394861923874346987123694871329847a, 94872394861923874346987123694871329847)  
-#### ERROR: LoadError: MethodError: `cpptype` has no method matching cpptype(::Cxx.ClangCompiler, ::Type{BigInt})
-#   print(" ::: ");
-#   println(de);
-#   println(a - de);
-##   @test 
-#   println(isequal(de, a))
-
-
-   println("PASS???")
+   println("PASS?!?")
 end
 
 function test_series_special_functions_singular()
@@ -416,36 +380,22 @@ function test_series_special_functions_singular()
    const ZZ = Nemo.SingularZZ();
    const QQ = Nemo.SingularQQ();
 
-   R = ResidueRing(ZZ, ZZ(17)) ### FIX: by default: 17 -> FlintZZ 
-   println(typeof(R), "   ::::   ", R)
+   R = ResidueRing(ZZ, 17)
    T, t = PolynomialRing(R, "t")
-   println(typeof(T), "   ::::   ", T)
    S, x = PowerSeriesRing(T, 30, "x")
-   println(typeof(S), "   ::::   ", S)
 
-   print("exp(x + O(x^10)) ");
    ex = exp(x + O(x^10))  ### TODO: FIXME: ERROR: LoadError: Unable to divide in exp
-   print(" ::: ");
-   println(ex);
+   @test isequal(ex,  8*x^9+4*x^8+15*x^7+3*x^6+x^5+5*x^4+3*x^3+9*x^2+x+1+O(x^10))
 
- #  @test 
-    println( isequal(ex,  8*x^9+4*x^8+15*x^7+3*x^6+x^5+5*x^4+3*x^3+9*x^2+x+1+O(x^10)) )
-
-   print("divexact(x, ex - 1) ")
    de = divexact(x, ex - 1) 
-   print(" ::: ");
-   println(de);
+   @test isequal(de, x^8+11*x^6+14*x^4+10*x^2+8*x+1+O(x^9)) 
 
-#   @test 
-    println( isequal(de, x^8+11*x^6+14*x^4+10*x^2+8*x+1+O(x^9)) )
-
-   println("PASS")
+   println("PASS???")
 end
 
 function test_series_singular()
-#   test_series_special_functions_singular() ### ????
-   test_series_adhoc_exact_division_singular() ### too long & wrong zero coeffs????
-
+   test_series_adhoc_exact_division_singular() ## ?!!??
+   test_series_special_functions_singular() ## ????
 
    test_series_constructors_singular()
    test_series_manipulation_singular()
@@ -459,7 +409,6 @@ function test_series_singular()
    test_series_truncation_singular()
    test_series_exact_division_singular()
    test_series_inversion_singular()
-
 
    println("")
 end
