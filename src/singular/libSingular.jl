@@ -47,9 +47,6 @@ cxx"""#line 20 "libSingular.jl"
     static void _n_WriteShort(number* n, const coeffs cf)
     { n_WriteShort(*n, cf); } 
 
-    static number _n_Normalize(number n, const coeffs cf)
-    { n_Normalize(n, cf); return n; } 
-
     static number _n_GetDenom(number* n, const coeffs cf)
     { return n_GetDenom(*n, cf); } 
 
@@ -296,7 +293,9 @@ end
 # number n_InitMPZ(mpz_t n,     const coeffs r) # TODO: BigInt???
 function n_InitMPZ(b :: BigInt, cf :: coeffs)
     bb = __mpz_struct(pointer_from_objref(b))
-    return n_Test((@cxx n_InitMPZ(bb, cf)), cf)
+    r = @cxx n_InitMPZ(bb, cf)
+    println("n_InitMPZ($b, $cf), bb: $bb --> $r");
+    return n_Test(r, cf)
 end
 
 # void n_MPZ(mpz_t result, number &n,       const coeffs r)
@@ -450,12 +449,11 @@ function n_Write( n::number_ref, cf :: coeffs, bShortOut::Bool = false )
 end
 
 
-#, (:n_Normalize)
-        function n_Normalize(x :: number_ref, cf :: coeffs) 
-	    n_Test(x[], cf)
-	    icxx""" n_Normalize($x, $cf); """
-    	    n_Test(x[], cf)
-        end
+function n_Normalize(x :: number_ref, cf :: coeffs) 
+    n_Test(x[], cf)
+    icxx""" n_Normalize($x, $cf); """
+    n_Test(x[], cf)
+end
 
 
 # number n_GetNumerator(number& n, const coeffs r)
