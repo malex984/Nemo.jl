@@ -50,7 +50,7 @@ function hash(a::PolyElem)
 end
 
 function normalise(a::Poly, len::Int)
-   while len > 0 && iszero(a.coeffs[len]) 
+   while len > 0 && iszero(coeff(a, len - 1)) # a.coeffs[len]) 
       len -= 1
    end
    return len
@@ -64,7 +64,7 @@ length(x::PolyElem) = x.length
 
 degree(x::PolyElem) = length(x) - 1
 
-coeff(a::Poly, n::Int) = n >= length(a) ? base_ring(a)(0) : a.coeffs[n + 1]
+coeff(a::Poly, n::Int) = ((n >= length(a)) || (n < 0)) ? base_ring(a)(0) : a.coeffs[n + 1]
 
 lead(a::PolyElem) = length(a) == 0 ? base_ring(a)(0) : coeff(a, length(a) - 1)
 
@@ -304,8 +304,9 @@ function mul_karatsuba{T <: RingElem}(a::Poly{T}, b::Poly{T})
 
    r = parent(a)(A)
 
+   @assert (length(z1) + m) < length(r)
    for i = 1:length(z1)
-      r.coeffs[i + m] += coeff(z1, i - 1)#      addeq!(r.coeffs[i + m], coeff(z1, i - 1))
+      addeq!(r.coeffs[i + m], coeff(z1, i - 1)) # r.coeffs[i + m] += coeff(z1, i - 1)#      
    end
 
    return r
@@ -371,8 +372,10 @@ function mul_ks{T <: PolyElem}(a::Poly{T}, b::Poly{T})
    r = parent(a)()
    lenr = lena + lenb - 1
    fit!(r, lenr)
+#   @assert lenr < length(r)
    for i = 1:lenr
       fit!(r.coeffs[i], m)
+#      @assert m < length(r.coeffs[i])
       for j = 1:m
          setcoeff!(r.coeffs[i], j - 1, coeff(p, (i - 1)*m + j - 1))
       end
@@ -389,7 +392,6 @@ function mul_classical{T <: RingElem}(a::Poly{T}, b::Poly{T})
       return parent(a)()
    end
 
-   t = base_ring(a)()
 
    lenz = lena + lenb - 1
    d = Array(T, lenz)
@@ -398,15 +400,18 @@ function mul_classical{T <: RingElem}(a::Poly{T}, b::Poly{T})
       d[i] = coeff(a, i - 1)*coeff(b, 0)
    end
 
+#   @assert lena < length(a)
    for i = 2:lenb
-      d[lena + i - 1] = a.coeffs[lena]*coeff(b, i - 1)
+      d[lena + i - 1] = coeff(a, lena - 1) * coeff(b, i - 1) # a.coeffs[lena]
    end
    
+   t = base_ring(a)()
+#   @assert lenb < length(b)
    for i = 1:lena - 1
       for j = 2:lenb
-#         mul!(t, coeff(a, i - 1), b.coeffs[j])
- #        addeq!(d[i + j - 1], t)
-	 d[i + j - 1] += ( coeff(a, i - 1) * b.coeffs[j] )
+         mul!(t, coeff(a, i - 1), coeff(b, j - 1)) # b.coeffs[j]
+         addeq!(d[i + j - 1], t)
+#	 d[i + j - 1] += ( coeff(a, i - 1) * b.coeffs[j] )
       end
    end
    
@@ -620,28 +625,45 @@ function mullow{T <: RingElem}(a::PolyElem{T}, b::PolyElem{T}, n::Int)
       n = 0
    end
 
-##   t = T()
-
    lenz = min(lena + lenb - 1, n)
 
    d = Array(T, lenz)
+#   println("lenz: $lenz")
 
    for i = 1:min(lena, lenz)
+#      println("i: ", i)
       d[i] = coeff(a, i - 1)*coeff(b, 0)
    end
 
    if lenz > lena
+      @assert (lena + min(lenb, lenz - lena + 1) - 1) <= lenz
       for j = 2:min(lenb, lenz - lena + 1)
+#          println("j: $j => $lena + $j - 1: ", lena + j - 1)
           d[lena + j - 1] = coeff(a, lena - 1)*coeff(b, j - 1)
       end
    end
 
+   t = base_ring(a)() # NOTE: BUG FIX!
+
+#   println(typeof(a))
+#   println(typeof(b))
+#   println(typeof(t))
+
    for i = 1:lena - 1
       if lenz > i
          for j = 2:min(lenb, lenz - i + 1)
-##            mul!(t, coeff(a, i - 1), b.coeffs[j])
-##            addeq!(d[i + j - 1], t)
-	      d[i + j - 1] += ( coeff(a, i - 1) * b.coeffs[j] )
+#            println("i: $i, j: $j => $i + $j - 1: ", i + j - 1)
+#	    println("a[i]: ", coeff(a, i - 1))
+#	    println("b[j]: ", coeff(b, j - 1))
+#	    println( coeff(a, i - 1) * coeff(b, j - 1) )
+
+	    @assert (i + j - 1) <= lenz
+#	    println("d[$i + $j - 1]: ", d[i + j - 1])
+
+            mul!(t, coeff(a, i - 1), coeff(b, j - 1)) # b.coeffs[j]
+#	    println("t: $t")
+            addeq!(d[i + j - 1], t)
+#	      d[i + j - 1] += ( coeff(a, i - 1) * b.coeffs[j] )
          end
       end
    end
@@ -1426,13 +1448,13 @@ function monomial_to_newton!{T <: RingElem}(P::Array{T, 1}, roots::Array{T, 1})
    n = length(roots)
    if n > 0
       R = parent(roots[1])
-#      t = R()
+      t = R()
       for i = 1:n - 1
          d = roots[i]
          for j = n - 1:-1:i
-#            mul!(t, P[j + 1], roots[i])
-#            addeq!(P[j], t)
-	     P[j] += (P[j + 1] * d)
+            mul!(t, P[j + 1], roots[i])
+            addeq!(P[j], t)
+#	     P[j] += (P[j + 1] * d)
          end
       end
    end
@@ -1443,13 +1465,13 @@ function newton_to_monomial!{T <: RingElem}(P::Array{T, 1}, roots::Array{T, 1})
    n = length(roots)
    if n > 0
       R = parent(roots[1])
-#      t = R()
+      t = R()
       for i = n - 1:-1:1
          d = -roots[i]
          for j = i:n - 1
-	    P[j] += (d * P[j + 1]) # =: t
-#            mul!(t, P[j + 1], d)
-#            addeq!(P[j], t)
+#	    P[j] += (d * P[j + 1]) # =: t
+            mul!(t, P[j + 1], d)
+            addeq!(P[j], t)
          end
       end
    end
@@ -1575,7 +1597,7 @@ end
 
 function fit!{T <: RingElem}(c::Poly{T}, n::Int)
    if length(c) < n
-      t = c.coeffs
+      t = c.coeffs 
       c.coeffs = Array(T, n)
       for i = 1:length(c)
          c.coeffs[i] = t[i]
@@ -1583,6 +1605,7 @@ function fit!{T <: RingElem}(c::Poly{T}, n::Int)
       for i = length(c) + 1:n
          c.coeffs[i] = zero(base_ring(c))
       end
+      c.length = n ## ???
    end
 end
 
@@ -1596,6 +1619,8 @@ function setcoeff!{T <: RingElem}(c::Poly{T}, n::Int, a::T)
 end
 
 function mul!{T <: RingElem}(c::Poly{T}, a::Poly{T}, b::Poly{T})
+#   println("Poly::mul!($c, $a, $b): ... ")
+
    lena = length(a)
    lenb = length(b)
 
@@ -1614,34 +1639,49 @@ function mul!{T <: RingElem}(c::Poly{T}, a::Poly{T}, b::Poly{T})
       lenc = lena + lenb - 1
       fit!(c, lenc)
 
+#      @assert lena < length(c)
       for i = 1:lena
+#      	 println("i: ", i)
          mul!(c.coeffs[i], coeff(a, i - 1), coeff(b, 0))
       end
 
+#      @assert (lena + lenb - 1) < length(c)
+#      @assert lena < length(a)
       for i = 2:lenb
-         mul!(c.coeffs[lena + i - 1], a.coeffs[lena], coeff(b, i - 1))
+#      	 println("ii: ", i)
+         mul!(c.coeffs[lena + i - 1], coeff(a, lena - 1), coeff(b, i - 1)) # a.coeffs[lena]
       end
 
+#      @assert lenb < length(b)
+#      @assert (lenb + lena - 1) < length(c)
       for i = 1:lena - 1
+#      	 println("i: ", i)
          for j = 2:lenb
-            mul!(t, coeff(a, i - 1), b.coeffs[j])
+#	    println("j: ", j)
+
+            mul!(t, coeff(a, i - 1), coeff(b, j - 1)) #b.coeffs[j]
             addeq!(c.coeffs[i + j - 1], t)
          end
       end
         
       c.length = normalise(c, lenc)
    end
+#   println("Poly::mul!(c, $a, $b), c $c")
 end
 
 function addeq!{T <: RingElem}(c::Poly{T}, a::Poly{T})
+#   println("Poly::addeq!($c, $a): ... ")
+
    lenc = length(c)
    lena = length(a)
    len = max(lenc, lena)
    fit!(c, len)
+#   @assert lena < length(c)
    for i = 1:lena
       addeq!(c.coeffs[i], coeff(a, i - 1))
    end
    c.length = normalise(c, len)
+#   println("Poly::addeq!(): $c")
 end
 
 ###############################################################################
