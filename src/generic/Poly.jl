@@ -87,6 +87,7 @@ end
 isunit(a::PolyElem) = length(a) == 1 && isunit(coeff(a, 0))
 
 function deepcopy{T <: RingElem}(a::Poly{T})
+   R = base_ring(a)
    coeffs = Array(T, length(a))
    for i = 1:length(a)
       coeffs[i] = deepcopy(coeff(a, i - 1))
@@ -180,6 +181,7 @@ show_minus_one{T <: RingElem}(::Type{Poly{T}}) = show_minus_one(T)
 
 function -{T <: RingElem}(a::Poly{T})
    len = length(a)
+   R = base_ring(a)
    d = Array(T, len)
    for i = 1:len
       d[i] = -coeff(a, i - 1)
@@ -200,6 +202,7 @@ function +{T <: RingElem}(a::Poly{T}, b::Poly{T})
    lena = length(a)
    lenb = length(b)
    lenz = max(lena, lenb)
+   R = base_ring(a)
    d = Array(T, lenz)
    i = 1
 
@@ -230,6 +233,7 @@ function -{T <: RingElem}(a::Poly{T}, b::Poly{T})
    lena = length(a)
    lenb = length(b)
    lenz = max(lena, lenb)
+   R = base_ring(a)
    d = Array(T, lenz)
    i = 1
 
@@ -292,12 +296,13 @@ function mul_karatsuba{T <: RingElem}(a::Poly{T}, b::Poly{T})
    end
 
    A = Array(T, lena + lenb - 1)
+   R = base_ring(a)
 
    for i = 1:length(z0)
       A[i] = coeff(z0, i - 1)
    end
    for i = length(z0) + 1:2m
-      A[i] = base_ring(a)()
+      A[i] = zero(R)
    end
 
    for i = 1:length(z2)
@@ -343,6 +348,7 @@ function mul_ks{T <: PolyElem}(a::Poly{T}, b::Poly{T})
    end
    m = maxa + maxb - 1
    z = base_ring(base_ring(a))()
+   D = elem_type(base_ring(base_ring(a)))
    A1 = Array(elem_type(base_ring(base_ring(a))), m*lena)
    for i = 1:lena
       c = coeff(a, i - 1)
@@ -391,9 +397,8 @@ function mul_classical{T <: RingElem}(a::Poly{T}, b::Poly{T})
       return parent(a)()
    end
 
-   t = base_ring(a)()
-
    lenz = lena + lenb - 1
+   R = base_ring(a)
    d = Array(T, lenz)
    
    for i = 1:lena
@@ -404,6 +409,7 @@ function mul_classical{T <: RingElem}(a::Poly{T}, b::Poly{T})
       d[lena + i - 1] = a.coeffs[lena]*coeff(b, i - 1)
    end
    
+   t = R()
    for i = 1:lena - 1
       for j = 2:lenb
          mul!(t, coeff(a, i - 1), b.coeffs[j])
@@ -431,6 +437,7 @@ end
 
 function *{T <: RingElem}(a::Int, b::Poly{T})
    len = length(b)
+   R = base_ring(b)
    d = Array(T, len)
    for i = 1:len
       d[i] = a*coeff(b, i - 1)
@@ -442,6 +449,7 @@ end
 
 function *{T <: RingElem}(a::fmpz, b::Poly{T})
    len = length(b)
+   R = base_ring(b)
    d = Array(T, len)
    for i = 1:len
       d[i] = a*coeff(b, i - 1)
@@ -466,12 +474,13 @@ function pow_multinomial{T <: RingElem}(a::PolyElem{T}, e::Int)
    lena = length(a)
    lenz = (lena - 1) * e + 1
    res = Array(T, lenz)
-   for k = 1:lenz
-      res[k] = base_ring(a)()
-   end
-   d = base_ring(a)()
+   R = base_ring(a)
+   d = zero(R)
    first = coeff(a, 0)
    res[1] = first ^ e
+   for k = 2:lenz
+      res[k] = zero(R)
+   end
    for k = 1 : lenz - 1
       u = -k
       for i = 1 : min(k, lena - 1)
@@ -489,7 +498,7 @@ end
 
 function ^{T <: RingElem}(a::PolyElem{T}, b::Int)
    b < 0 && throw(DomainError())
-   # special case powers of x for constructing polynomials efficiently
+   # special case powers of x for constructing polynomials efficiently   
    if isgen(a)
       d = Array(T, b + 1)
       d[b + 1] = coeff(a, 1)
@@ -621,11 +630,10 @@ function mullow{T <: RingElem}(a::PolyElem{T}, b::PolyElem{T}, n::Int)
       n = 0
    end
    R = base_ring(a)
-   t = R() # T()
 
    lenz = min(lena + lenb - 1, n)
 
-   d = Array(R, lenz) # T
+   d = Array(T, lenz)
 
    for i = 1:min(lena, lenz)
       d[i] = coeff(a, i - 1)*coeff(b, 0)
@@ -636,6 +644,8 @@ function mullow{T <: RingElem}(a::PolyElem{T}, b::PolyElem{T}, n::Int)
           d[lena + j - 1] = coeff(a, lena - 1)*coeff(b, j - 1)
       end
    end
+
+   t = R() # T()
 
    for i = 1:lena - 1
       if lenz > i
@@ -687,8 +697,9 @@ function shift_left{T <: RingElem}(x::PolyElem{T}, len::Int)
    end
    xlen = length(x)
    v = Array(T, xlen + len)
+   R = base_ring(x)
    for i = 1:len
-      v[i] = zero(base_ring(x))
+      v[i] = zero(R)
    end
    for i = 1:xlen
       v[i + len] = coeff(x, i - 1)
@@ -1084,9 +1095,10 @@ end
 function integral{T <: Union{ResidueElem, FieldElem}}(x::PolyElem{T})
    len = length(x)
    v = Array(T, len + 1)
-   v[1] = zero(base_ring(x))
+   R = base_ring(x)
+   v[1] = zero(R)
    for i = 1:len
-      v[i + 1] = divexact(coeff(x, i - 1), base_ring(x)(i))
+      v[i + 1] = divexact(coeff(x, i - 1), R(i))
    end
    p = parent(x)(v)
    len += 1

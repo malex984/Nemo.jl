@@ -722,19 +722,19 @@ function test_matrix_hessenberg_singular()
 #   const QQ = Nemo.SingularQQ();
 
    R = ResidueRing(ZZ, ZZ(18446744073709551629)) ## BigInt???
-   println("R: ", R)
+#   println("R: ", R)
 
    for dim = 0:5
       S = MatrixSpace(R, dim, dim)
 
 #      U, x = PolynomialRing(R, "x")
-       println("S: ", S, ".... dim: $dim")
+#       println("S: ", S, ".... dim: $dim")
 
       for i = 1:10
-         println("i: $i, M: ")
+#         println("i: $i, M: ")
          M = randmat(S, 5)
 
-	 println(M)
+#	 println(M)
 
          A = hessenberg(M)
 
@@ -969,8 +969,6 @@ function test_matrix_minpoly_singular()
 end
 
 function test_matrix_singular()
-   test_matrix_hessenberg_singular()
-
 
    test_matrix_constructors_singular()
    test_matrix_manipulation_singular()
@@ -988,16 +986,17 @@ function test_matrix_singular()
    test_matrix_adhoc_exact_division_singular()
    test_matrix_rref_singular()
 
+   test_matrix_hessenberg_singular()
 #=================================================================================#
    test_matrix_minpoly_singular() # TODO: FIXME: wrong test - due to unsafe mul!, addeq!
    test_matrix_rank_singular()
    test_matrix_nullspace_singular()
-   test_matrix_inversion_singular() ## TODO: too long?
 #=================================================================================#
 ## Wrong Singular numbers?
    test_matrix_solve_singular()
    test_matrix_determinant_singular() ## TODO: seg.fault?
 #=================================================================================#
+   test_matrix_inversion_singular() ## TODO: too long?
 
    println("")
 end

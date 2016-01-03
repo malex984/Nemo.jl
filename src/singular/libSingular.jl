@@ -294,7 +294,7 @@ end
 function n_InitMPZ(b :: BigInt, cf :: coeffs)
     bb = __mpz_struct(pointer_from_objref(b))
     r = @cxx n_InitMPZ(bb, cf)
-    println("n_InitMPZ($b, $cf), bb: $bb --> $r");
+#    println("n_InitMPZ($b, $cf), bb: $bb --> $r");
     return n_Test(r, cf)
 end
 
