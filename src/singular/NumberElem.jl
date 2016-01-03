@@ -11,33 +11,34 @@ type NumberElem{CF<:SingularRing} <: SingularRingElem # TODO: rename -> NumberRE
     end
 
     function NumberElem(c :: CF)
-        z = new(number(0), c); finalizer(z, _SingularRingElem_clear_fn); return z
+        const p = number(0);
+	z = new(n_Test(p, get_raw_ptr(c)), c); 
+	finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
-    function NumberElem(c :: CF, p :: libSingular.number)
-        z = new(p, c); finalizer(z, _SingularRingElem_clear_fn); return z
+    function NumberElem(c :: CF, p :: libSingular.number)        
+        z = new(n_Test(p, get_raw_ptr(c)), c); 
+	finalizer(z, _SingularRingElem_clear_fn); return z
     end
     
     function NumberElem(c :: CF, x::Int)
-        p :: libSingular.number = libSingular.n_Init(x, get_raw_ptr(c))
+        const p :: libSingular.number = libSingular.n_Init(x, get_raw_ptr(c))
     	return NumberElem{CF}(c, p)
     end
 
-function NumberElem(c::CF, b::BigInt) 
-    p :: libSingular.number = libSingular.n_InitMPZ(b, get_raw_ptr(c))
-    return NumberElem{CF}(c, p)
-end
+    function NumberElem(c::CF, b::BigInt) 
+    	const p :: libSingular.number = libSingular.n_InitMPZ(b, get_raw_ptr(c))
+	return NumberElem{CF}(c, p)
+    end
 
-function NumberElem(x::NumberElem{CF})
-    c = parent(x); p :: libSingular.number = libSingular.n_Copy(get_raw_ptr(x), get_raw_ptr(c)); 
-    return NumberElem{CF}(c, p)
-end
+    function NumberElem(x::NumberElem{CF})
+        const c = parent(x); 
+	const p :: libSingular.number = libSingular.n_Copy(get_raw_ptr(x), get_raw_ptr(c)); 
+    	return NumberElem{CF}(c, p)
+    end
 
-	#{CF<:SingularRing}
     NumberElem(c::CF, z::Integer) = NumberElem{CF}(c, BigInt(z))
     NumberElem(c::CF, s::AbstractString) = parseNumber(c, s)
-
-
 end
 
 # with context...
@@ -50,11 +51,14 @@ type NumberFElem{CF<:SingularField} <: SingularFieldElem
     end
 
     function NumberFElem(c::CF)
-        z = new(number(0), c); finalizer(z, _SingularRingElem_clear_fn); return z
+        const p = number(0);
+        z = new(n_Test(p, get_raw_ptr(c)), c); 
+        finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
     function NumberFElem(c::CF, p::number)
-        z = new(p, c); finalizer(z, _SingularRingElem_clear_fn); return z
+        z = new(n_Test(p, get_raw_ptr(c)), c); 
+        finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
     function NumberFElem(c::CF, x::Int)
@@ -80,7 +84,9 @@ type Number_Elem{CF<:SingularUniqueRing} <: SingularUniqueRingElem  # TODO: rena
     ptr :: number
 
     function Number_Elem()
-        z = new(number(0)); finalizer(z, _SingularRingElem_clear_fn); return z
+        const p = number(0)
+        z = new(n_Test(p, get_raw_ptr(CF()))); 
+        finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
     function Number_Elem(::CF)
@@ -88,7 +94,8 @@ type Number_Elem{CF<:SingularUniqueRing} <: SingularUniqueRingElem  # TODO: rena
     end
 
     function Number_Elem(p::number)
-        z = new(p); finalizer(z, _SingularRingElem_clear_fn); return z
+        z = new(n_Test(p, get_raw_ptr(CF()))); 
+        finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
     function Number_Elem(::CF, p::number)
@@ -126,11 +133,14 @@ type NumberF_Elem{CF<:SingularUniqueField} <: SingularUniqueFieldElem
     ptr :: number
 
     function NumberF_Elem()
-        z = new(number(0)); finalizer(z, _SingularRingElem_clear_fn); return z
+    	const p = number(0); 
+        z = new(n_Test(p, get_raw_ptr(CF()))); 
+        finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
     function NumberF_Elem(p::number)
-        z = new(p); finalizer(z, _SingularRingElem_clear_fn); return z
+        z = new(n_Test(p, get_raw_ptr(CF()))); 
+	finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
 
@@ -177,28 +187,34 @@ type Singular_ZZElem <: SingularIntegerRingElem
     ptr :: number
 
     function Singular_ZZElem()
-        z = new(number(0)); finalizer(z, _SingularRingElem_clear_fn); return z
+    	const p = number(0); 
+    	const c = libSingular.ptr_ZZ;
+        z = new(n_Test(p, c)); 
+        finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
     function Singular_ZZElem(p::number)
-        z = new(p); finalizer(z, _SingularRingElem_clear_fn); return z
+    	const c = libSingular.ptr_ZZ;
+        z = new(n_Test(p, c)); 
+        finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
     function Singular_ZZElem(x::Int)
-    	c = libSingular.ptr_ZZ;
-    	p = libSingular.n_Init(x, c); return Singular_ZZElem(p);
+    	const c = libSingular.ptr_ZZ;
+    	const p = libSingular.n_Init(x, c); 
+	return Singular_ZZElem(p);
     end
 
     function Singular_ZZElem(b::BigInt)
 #        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?
-    	c = libSingular.ptr_ZZ;
-        p = libSingular.n_InitMPZ(b, c); 
+    	const c = libSingular.ptr_ZZ;
+        const p = libSingular.n_InitMPZ(b, c); 
 	return Singular_ZZElem(p)
     end
 
     function Singular_ZZElem(x::Singular_ZZElem)
-    	c = libSingular.ptr_ZZ;
-	p = libSingular.n_Copy(get_raw_ptr(x), c); 
+    	const c = libSingular.ptr_ZZ;
+	const p = libSingular.n_Copy(get_raw_ptr(x), c); 
         return Singular_ZZElem(p)
     end
 end
@@ -208,28 +224,33 @@ type Singular_QQElem <: SingularFractionElem{Singular_ZZElem}
     ptr :: number
 
     function Singular_QQElem()
-        z = new(number(0)); finalizer(z, _SingularRingElem_clear_fn); return z
+    	const p = number(0); 
+    	const c = libSingular.ptr_QQ;
+        z = new(n_Test(p, c)); 
+        finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
     function Singular_QQElem(p::number)
-        z = new(p); finalizer(z, _SingularRingElem_clear_fn); return z
+    	const c = libSingular.ptr_QQ;
+        z = new(n_Test(p, c)); 
+        finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
     function Singular_QQElem(x::Int)
-    	c = libSingular.ptr_QQ;
-    	p = libSingular.n_Init(x, c); return Singular_QQElem(p);
+    	const c = libSingular.ptr_QQ;
+    	const p = libSingular.n_Init(x, c); 
+	return Singular_QQElem(p);
     end
 
     function Singular_QQElem(x::Singular_QQElem)
-    	c = libSingular.ptr_QQ;
-        p = libSingular.n_Copy(get_raw_ptr(x), c); 
+    	const c = libSingular.ptr_QQ;
+        const p = libSingular.n_Copy(get_raw_ptr(x), c); 
         return Singular_QQElem(p)
     end
 
     function Singular_QQElem(b::BigInt)
-#        # TODO: how to pass BigInt into C++ function with Cxx (which knows nothing about it)?
-    	c = libSingular.ptr_QQ;
-        p = libSingular.n_InitMPZ(b, c); 
+    	const c = libSingular.ptr_QQ;
+        const p = libSingular.n_InitMPZ(b, c); 
 	return Singular_QQElem(p)
     end
 
@@ -255,22 +276,30 @@ end
 # Properties: 
 #######################################################
 
-get_raw_ptr(n::SingularCoeffsElems) = n.ptr
-set_raw_ptr!(n::SingularCoeffsElems, p::libSingular.number) = n.ptr = p;
+function get_raw_ptr(n::SingularCoeffsElems)
+   return n_Test(n.ptr, get_raw_ptr(parent(n)))
+end
+
+function set_raw_ptr!(n::SingularCoeffsElems, p::libSingular.number)
+   n.ptr = p;
+   get_raw_ptr(n); # Test...
+end
 
 ## Concrete: in general there may be no context attached
 parent{CF<:SingularRing}(n::NumberElem{CF}) = n.ctx
 
 function set_raw_ptr!{CF<:SingularRing}(n::NumberElem{CF}, p::libSingular.number, C::CF)
-   n.ptr = p
-   n.ctx = C
+   n.ptr = p;
+   n.ctx = C;
+   get_raw_ptr(n); # Test...
 end
 
 parent{CF<:SingularField}(n::NumberFElem{CF}) = n.ctx
 
 function set_raw_ptr!{CF<:SingularField}(n::NumberFElem{CF}, p::libSingular.number, C::CF)
-   n.ptr = p
-   n.ctx = C
+   n.ptr = p;
+   n.ctx = C;
+   get_raw_ptr(n); # Test...
 end
 
 
@@ -280,22 +309,26 @@ parent{CF<:SingularUniqueRing}(n::Number_Elem{CF}) = CF()
 parent{CF<:SingularUniqueField}(n::NumberF_Elem{CF}) = CF()
 
 function set_raw_ptr!{CF<:SingularUniqueRing}(n::Number_Elem{CF}, p::libSingular.number, ::CF)
-   n.ptr = p
+   n.ptr = p;
+   get_raw_ptr(n); # Test...
 end
 
 function set_raw_ptr!{CF<:SingularUniqueField}(n::NumberF_Elem{CF}, p::libSingular.number, ::CF)
-   n.ptr = p
+   n.ptr = pl;
+   get_raw_ptr(n); # Test...
 end
 
 parent(n::Singular_ZZElem) = Singular_ZZ()
 parent(n::Singular_QQElem) = Singular_QQ()
 
 function set_raw_ptr!(n::Singular_ZZElem, p::libSingular.number, ::Singular_ZZ)
-   n.ptr = p
+   n.ptr = p;
+   get_raw_ptr(n); # Test...
 end
 
 function set_raw_ptr!(n::Singular_QQElem, p::libSingular.number, ::Singular_QQ)
-   n.ptr = p
+   n.ptr = p;
+   get_raw_ptr(n); # Test...
 end
 
 
@@ -365,10 +398,12 @@ function _SingularRingElem_clear_fn(n::SingularCoeffsElems)
       return ;
    end
 
-   p = libSingular._n_Delete(p, cf)
+   @assert (p != number(0))
+#   println("\nGC[ $n { $p, $cf } ]...\n")
+   libSingular._n_Delete(p, cf);
 
-   set_raw_ptr!(n, number(0)) # p?
- 
+#   set_raw_ptr!(n, libSingular.number(0)) # p? 
+   n.ptr = libSingular.number(0); # no tests...
 end
 
 
@@ -607,8 +642,6 @@ for (fJ, fC) in ((:_num, :_n_GetNumerator), (:_den, :_n_GetDenom))
             ret = (libSingular.$fC)(r, get_raw_ptr(C))  # TODO: FIXME:!!!! ???
             set_raw_ptr!(x, r[])
 	    return ret # TODO: result in the same Coeffs?? 
-
-#	    error("Sorry: $fJ has to be verified yet!")
         end
     end
 end
@@ -776,7 +809,7 @@ function remQR(x::SingularCoeffsElems, y::SingularCoeffsElems)
 
     q, m = libSingular.n_QuotRem(get_raw_ptr(x), get_raw_ptr(y), cf);
 
-    q = libSingular._n_Delete(q, cf);
+    libSingular._n_Delete(q, cf);
     return C(m)
 end
 
@@ -789,7 +822,7 @@ function divQR(x::SingularCoeffsElems, y::SingularCoeffsElems)
 
     q, m = libSingular.n_QuotRem(get_raw_ptr(x), get_raw_ptr(y), cf);
 
-    m = libSingular._n_Delete(m, cf);
+    libSingular._n_Delete(m, cf);
     return C(q)
 end
 
@@ -955,7 +988,7 @@ function gcdinv(a::SingularCoeffsElems, b::SingularCoeffsElems)
 
     g, s, t = libSingular.n_ExtGcd(get_raw_ptr(a), get_raw_ptr(b), cf);
 
-    t = libSingular._n_Delete(t, cf)
+    libSingular._n_Delete(t, cf)
 
     c(g), c(s)
 end
@@ -1122,8 +1155,11 @@ function muleq!(x :: SingularCoeffsElems, y :: SingularCoeffsElems)
     cf = get_raw_ptr(parent(x)); yy = get_raw_ptr(y)
 
     xx = number_ref(get_raw_ptr(x))
+#    println("muleq! $x: [$xx] *= $y [$yy]: ")
     icxx""" n_InpMult($xx, $yy, $cf); """
     set_raw_ptr!(x, xx[]);
+
+#    println("muleq! ---> $x [$xx]")
 end
 
 function addeq!(x :: SingularCoeffsElems, y :: SingularCoeffsElems)
@@ -1133,18 +1169,23 @@ function addeq!(x :: SingularCoeffsElems, y :: SingularCoeffsElems)
     cf = get_raw_ptr(parent(x)); yy = get_raw_ptr(y)
 
     xx = number_ref(get_raw_ptr(x))
+#    println("addeq! $x: [$xx] += $y [$yy]: ")
     icxx""" n_InpAdd($xx, $yy, $cf); """
     set_raw_ptr!(x, xx[]);
+
+#    println("addeq! ---> $x [$xx]")
 end
 
 # c = T(); c = x * y ; M += c   
 # NOTE: usually in a loop => on the next cycle c is initialized => free its data!
 function mul!(c::SingularCoeffsElems, x::SingularCoeffsElems, y::SingularCoeffsElems)
     if is(c,x) 
-        return muleq!(c, y)
+        muleq!(c, y)
+	return 
     end
     if is(c,y) 
-        return muleq!(c, x) # NOTE: Commutative multiplication!???
+        muleq!(c, x) # NOTE: Commutative multiplication!???
+	return 
     end
 
     @assert !(is(c,x) || is(c,y))
@@ -1154,14 +1195,20 @@ function mul!(c::SingularCoeffsElems, x::SingularCoeffsElems, y::SingularCoeffsE
 
     xx = get_raw_ptr(x); yy = get_raw_ptr(y);
 
+#    println("mul! ($x [$xx]) * ($y [$yy]) --?-> c..")
+
     ptr = libSingular.n_Mult(xx, yy, cf);
 
     cc = get_raw_ptr(c);
 
     if cc != number(0)
+#    	println("mul!: prev: $c ($cc)... living in ", get_raw_ptr(parent(c)))
         libSingular._n_Delete(cc, get_raw_ptr(parent(c)));
+#    	println("mul!: prev - deleted...!!!")
     end
     
     set_raw_ptr!(c, ptr, C)
+
+#    println("mul! ($x) * ($y) ---> $c")
 end
 

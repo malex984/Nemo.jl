@@ -1,60 +1,8 @@
 module libSingular
-
-# export n_coeffType, number, coeffs
-
+export n_coeffType, number, coeffs, n_Test
 using Cxx
 
-
-# Ring?   
-# todo: add default constructor for QQ, Fp ?! 
-# TODO: fix the following to work 
-# 2 into separate low-level functions
-# 3 back to types <: mathematical using those functions!
-
-typealias nMapFunc Cxx.CppFptr{Cxx.CppFunc{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Tuple{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}}}}
-
-typealias n_coeffType Cxx.CppEnum{:n_coeffType} # pcpp"n_coeffType" # 
-
-typealias __mpz_struct pcpp"__mpz_struct"
-#Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:__mpz_struct},(false,false,false)},(false,false,false)}
-
-typealias mpz_t pcpp"mpz_t"
-#Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:mpz_t},(false,false,false)},(false,false,false)}
-
-
-## todo: avoid the above!
-function n_Zp(); return(@cxx n_Zp); end # n_coeffType::
-# /**< \F{p < 2^31} */
-
-function n_Q(); return(@cxx n_Q); end  # 
-# @cxx get_Q(); # Cxx.CppEnum{:n_coeffType}(2) /**< rational (GMP) numbers */
-
-function n_R(); return(@cxx n_R); end # 
-#,  /**< single prescision (6,6) real numbers */
-
-#function n_GF(); return(@cxx n_GF); end # 
-# , /**< \GF{p^n < 2^16} */
-
-#n_algExt() = (@cxx n_algExt) # ,  /**< used for all algebraic extensions, i.e.,the top-most extension in an extension tower is algebraic */
-#n_transExt() = (@cxx n_transExt) #,  /**< used for all transcendental extensions, i.e.,the top-most extension in an extension tower is transcendental */
-
-function n_long_R(); return(@cxx n_long_R); end # , /**< real floating point (GMP) numbers */
-function n_long_C(); return(@cxx n_long_C); end
-# , /**< complex floating point (GMP) numbers */
-
-#  n_Z, /**< only used if HAVE_RINGS is defined: ? */
-function n_Z(); return(@cxx n_Z); end
- # @cxx get_Z(); # Cxx.CppEnum{:n_coeffType}(9)
-
-#n_Zn() =  (@cxx n_Zn) # , /**< only used if HAVE_RINGS is defined: ? */
-#n_Znm() =  (@cxx n_Znm) # , /**< only used if HAVE_RINGS is defined: ? */
-#n_Z2m() =  (@cxx n_Z2m) # , /**< only used if HAVE_RINGS is defined: ? */
-
-#function n_CF(); return(@cxx n_CF); end #  /**< ? */
-
-
 function __libSingular_init__()
-
    const local prefix = joinpath(Pkg.dir("Nemo"), "local")
 
    addHeaderDir(joinpath(prefix, "include"), kind = C_System)
@@ -63,12 +11,13 @@ function __libSingular_init__()
    cxxinclude(joinpath("Singular", "libsingular.h"), isAngled=false)
    cxxinclude(joinpath("omalloc", "omalloc.h"), isAngled=false)
    cxxinclude(joinpath("gmp.h"), isAngled=false)
+   cxxinclude(joinpath("debugbreak.h"), isAngled=false)
    cxxinclude(joinpath("reporter", "reporter.h"), isAngled=false)
    cxxinclude(joinpath("coeffs", "coeffs.h"), isAngled=false)
    cxxinclude(joinpath("polys", "monomials", "ring.h"), isAngled=false)
    cxxinclude(joinpath("polys", "monomials", "p_polys.h"), isAngled=false)
-
-cxx"""
+## NOTE: make sure the line number is correct in case of any changes above here!!!!
+cxx"""#line 20 "libSingular.jl"
     #include "Singular/libsingular.h"
     #include "omalloc/omalloc.h"
     #include "gmp.h"
@@ -78,6 +27,9 @@ cxx"""
     #include <polys/monomials/ring.h>
     #include <polys/monomials/p_polys.h>
 
+    #include "debugbreak.h"
+    #include <cassert>
+
     static void _omFree(void* p){ omFree(p); }
     static void _PrintLn(){ PrintLn(); } 
     static void _PrintS(const void *p)
@@ -85,9 +37,9 @@ cxx"""
     static long  _siRand(){ return siRand(); }
     static number _n_Power(number a, int b, const coeffs r)
     { number res; n_Power(a, b, &res, r); return res; }
-    static number _n_Delete(number a,const coeffs r)
-    {number t = a; n_Delete(&t,r); return (t);}
 
+    static void _n_Delete(number a,const coeffs r)
+    { number t = a; if(t != NULL) n_Delete(&t,r); /*return (t);*/ }
 
     static void _n_WriteLong(number* n, const coeffs cf)
     { n_WriteLong(*n, cf); } 
@@ -145,6 +97,13 @@ cxx"""
 
     static number nApplyMapFunc(nMapFunc f, number n, const coeffs src, const coeffs dst){ return f(n, src, dst); }
 
+    static bool _n_Test(number a,const coeffs cf)
+    { 
+      if(a==0) return (true); // ?
+      return n_Test(a, cf);
+    }
+    static void _break(){ assume(false); assert(false); debug_break(); }
+
 """
 
    local const binSingular = joinpath(prefix, "bin", "Singular")
@@ -180,8 +139,49 @@ cxx"""
 
    global setMap_ZZ2QQ = n_SetMap(ptr_ZZ, ptr_QQ)
    @assert (setMap_ZZ2QQ != C_NULL)
-
 end
+
+typealias nMapFunc Cxx.CppFptr{Cxx.CppFunc{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Tuple{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}}}}
+
+typealias n_coeffType Cxx.CppEnum{:n_coeffType} # pcpp"n_coeffType" # 
+
+typealias __mpz_struct pcpp"__mpz_struct"
+#Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:__mpz_struct},(false,false,false)},(false,false,false)}
+
+typealias mpz_t pcpp"mpz_t"
+#Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:mpz_t},(false,false,false)},(false,false,false)}
+
+
+## todo: avoid the above!
+function n_Zp(); return(@cxx n_Zp); end # n_coeffType::
+# /**< \F{p < 2^31} */
+
+function n_Q(); return(@cxx n_Q); end  # 
+# @cxx get_Q(); # Cxx.CppEnum{:n_coeffType}(2) /**< rational (GMP) numbers */
+
+function n_R(); return(@cxx n_R); end # 
+#,  /**< single prescision (6,6) real numbers */
+
+#function n_GF(); return(@cxx n_GF); end # 
+# , /**< \GF{p^n < 2^16} */
+
+#n_algExt() = (@cxx n_algExt) # ,  /**< used for all algebraic extensions, i.e.,the top-most extension in an extension tower is algebraic */
+#n_transExt() = (@cxx n_transExt) #,  /**< used for all transcendental extensions, i.e.,the top-most extension in an extension tower is transcendental */
+
+function n_long_R(); return(@cxx n_long_R); end # , /**< real floating point (GMP) numbers */
+function n_long_C(); return(@cxx n_long_C); end
+# , /**< complex floating point (GMP) numbers */
+
+#  n_Z, /**< only used if HAVE_RINGS is defined: ? */
+function n_Z(); return(@cxx n_Z); end
+ # @cxx get_Z(); # Cxx.CppEnum{:n_coeffType}(9)
+
+#n_Zn() =  (@cxx n_Zn) # , /**< only used if HAVE_RINGS is defined: ? */
+#n_Znm() =  (@cxx n_Znm) # , /**< only used if HAVE_RINGS is defined: ? */
+#n_Z2m() =  (@cxx n_Z2m) # , /**< only used if HAVE_RINGS is defined: ? */
+
+#function n_CF(); return(@cxx n_CF); end #  /**< ? */
+
 
 function siInit(p)
    @cxx siInit(pointer(p))
@@ -294,36 +294,18 @@ end
 
 # BigInt ?!
 # number n_InitMPZ(mpz_t n,     const coeffs r) # TODO: BigInt???
-
 function n_InitMPZ(b :: BigInt, cf :: coeffs)
-#    println(mpz_t)
-#    println(__mpz_struct)
-
     bb = __mpz_struct(pointer_from_objref(b))
-
-#    println()
-#    println(bb)
-#    println(typeof(bb))
-
-    return @cxx n_InitMPZ( bb, cf )
-###   return icxx""" return n_InitMPZ((mpz_t)$b, $cf); """ ## TODO!?
+    return n_Test((@cxx n_InitMPZ(bb, cf)), cf)
 end
 
 # void n_MPZ(mpz_t result, number &n,       const coeffs r)
 function n_MPZ(a :: number_ref, cf :: coeffs)
-
-    b = BigInt()
-    bb = pointer_from_objref(b)
-
-#  number n = $a; $a = n; 
+    n_Test(a[], cf);
+    b = BigInt();
+    bb = pointer_from_objref(b);
     icxx""" n_MPZ((__mpz_struct *)$bb, $a, $cf); """
-
-###    println("bb [", typeof(bb), "] : ", bb)
-
-    return b # bb[] 
-#     error("Sorry: n_MPZ - not yet ready");
-
-
+    return b
 end
 
 ## static FORCE_INLINE void number2mpz(number n, coeffs c, mpz_t m){ n_MPZ(m, n, c); }
@@ -331,42 +313,67 @@ end
 # long n_Int(number &n,       const coeffs r)
 
 function n_Int(n :: number_ref, cf :: coeffs) 
-
-     r = icxx""" return n_Int($n, $cf); """
-
-#    nn :: number = n[]
-#    r = (@cxx _n_Int(&nn, cf))
-#    n[] = nn;
+    n_Test(n[], cf);
+    r = (icxx""" return n_Int($n, $cf); """)
+    n_Test(n[], cf);
     return r
-
-    # Got bad type information while compiling Cxx.CppNNS{Tuple{:n__Int}} 
- # (got Base.RefValue{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)}} for argument 1
 end
 
 
+function _n_Test(n :: number, cf :: coeffs) 
+   return (@cxx _n_Test(n, cf))
+end
+
+function n_Test(n :: number, cf :: coeffs) 
+   if n != number(0)
+      if !_n_Test(n, cf)
+         bt = backtrace();
+      	 println( bt )
+	 Base.show_backtrace(STDERR, bt); 
+
+# io = IOBuffer();# seekstart(io); s = readall(io);# s = sprint(io->Base.show_backtrace(io, bt));# println( s ) 
+
+	 i = 0 
+	 for frame in bt
+             i = i + 1
+             li = Profile.lookup( UInt( frame ) ) # frame ) # 
+ 
+             file  = li.file
+             line  = li.line
+             func  = li.func
+             fromC = li.fromC # .ip?
+
+	     println( "# ", i, " : ", frame )
+	     println( li )
+	     println( file, " : ", line  )
+	     println( func, " : ", fromC )
+         end
+
+	 @cxx _break()
+#        throw(ErrorException("n_Test: Wrong Singular number"))
+       end
+   end
+#   @assert (_n_Test(n, cf) == true)
+   return n
+end
+
 function n_Copy(n :: number, cf :: coeffs) 
-   return @cxx n_Copy(n, cf)
+   return n_Test((@cxx n_Copy(n_Test(n, cf), cf)), cf)
 end
 
 function n_Print(n :: number, cf :: coeffs) 
-   @cxx n_Print(n, cf)
+   @cxx n_Print(n_Test(n, cf), cf)
 end
-
-
-#function n_Delete(n_ptr :: number_ptr, cf :: coeffs)
-#   @cxx n_Delete(n_ptr, cf)
-#end
 
 function n_Delete(n :: number_ref, cf :: coeffs)
-##   m = number(n)
-#  # @cxx n_Delete(n_ref, cf)
-#  n = n_ref[]
   icxx""" number k = $n; n_Delete(&k, $cf); $n = k; """
-##   n = number(0)
 end
 
-function _n_Delete(n :: number, cf :: coeffs)
-   return (@cxx _n_Delete(n, cf))
+function _n_Delete(n :: number, cf :: coeffs) 
+#   println("_n_Delete($n / $cf): "  )
+   (@cxx _n_Delete(n_Test(n, cf), cf))
+#   println("_n_Delete().... done!"  )
+#   return n
 end
 
 
@@ -384,7 +391,7 @@ end
 for (f) in ((:n_DivBy), (:n_Greater), (:n_Equal))
     @eval begin
         function ($f)(x :: number, y :: number, cf :: coeffs)
-            ret = @cxx ($f)(x, y, cf)
+            ret = @cxx ($f)(n_Test(x, cf), n_Test(y, cf), cf)
             return (ret > 0)
         end
     end
@@ -401,7 +408,7 @@ end
 for (f) in ((:n_IsOne), (:n_IsMOne), (:n_IsZero), (:n_GreaterZero))
     @eval begin
         function ($f)(x :: number, cf :: coeffs)
-            ret = @cxx ($f)(x, cf)
+            ret = @cxx ($f)(n_Test(x, cf), cf)
             return (ret > 0)
         end
     end
@@ -422,50 +429,49 @@ end
 
 
 # int    n_Size(number n,    const coeffs r)
-n_Size(x :: number, cf :: coeffs) = @cxx n_Size(x, cf)
+n_Size(x :: number, cf :: coeffs) = @cxx n_Size(n_Test(x, cf), cf)
 
 # int n_ParDeg(number n, const coeffs r)
-n_ParDeg(x :: number, cf :: coeffs) = @cxx n_ParDeg(x, cf)
+n_ParDeg(x :: number, cf :: coeffs) = @cxx n_ParDeg(n_Test(x, cf), cf)
 
 # int n_NumberOfParameters(const coeffs r)
-n_NumberOfParameters(cf :: coeffs) = @cxx n_NumberOfParameters(cf)
+n_NumberOfParameters(cf :: coeffs) = (@cxx n_NumberOfParameters(cf))
  
 # number n_Param(const int iParameter, const coeffs r)
-n_Param(i::Int, cf :: coeffs) = @cxx n_Param(i, cf)
-
-
+n_Param(i::Int, cf :: coeffs) = n_Test((@cxx n_Param(i, cf)), cf)
 
 # void n_Write(number& n,  const coeffs r, const BOOLEAN bShortOut = TRUE)
 function n_Write( n::number_ref, cf :: coeffs, bShortOut::Bool = false )
-   const d :: Int = (bShortOut? 1 : 0)
+   const d :: Int = (bShortOut? 1 : 0);
 
+   n_Test(n[], cf);
    icxx""" n_Write($n, $cf, $d); """ 
-
-#   nn :: number = n[]
-##   @cxx _n_Write(&nn, cf, d);
-#   n[] = nn
-
+   n_Test(n[], cf);
 end
 
 
 #, (:n_Normalize)
         function n_Normalize(x :: number_ref, cf :: coeffs) 
+	    n_Test(x[], cf)
 	    icxx""" n_Normalize($x, $cf); """
-
-#	    xx = x[] 
-#            ret = @cxx _n_Normalize(xx, cf)
-#	    x[] = ret
+    	    n_Test(x[], cf)
         end
 
 
 # number n_GetNumerator(number& n, const coeffs r)
 function _n_GetNumerator(x :: number_ref, cf :: coeffs)
-    return icxx""" return n_GetNumerator($x, $cf); """
+    n_Test(x[], cf)
+    r = (icxx""" return n_GetNumerator($x, $cf); """)
+    n_Test(x[], cf)
+    return n_Test(r, cf)
 end
 
 # number n_GetDenom(number& n, const coeffs r)
 function _n_GetDenom(x :: number_ref, cf :: coeffs)
-    return icxx""" return n_GetDenom($x, $cf); """
+    n_Test(x[], cf)
+    r = (icxx""" return n_GetDenom($x, $cf); """)
+    n_Test(x[], cf)
+    return n_Test(r, cf)
 end
 
 
@@ -491,7 +497,7 @@ end
 for (f) in ((:n_Invers), (:n_EucNorm), (:n_Ann), (:n_RePart), (:n_ImPart))
     @eval begin
         function ($f)(x :: number, cf :: coeffs) 
-            return @cxx ($f)(x, cf)
+            return n_Test((@cxx ($f)(n_Test(x,cf), cf)), cf)
         end
     end
 end
@@ -515,8 +521,12 @@ for (f) in ((:n_Add), (:n_Sub), (:n_Div), (:n_Mult), (:n_ExactDiv),
             (:n_IntMod), (:n_Gcd), (:n_SubringGcd), (:n_Lcm), 
             (:n_Farey), (:n_NormalizeHelper))
     @eval begin
-        function ($f)(x :: number, y :: number, cf :: coeffs)
-            return @cxx ($f)(x, y, cf)
+        function ($f)(x :: number, y :: number, cf :: coeffs)            
+	    n_Test(x,cf)
+	    n_Test(y,cf)
+	    r = (@cxx ($f)(x, y, cf));
+##	    println("..", ($f), "..($x, $y, $cf) => $r")
+            return n_Test(r, cf)
         end
     end
 end
@@ -525,21 +535,26 @@ end
 # static FORCE_INLINE number  n_QuotRem(number a, number b, number *q, const coeffs r)
 # Div(a,b), IntMod(a,b)
 function n_QuotRem(a::number, b::number, cf::coeffs)
+    n_Test(a, cf);
+    n_Test(b, cf);
     m = number_ref(number(0));
     q = number_ref(number(0));
 
     icxx""" number mm = $m; $q = n_QuotRem($a, $b, &mm, $cf); $m = mm; """
 
-    q[], m[]
+    n_Test(q[],cf), n_Test(m[],cf)
 end
 
 
 # void   n_Power(number a, int b, number *res, const coeffs r)
 function n_Power(a::number, b::Int, cf::coeffs)
-    return (@cxx _n_Power(a, b, cf));
+    return n_Test((@cxx _n_Power(n_Test(a,cf), b, cf)), cf);
 end
 
 function n_ExtGcd(a::number, b::number, cf:: coeffs)
+   n_Test(a, cf);
+   n_Test(b, cf);
+
    s = number_ref( number(0) )
    t = number_ref( number(0) )
 
@@ -550,13 +565,16 @@ function n_ExtGcd(a::number, b::number, cf:: coeffs)
 
 ######   g = @cxx n_ExtGcd(a, b, &s, &t, cf)
 
-   @assert (g[] != number(0)) | (s[] != number(0)) | (t[] != number(0))
+   @assert (g[] != number(0)) || (s[] != number(0)) || (t[] != number(0))
 
-   g[], s[], t[]
+   n_Test(g[],cf), n_Test(s[],cf), n_Test(t[],cf)
 end
 
 ## number n_XExtGcd(number a, number b, number *s, number *t, number *u, number *v, const coeffs r)
 function n_XExtGcd(a::number, b::number, cf:: coeffs)
+   n_Test(a, cf);
+   n_Test(b, cf);
+
    g = number(0)
    s = number(0)
    t = number(0)
@@ -565,19 +583,25 @@ function n_XExtGcd(a::number, b::number, cf:: coeffs)
 
 ###   g = @cxx n_XExtGcd(a, b, &s, &t, &u, &v, cf); # ??
    icxx""" number ss, tt, uu, vv; $g = n_XExtGcd($a, $b, &ss, &tt, &uu, &vv, $cf); $s = ss; $t = tt; $u = uu; $v = vv; """
-   g, s, t, u, v
+
+#   g, s, t, u, v
+   n_Test(g,cf), n_Test(s,cf), n_Test(t,cf), n_Test(u,cf), n_Test(v,cf)
 end
 
 ## number n_QuotRem(number a, number b, number *q, const coeffs r)
 function n_QuotRem(a::number, b::number, cf:: coeffs)
+   n_Test(a, cf);
+   n_Test(b, cf);
+
    q = number_ref( number(0) )
    r = number_ref( number(0) )
 
    icxx""" number qq; $r = n_QuotRem($a, $b, &qq, $cf); $q = qq; """
 
-   @assert (q[] != number(0)) | (r[] != number(0))
+   @assert (q[] != number(0)) || (r[] != number(0))
 
-   r[], q[]
+#   r[], q[]
+   n_Test(r[],cf), n_Test(q[],cf)   
 end
 
 
@@ -588,7 +612,7 @@ end
 n_SetMap(src :: coeffs, dst :: coeffs) = @cxx n_SetMap(src, dst)
 
 ###    static number nApplyMapFunc(nMapFunc f, number n, const coeffs src, const coeffs dst){ return f(n, src, dst); }
-nApplyMapFunc(f :: nMapFunc, n :: number, src :: coeffs, dst :: coeffs) = @cxx nApplyMapFunc(f, n, src, dst)
+nApplyMapFunc(f :: nMapFunc, n :: number, src :: coeffs, dst :: coeffs)=n_Test((@cxx nApplyMapFunc(f, n_Test(n,src), src, dst)),dst)
 
 
 ## number n_Random(siRandProc p, number p1, number p2, const coeffs cf)
@@ -613,7 +637,7 @@ end
 
 ## normal function : -copy...
 function n_Neg(x :: number, cf :: coeffs) 
-   return @cxx _n_Neg(x, cf)
+   return n_Test((@cxx _n_Neg(n_Test(x,cf), cf)), cf)
 end
 
 
