@@ -420,10 +420,6 @@ end
 function test_singular()
    println("Singular unique rings & fields will use context-less implementation, right?  ", Nemo.uq_default_choice)
 
-   println(); gc(); test_poly_singular() ## ?
-
-   println(); gc(); test_matrix_singular() ## ?
-
    println(); gc(); test_singular_wrappers()
 
    println(); gc(); test_singular_lowlevel_coeffs()
@@ -438,9 +434,13 @@ function test_singular()
 
    println(); gc(); test_series_singular()
 
+   println(); gc(); test_poly_singular() ## ?
+
    println(); gc(); test_singular_polynomial_rings()
 
    println(); gc(); test_benchmarks_singular() # S.f.QQ :(
+
+   println(); gc(); test_matrix_singular() ## ?
 
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
 
