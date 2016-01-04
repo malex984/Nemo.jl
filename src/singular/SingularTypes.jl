@@ -110,6 +110,8 @@ typealias SingularCoeffsElems Union{SingularRingElems,SingularFieldElems}
 
 include("Coeffs.jl")
 include("NumberElem.jl")
+include("NumberCommons.jl") # Everything defined for any SingularCoeffsElems
+
 
 ###############################################################################
 #
