@@ -323,7 +323,7 @@ function _n_Test(n :: number, cf :: coeffs)
    return (@cxx _n_Test(n, cf))
 end
 
-n_Test(n :: number, cf :: coeffs) = n
+n_Test(n :: number, cf :: coeffs) = __n_Test(n, cf)
 
 function __n_Test(n :: number, cf :: coeffs) 
    if n != number(0)
