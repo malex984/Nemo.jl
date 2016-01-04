@@ -323,7 +323,9 @@ function _n_Test(n :: number, cf :: coeffs)
    return (@cxx _n_Test(n, cf))
 end
 
-function n_Test(n :: number, cf :: coeffs) 
+n_Test(n :: number, cf :: coeffs) = n
+
+function __n_Test(n :: number, cf :: coeffs) 
    if n != number(0)
       if !_n_Test(n, cf)
          bt = backtrace();
