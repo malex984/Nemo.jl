@@ -12,10 +12,7 @@ include("Benchmark-test.jl")
 Nemo.with_singular() && include("singular/all-tests.jl")
 
 function test_all()
-
    Nemo.with_singular() && test_singular()
-#   Nemo.with_singular() && Nemo.toggle_uq_default_choice()
-#   Nemo.with_singular() && test_singular()
 
    gc()
 

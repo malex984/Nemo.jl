@@ -104,8 +104,12 @@ cxx"""#line 20 "libSingular.jl"
 
     static bool __p_Test(poly a, const ring r)
     { 
-      if(a == NULL) return (true); // ?
-      return p_Test(a, r);
+#ifdef PDEBUG
+       if(a == NULL) return (true);
+       return (_p_Test(a, r, PDEBUG));
+#else
+       return (true);	
+#endif
     }
 
     static void _p_Delete(poly a,const ring r)
@@ -340,7 +344,7 @@ function n_TestDebug(n :: number, cf :: coeffs)
    if n != number(0)
       if !_n_Test(n, cf)
          bt = backtrace();
-      	 println( bt )
+#      	 println( bt )
 	 Base.show_backtrace(STDERR, bt); 
 
 # io = IOBuffer();# seekstart(io); s = readall(io);# s = sprint(io->Base.show_backtrace(io, bt));# println( s ) 
@@ -361,9 +365,9 @@ function n_TestDebug(n :: number, cf :: coeffs)
 	     println( func, " : ", fromC )
          end
 
-	 @cxx _break()
-         @assert (_n_Test(n, cf) == true)
-         throw(ErrorException("n_Test: Wrong Singular number"))
+#	 @cxx _break()
+#         @assert (_n_Test(n, cf) == true)
+#         throw(ErrorException("n_Test: Wrong Singular number"))
        end
    end
    return n
@@ -659,7 +663,6 @@ typealias poly Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:spolyrec},(false,fals
 #   static coeffs rGetCoeffs(const ring r)
 rGetCoeffs(r :: ring) = @cxx rGetCoeffs(r)
 
-
 function _p_Test(p :: poly, r :: ring)
    return (@cxx __p_Test(p, r)) # NOTE: returns bool!
 end
@@ -670,7 +673,7 @@ function p_TestDebug(p :: poly, r :: ring)
    if p != poly(0)
       if !_p_Test(p, r)
          bt = backtrace();
-      	 println( bt )
+#      	 println( bt )
 	 Base.show_backtrace(STDERR, bt); 
 
 # io = IOBuffer();# seekstart(io); s = readall(io);# s = sprint(io->Base.show_backtrace(io, bt));# println( s ) 
@@ -691,9 +694,9 @@ function p_TestDebug(p :: poly, r :: ring)
 	     println( func, " : ", fromC )
          end
 
-	 @cxx _break()
-         @assert (_p_Test(p, r) == true)
-         throw(ErrorException("p_Test: Wrong Singular poly"))
+#	 @cxx _break()
+#         @assert (_p_Test(p, r) == true)
+#         throw(ErrorException("p_Test: Wrong Singular poly"))
        end
    end
    return p
@@ -805,6 +808,11 @@ end
 function p_String(p :: poly, r :: ring)
    #static inline char*     p_String(poly p, ring p_ring)
    return @cxx p_String(p, r)
+end
+
+function p_Setm(p :: poly, r :: ring)
+   #static inline void p_Setm(poly p, const ring r)
+   return @cxx p_Setm(p, r)
 end
 
 
