@@ -327,6 +327,10 @@ elem_type{CF<:SingularField}(C::CF) = NumberFElem{CF}
 
 base_ring(a::Singular_QQElem) = Singular_ZZElem
 
+## NOTE: the following would lead to:
+# ERROR: LoadError: MethodError: `elem_type` has no method matching elem_type(::Type{Nemo.Singular_ZZ})
+#base_ring(::Singular_ZZ) = Union{}                                                                                                   #base_ring(::Singular_QQ) = Singular_ZZ
+
 # Specials without context:
 elem_type{CF<:SingularUniqueRing}(C::CF) = Number_Elem{CF}
 elem_type{CF<:SingularUniqueField}(C::CF) = NumberF_Elem{CF}
@@ -334,8 +338,7 @@ elem_type{CF<:SingularUniqueField}(C::CF) = NumberF_Elem{CF}
 elem_type(::Singular_ZZ) = Singular_ZZElem
 elem_type(::Singular_QQ) = Singular_QQElem
 
-base_ring(a::Singular_QQElem) = Singular_ZZElem
-
+## ? # elem_type(::Type{Singular_ZZ}) = Singular_ZZElem
 
 show_minus_one(::Type{Singular_ZZElem}) = false
 show_minus_one(::Type{Singular_QQElem}) = false
@@ -454,6 +457,9 @@ end
 #   Constructors
 #
 ###############################################################################
+
+#NumberElem{CF<:SingularRing}(c::CF, z::Integer) = NumberElem{CF}(c, BigInt(z))
+NumberElem{CF<:SingularRing}(c::CF, s::AbstractString) = parseNumber(c, s)
 
 Number_Elem{CF<:SingularUniqueRing}(c::CF, s::AbstractString) = parseNumber(c, s)
 #Number_Elem{CF<:SingularUniqueRing}(c::CF, z::Integer) = c(BigInt(z))
@@ -585,7 +591,8 @@ end
 ###############################################################################
 
 function parseNumber(c::SingularCoeffs, s::AbstractString) # TODO: FIXME: wrap properly!
-    return c(parse(BigInt,s))   
+    return c(parse(BigInt,s)) ## ??
+#    return elem_type(c)(c, parse(BigInt,s))   
 
     error("Sorry this functionality (parseNumber) is not implemented yet :(")
 
