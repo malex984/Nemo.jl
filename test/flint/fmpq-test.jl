@@ -259,10 +259,11 @@ function test_fmpq_modular_arithmetic()
    a = -fmpz(2)//3
    b = fmpz(1)//2
 
-   @test mod(a, 7) == 4
+   R = FractionField(ZZ)
 
-   @test mod(b, fmpz(5)) == 3
-   
+   @test mod(a, 7) == R(mod(Rational{Int}(Int(num(a)), Int(den(a))), 7)) # 4? 
+   @test mod(b, fmpz(5)) == R(mod(Rational{Int}(Int(num(b)), Int(den(b))), 5)) # 3?
+
    println("PASS")
 end
 
