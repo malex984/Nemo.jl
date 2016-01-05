@@ -340,11 +340,10 @@ end
 
 n_Test(n :: number, cf :: coeffs) = n_TestDebug(n, cf)
 
-function n_TestDebug(n :: number, cf :: coeffs) 
-   if n != number(0)
-      if !_n_Test(n, cf)
-         bt = backtrace();
-#      	 println( bt )
+function BT()
+	 return ## TODO: FIXME: useless as it is now! :(
+
+         bt = backtrace();#      	 println( bt )
 	 Base.show_backtrace(STDERR, bt); 
 
 # io = IOBuffer();# seekstart(io); s = readall(io);# s = sprint(io->Base.show_backtrace(io, bt));# println( s ) 
@@ -352,18 +351,21 @@ function n_TestDebug(n :: number, cf :: coeffs)
 	 i = 0 
 	 for frame in bt
              i = i + 1
-             li = Profile.lookup( UInt( frame ) ) # frame ) # 
+             li = Profile.lookup( UInt( frame ) )
  
              file  = li.file
              line  = li.line
              func  = li.func
              fromC = li.fromC # .ip?
 
-	     println( "# ", i, " : ", frame )
-	     println( li )
-	     println( file, " : ", line  )
-	     println( func, " : ", fromC )
+	     println( "#", i, ": ", frame, " : ",  file, " : ", line, " : ",  func, " : ", fromC )
          end
+end
+
+function n_TestDebug(n :: number, cf :: coeffs) 
+   if n != number(0)
+      if !_n_Test(n, cf)
+         BT()
 
 #	 @cxx _break()
 #         @assert (_n_Test(n, cf) == true)
@@ -672,28 +674,7 @@ p_Test(p :: poly, r :: ring) = p_TestDebug(p, r) # or just return p!
 function p_TestDebug(p :: poly, r :: ring)
    if p != poly(0)
       if !_p_Test(p, r)
-         bt = backtrace();
-#      	 println( bt )
-	 Base.show_backtrace(STDERR, bt); 
-
-# io = IOBuffer();# seekstart(io); s = readall(io);# s = sprint(io->Base.show_backtrace(io, bt));# println( s ) 
-
-	 i = 0 
-	 for frame in bt
-             i = i + 1
-             li = Profile.lookup( UInt( frame ) ) # frame ) # 
- 
-             file  = li.file
-             line  = li.line
-             func  = li.func
-             fromC = li.fromC # .ip?
-
-	     println( "# ", i, " : ", frame )
-	     println( li )
-	     println( file, " : ", line  )
-	     println( func, " : ", fromC )
-         end
-
+         BT()
 #	 @cxx _break()
 #         @assert (_p_Test(p, r) == true)
 #         throw(ErrorException("p_Test: Wrong Singular poly"))

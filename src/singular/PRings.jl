@@ -183,7 +183,7 @@ characteristic(r::SingularPolynomialRing) = @cxx rChar(get_raw_ptr(r))
 
 gen(r::SingularPolynomialRing) = geni( ngens(r), r) ## ??
 
-ngens(r::SingularPolynomialRing) = @cxx rVar(get_raw_ptr(r))
+ngens(r::SingularPolynomialRing) = Int(@cxx rVar(get_raw_ptr(r)))
 
 function geni(i::Int, R::SingularPolynomialRing)
     const N = ngens(R);
@@ -193,7 +193,7 @@ function geni(i::Int, R::SingularPolynomialRing)
     const p :: libSingular.poly = libSingular.p_ISet(1, r);
     libSingular.p_SetExp!(p, i, 1, r);    
     libSingular.p_Setm(p, r);
-    return elem_type(R)(r, p) ## PRingElem?
+    return elem_type(R)(R, p) ## PRingElem?
 end
 
 ###############################################################################
