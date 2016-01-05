@@ -1,7 +1,6 @@
 module libSingular
-export n_coeffType, number, coeffs, n_Test
+export n_coeffType, number, coeffs, n_Test, p_Test
 using Cxx
-
 function __libSingular_init__()
    const local prefix = joinpath(Pkg.dir("Nemo"), "local")
 
@@ -71,7 +70,10 @@ cxx"""#line 20 "libSingular.jl"
     { char* ns[] = {(char*)"x", (char*)"y"}; return rDefault( cf, 2, ns); }
 
     static poly test_create_poly(const long n, const ring r)
-    {  return p_ISet(n, r); }
+    { return p_ISet(n, r); }
+
+   static coeffs rGetCoeffs(const ring r)
+   { return r->cf; }
 
     static void omalloc_mem_info_and_stats()
     {
@@ -96,9 +98,19 @@ cxx"""#line 20 "libSingular.jl"
 
     static bool _n_Test(number a,const coeffs cf)
     { 
-      if(a==0) return (true); // ?
+      if(a == NULL) return (true); // ?
       return n_Test(a, cf);
     }
+
+    static bool __p_Test(poly a, const ring r)
+    { 
+      if(a == NULL) return (true); // ?
+      return p_Test(a, r);
+    }
+
+    static void _p_Delete(poly a,const ring r)
+    { poly t = a; if(t != NULL) p_Delete(&t,r); /*return (t);*/ }
+
     static void _break(){ assume(false); assert(false); debug_break(); }
 
 """
@@ -283,7 +295,7 @@ function nCoeffName(cf :: const_coeffs)
    return @cxx nCoeffName(cf)
 end
 
-function n_Init(i::Int, cf :: coeffs) 
+function n_Init(i::Int64, cf :: coeffs) 
    return @cxx n_Init(i, cf)
 end
 
@@ -311,21 +323,20 @@ end
 ## static FORCE_INLINE number mpz2number(mpz_t m, coeffs c){ return n_InitMPZ(m, c); }
 # long n_Int(number &n,       const coeffs r)
 
-function n_Int(n :: number_ref, cf :: coeffs) 
+function n_Int(n :: number_ref, cf :: coeffs)
     n_Test(n[], cf);
     r = (icxx""" return n_Int($n, $cf); """)
     n_Test(n[], cf);
     return r
 end
 
-
 function _n_Test(n :: number, cf :: coeffs) 
-   return (@cxx _n_Test(n, cf))
+   return (@cxx _n_Test(n, cf)) # NOTE: returns bool!
 end
 
-n_Test(n :: number, cf :: coeffs) = __n_Test(n, cf)
+n_Test(n :: number, cf :: coeffs) = n_TestDebug(n, cf)
 
-function __n_Test(n :: number, cf :: coeffs) 
+function n_TestDebug(n :: number, cf :: coeffs) 
    if n != number(0)
       if !_n_Test(n, cf)
          bt = backtrace();
@@ -351,10 +362,10 @@ function __n_Test(n :: number, cf :: coeffs)
          end
 
 	 @cxx _break()
-#        throw(ErrorException("n_Test: Wrong Singular number"))
+         @assert (_n_Test(n, cf) == true)
+         throw(ErrorException("n_Test: Wrong Singular number"))
        end
    end
-#   @assert (_n_Test(n, cf) == true)
    return n
 end
 
@@ -642,8 +653,159 @@ end
 
 
 typealias ring Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:ip_sring},(false,false,false)},(false,false,false)}
-# Ptr{Void}
+typealias poly Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:spolyrec},(false,false,false)},(false,false,false)}
+###pcpp"poly" #Ptr{Void} ### TODO!!!
 
-typealias poly Ptr{Void}
+#   static coeffs rGetCoeffs(const ring r)
+rGetCoeffs(r :: ring) = @cxx rGetCoeffs(r)
+
+
+function _p_Test(p :: poly, r :: ring)
+   return (@cxx __p_Test(p, r)) # NOTE: returns bool!
+end
+
+p_Test(p :: poly, r :: ring) = p_TestDebug(p, r) # or just return p!
+
+function p_TestDebug(p :: poly, r :: ring)
+   if p != poly(0)
+      if !_p_Test(p, r)
+         bt = backtrace();
+      	 println( bt )
+	 Base.show_backtrace(STDERR, bt); 
+
+# io = IOBuffer();# seekstart(io); s = readall(io);# s = sprint(io->Base.show_backtrace(io, bt));# println( s ) 
+
+	 i = 0 
+	 for frame in bt
+             i = i + 1
+             li = Profile.lookup( UInt( frame ) ) # frame ) # 
+ 
+             file  = li.file
+             line  = li.line
+             func  = li.func
+             fromC = li.fromC # .ip?
+
+	     println( "# ", i, " : ", frame )
+	     println( li )
+	     println( file, " : ", line  )
+	     println( func, " : ", fromC )
+         end
+
+	 @cxx _break()
+         @assert (_p_Test(p, r) == true)
+         throw(ErrorException("p_Test: Wrong Singular poly"))
+       end
+   end
+   return p
+end
+
+
+function _p_Delete(p :: poly, r :: ring)
+   (@cxx _p_Delete(p_Test(p, r), r))
+end
+
+function p_Init(r :: ring)
+   return @cxx p_Init(r)
+end
+
+function p_One(r :: ring)
+   # poly p_One(const ring r)
+   return @cxx p_One(r)
+end
+
+function p_ISet(i :: Int64, r :: ring)
+   # poly p_ISet(long i, const ring r);
+   return @cxx p_ISet(i, r)
+end
+
+function p_NSet(n :: number, r :: ring)
+   # poly p_NSet(number n, const ring r); // returns the poly representing the number n, NOTE: destroys n
+   return @cxx p_NSet(n, r)
+end
+
+# static inline poly p_Copy(poly p, const ring r)
+function p_Copy(p :: poly, r :: ring)
+   return @cxx p_Copy(p, r)
+end
+
+function pLength(p :: poly)
+   # static inline int pLength(poly a)
+   return @cxx pLength(p)
+end
+
+function p_Deg(p :: poly, r :: ring)
+   # long p_Deg(poly a, const ring r)
+   return @cxx p_Deg(p, r)
+end
+
+function p_Head(p :: poly, r :: ring)
+    #static inline poly p_Head(poly p, const ring r)
+   return @cxx p_Head(p, r)
+end
+
+
+function pGetCoeff!(p :: poly)
+   #static inline number& pGetCoeff(poly p)
+   return icxx""" return pGetCoeff($p); """ # NOTE: supposed to return a reference to the actual coeff!
+end
+
+function pSetCoeff!(p :: poly, n :: number) 
+   ##define pSetCoeff0(p,n)     (p)->coef=(n) # NOTE: no cleanup!
+   icxx""" return pSetCoeff0($p, $n); """
+end
+
+function pNext!(p :: poly)
+   # #define pNext(p)            ((p)->next)
+   return icxx""" return pNext($p); """ # NOTE: supposed to return the next to leading term!
+end
+
+
+function p_GetExp(p :: poly, v :: Int, r :: ring)
+   #/// get v^th exponent for a monomial
+   #static inline long p_GetExp(const poly p, const int v, const ring r)
+   return @cxx p_GetExp(p, v, r)
+end
+
+function p_SetExp!(p :: poly, v :: Int, e :: Int64, r :: ring)
+   # /// set v^th exponent for a monomial
+   #static inline long p_SetExp(poly p, const int v, const long e, const ring r)
+   return @cxx p_SetExp(p, v, e, r)
+end
+
+function pp_Mult_nn(p :: poly, n :: number, r :: ring)
+   #// returns p*n, does not destroy p
+   #static inline poly pp_Mult_nn(poly p, number n, const ring r)
+   return @cxx pp_Mult_nn(p, n, r)
+end
+
+function p_Add_q(p :: poly, q :: poly, r :: ring)
+   #// returns p+q, destroys p and q
+   #static inline poly p_Add_q(poly p, poly q, const ring r)
+   return @cxx p_Add_q(p, q, r)
+end
+
+
+function pp_Add_qq(p :: poly, q :: poly, r :: ring)
+   return @cxx p_Add_q(p_Copy(p,r), p_Copy(q, r), r)
+end
+
+
+function p_Mult_q(p :: poly, q :: poly, r :: ring)
+   #// returns p*q, destroys p and q
+   #static inline poly p_Mult_q(poly p, poly q, const ring r)
+   return @cxx p_Mult_q(p, q, r)
+end
+
+function pp_Mult_qq(p :: poly, q :: poly, r :: ring)
+   #// returns p*q, does neither destroy p nor q
+   #static inline poly pp_Mult_qq(poly p, poly q, const ring r)
+   return @cxx pp_Mult_qq(p, q, r)
+end
+
+function p_String(p :: poly, r :: ring)
+   #static inline char*     p_String(poly p, ring p_ring)
+   return @cxx p_String(p, r)
+end
+
 
 end # libSingular module

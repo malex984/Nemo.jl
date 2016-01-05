@@ -389,27 +389,39 @@ ring test_contruct_ring()
    RZ = Nemo.PRing(ZZ, "x, y"); # just testing ATM!
 
    print("_ Over Singular Integer Ring [", string(ZZ), "]: ", string(RZ))
-   # @test parent(RZ) == ZZ # ?
+   @test base_ring(RZ) == ZZ # ?
+
+   p = one(RZ) * RZ(2) + 3; # * Nemo.geni(1, RZ);
+   println(p, " @@ ", typeof(p))
+
    println("...PASS")
 
    const QQ = Nemo.SingularQQ();
    RQ = Nemo.PRing(QQ, "x, y"); # just testing ATM!
 
    print("_ Over Singular Rational Field [", QQ, "]: ", string(RQ))
-   # @test parent(RQ) == QQ # ?
+   @test base_ring(RQ) == QQ # ?
+
+   p = one(RQ) * RQ(2) + 3; # * Nemo.geni(1, RQ);
+   println(p, " @@ ", typeof(p))
 
    const Z11 = Nemo.SingularZp(11);
    R11 = Nemo.PRing(Z11, "x, y"); # just testing ATM!
 
    print("_ Over Singular Modular Field [", Z11, "]: ", string(R11))
-   # @test parent(RQ) == QQ # ?
+   @test base_ring(R11) == Z11 # ?
+
+   p = one(R11) * R11(2) + 3; # * Nemo.geni(1, R11);
+   println(p, " @@ ", typeof(p))
 
    const GF14 = Nemo.SingularGF(7, 2, "T");
    R14 = Nemo.PRing(GF14, "x, y"); # just testing ATM!
 
-   print("_ Over Singular Finite Field [", GF14, "]: ", string(R14))
-   # @test parent(RQ) == QQ # ?
+   p = one(R14) * R14(2) + 3; # * Nemo.geni(1, R14);
+   println(p, " @@ ", typeof(p))
 
+   print("_ Over Singular Finite Field [", GF14, "]: ", string(R14))
+   @test base_ring(R14) == GF14 # ?
 
    println("...PASS")
 
@@ -420,9 +432,9 @@ end
 function test_singular()
    println("Singular unique rings & fields will use context-less implementation, right?  ", Nemo.uq_default_choice)
 
-   println(); gc(); test_series_singular()
-
    println(); gc(); test_singular_wrappers()
+
+   println(); gc(); test_singular_polynomial_rings()
 
    println(); gc(); test_singular_lowlevel_coeffs()
 
@@ -434,13 +446,13 @@ function test_singular()
 
    println(); gc(); test_residue_singular() 
 
+   println(); gc(); test_series_singular()
+
    println(); gc(); test_poly_singular()
 
    println(); gc(); test_matrix_singular()
 
    println(); gc(); test_benchmarks_singular() # S.f.QQ :(
-
-   println(); gc(); test_singular_polynomial_rings()
 
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
 

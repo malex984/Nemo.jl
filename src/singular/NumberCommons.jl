@@ -19,7 +19,7 @@ end
 #=====================================================#
 
 base_ring(a::SingularCoeffs) = Union{}
-base_ring(a::SingularCoeffsElems) = Union{}
+base_ring(a::SingularCoeffsElems) = Union{} ## ???
 
 function check_parent(a::SingularCoeffsElems, b::SingularCoeffsElems) 
    parent(a) != parent(b) && error("Operations on elements with different parents are not supported")
