@@ -39,8 +39,6 @@ type NumberElem{CF<:SingularRing} <: SingularRingElem # TODO: rename -> NumberRE
     	return NumberElem{CF}(c, p)
     end
 
-    NumberElem(c::CF, z::Integer) = NumberElem{CF}(c, BigInt(z))
-    NumberElem(c::CF, s::AbstractString) = parseNumber(c, s)
 end
 
 #==============================================================================#
@@ -147,35 +145,31 @@ type NumberF_Elem{CF<:SingularUniqueField} <: SingularUniqueFieldElem
 	finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
-
-    function NumberF_Elem(::CF)
-    	return NumberF_Elem{CF}();
-    end
-
-    function NumberF_Elem(::CF, p::number)
-    	return NumberF_Elem{CF}(p);
-    end
-
-    function NumberF_Elem(c::CF, x::Int)
-    	p = libSingular.n_Init(x, get_raw_ptr(c)); return NumberF_Elem{CF}(p);
-    end
-
     function NumberF_Elem(x::Int)
-    	p = libSingular.n_Init(x, get_raw_ptr(CF())); return NumberF_Elem{CF}(p);
+    	const cf = get_raw_ptr(CF());
+      	const p = libSingular.n_Init(x, cf); 	
+	return NumberF_Elem{CF}(p);
     end
 
     function NumberF_Elem(x::NumberF_Elem{CF})
-        c = parent(x); p = libSingular.n_Copy(get_raw_ptr(x), get_raw_ptr(c)); 
+        const cf = get_raw_ptr(parent(x)); 
+  	const p = libSingular.n_Copy(get_raw_ptr(x), cf);
         return NumberF_Elem{CF}(p)
     end
 
-    function NumberF_Elem(c::CF, b::BigInt) # TODO: remove unnecessary constructors with CF input!
-        p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); 
+    function NumberF_Elem(b::BigInt)
+    	const cf = get_raw_ptr(CF());
+        const p = libSingular.n_InitMPZ(b, cf); 
 	return NumberF_Elem{CF}(p)
     end
+    function NumberF_Elem(c::CF)
+    	@assert is(c, CF())
+    	return NumberF_Elem{CF}();
+    end
 
-    function NumberF_Elem(b::BigInt)
-        return NumberF_Elem{CF}(CF(), b)
+    function NumberF_Elem(c::CF, p)
+    	@assert is(c, CF())
+        return  NumberF_Elem{CF}(p)
     end
 end
 
@@ -215,6 +209,8 @@ type Singular_ZZElem <: SingularIntegerRingElem
 	const p = libSingular.n_Copy(get_raw_ptr(x), c); 
         return Singular_ZZElem(p)
     end
+
+    Singular_ZZElem(::Singular_ZZ, p) = Singular_ZZElem(p)
 end
 
 #==============================================================================#
@@ -253,6 +249,8 @@ type Singular_QQElem <: SingularFractionElem{Singular_ZZElem}
         const p = libSingular.n_InitMPZ(b, c); 
 	return Singular_QQElem(p)
     end
+
+    Singular_QQElem(::Singular_QQ, p) = Singular_QQElem(p)
 
     function Singular_QQElem(a::Singular_ZZElem)
         return Singular_QQElem( Int(a) ) # TODO: mapping: n_Z -> n_Q???
