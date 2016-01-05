@@ -362,13 +362,35 @@ function test_singular_lowlevel_coeffs()
 end
 
 
+function test_singular_polynomial_ring(C)
+
+   print("Constructing Singular Polynomial Ring over $C: \n")  
+
+   R = Nemo.PRing(C, "x, y"); # just testing ATM!
+
+   print("_ Over [", string(C), "]: ", string(R))
+   @test base_ring(R) == C # ?
+
+   p = one(R) * R(2) + 3 + gen(R);
+
+   for i in 1:ngens(R)
+       p += (10 * i) * geni(i, R)
+   end
+
+## TODO: FIXME: add automatic mapping C -> R!?
+
+   println(p, " @@ ", typeof(p))
+
+   println("...PASS")
+end
+
 function test_singular_polynomial_rings()
    print("Constructing/showing/deleting Singular rings via Cxx...")
 
 ##TODO## icxx" char* n [] = { (char*)\"t\"}; ring r = rDefault( 13, 1, n); rWrite(r); PrintLn(); rDelete(r); "
 
 cxx"""
-ring test_contruct_ring()
+ring test_construct_ring()
 {
   char* n [] = { (char*)\"t\"}; 
   ring r = rDefault( 13, 1, n); 
@@ -377,53 +399,22 @@ ring test_contruct_ring()
   return (r);
 }
 """
-   r = @cxx test_contruct_ring()
-
+   r = @cxx test_construct_ring()
    println(r, string(r))
    @cxx rDelete(r)
    println("PASS")
 
-   print("Constructing Singular Polynomial Ring over native coeffs...\n")  
 
-   const ZZ = Nemo.SingularZZ();
-   RZ = Nemo.PRing(ZZ, "x, y"); # just testing ATM!
+   test_singular_polynomial_ring(Nemo.SingularZZ())
+   test_singular_polynomial_ring(Nemo.SingularQQ())
 
-   print("_ Over Singular Integer Ring [", string(ZZ), "]: ", string(RZ))
-   @test base_ring(RZ) == ZZ # ?
+   test_singular_polynomial_ring(Nemo.SingularZp(3))
+   test_singular_polynomial_ring(Nemo.SingularZp(5))
+   test_singular_polynomial_ring(Nemo.SingularZp(11))
 
-   p = one(RZ) * RZ(2) + 3; # * Nemo.geni(1, RZ);
-   println(p, " @@ ", typeof(p))
-
-   println("...PASS")
-
-   const QQ = Nemo.SingularQQ();
-   RQ = Nemo.PRing(QQ, "x, y"); # just testing ATM!
-
-   print("_ Over Singular Rational Field [", QQ, "]: ", string(RQ))
-   @test base_ring(RQ) == QQ # ?
-
-   p = one(RQ) * RQ(2) + 3; # * Nemo.geni(1, RQ);
-   println(p, " @@ ", typeof(p))
-
-   const Z11 = Nemo.SingularZp(11);
-   R11 = Nemo.PRing(Z11, "x, y"); # just testing ATM!
-
-   print("_ Over Singular Modular Field [", Z11, "]: ", string(R11))
-   @test base_ring(R11) == Z11 # ?
-
-   p = one(R11) * R11(2) + 3; # * Nemo.geni(1, R11);
-   println(p, " @@ ", typeof(p))
-
-   const GF14 = Nemo.SingularGF(7, 2, "T");
-   R14 = Nemo.PRing(GF14, "x, y"); # just testing ATM!
-
-   p = one(R14) * R14(2) + 3; # * Nemo.geni(1, R14);
-   println(p, " @@ ", typeof(p))
-
-   print("_ Over Singular Finite Field [", GF14, "]: ", string(R14))
-   @test base_ring(R14) == GF14 # ?
-
-   println("...PASS")
+   test_singular_polynomial_ring(Nemo.SingularGF(7, 1, "T"))
+   test_singular_polynomial_ring(Nemo.SingularGF(3, 3, "T"))
+   test_singular_polynomial_ring(Nemo.SingularGF(5, 2, "T"))
 
 end
 
@@ -434,23 +425,23 @@ function test_singular()
 
    println(); gc(); test_singular_wrappers()
 
-   println(); gc(); test_singular_polynomial_rings()
-
-   println(); gc(); test_singular_lowlevel_coeffs()
-
    println(); gc(); test_ZZ_singular()
 
    println(); gc(); test_QQ_singular() 
+
+   println(); gc(); test_matrix_singular()
+
+   println(); gc(); test_poly_singular()
+
+   println(); gc(); test_singular_polynomial_rings()
+
+   println(); gc(); test_singular_lowlevel_coeffs()
 
    println(); gc(); test_fraction_singular()
 
    println(); gc(); test_residue_singular() 
 
    println(); gc(); test_series_singular()
-
-   println(); gc(); test_poly_singular()
-
-   println(); gc(); test_matrix_singular()
 
    println(); gc(); test_benchmarks_singular() # S.f.QQ :(
 

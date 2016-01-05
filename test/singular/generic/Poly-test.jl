@@ -643,6 +643,17 @@ function test_poly_generic_eval_singular()
 end
 
 function test_poly_singular()
+   test_poly_truncation_singular()
+   test_poly_mul_karatsuba_singular()
+
+   test_poly_newton_representation_singular()
+   test_poly_mul_ks_singular()
+
+   test_poly_special_singular()
+   test_poly_generic_eval_singular() # TODO? ERROR: LoadError: test error in expression: f(T(13)) == 20 :(
+
+
+
    test_poly_euclidean_division_singular() ## ?
    test_poly_content_primpart_gcd_singular()
    test_poly_integral_singular()
@@ -668,15 +679,6 @@ function test_poly_singular()
    test_poly_discriminant_singular()
    test_poly_gcdx_singular()
    test_poly_interpolation_singular()
-
-   test_poly_truncation_singular()
-   test_poly_mul_karatsuba_singular()
-
-   test_poly_newton_representation_singular()
-   test_poly_mul_ks_singular()
-
-   test_poly_special_singular()
-   test_poly_generic_eval_singular() # TODO? ERROR: LoadError: test error in expression: f(T(13)) == 20 :(
 
    println("")
 end

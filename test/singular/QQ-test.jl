@@ -310,21 +310,19 @@ function test_QQ_modular_arithmetic_singular()
    b = ZZ(1)//2
 
 
-   println( "mod, (a: $a, b: $b)")
-   print(" mod(a,7) ")
+#   println( "mod, (a: $a, b: $b)")
+#   print(" mod(a,7) ")
    m = mod(a, 7)
-   println(": ", m)
+#   println(": ", m)
 
-   print(" mod(b, ZZ(5)) ")
+#   print(" mod(b, ZZ(5)) ")
    mm = mod(b, ZZ(5))
-   println(": ", mm)
+#   println(": ", mm)
 
-#   @test iszero(m)
-   @test m == QQ(mod(Rational{Int}(Int(num(a)), Int(den(a))), 7))  #### TODO: FIXME: Flint QQ: 4???
-#   @test iszero(mm)
-   @test mm == QQ(mod(Rational{Int}(Int(num(b)), Int(den(b))), 5)) ## Flint QQ: 3???
+   @test m == QQ(mod(Rational{Int}(Int(num(a)), Int(den(a))), 7))
+   @test mm == QQ(mod(Rational{Int}(Int(num(b)), Int(den(b))), 5))
    
-   println("PASS????") # Note: Not compatible with Flint QQ but with Rational{Int}...
+   println("PASS")
 end
 
 function test_QQ_gcd_singular()

@@ -208,9 +208,9 @@ function hash(a::SingularCoeffs)
    return hash(string(a))  ## TODO: string may be a bit too inefficient wherever hash is used...?
 end
 
-zero(a::SingularCoeffs) = a(Int(0))
-one(a::SingularCoeffs) = a(Int(1))
-mone(a::SingularCoeffs) = a(Int(-1))
+zero(a::SingularCoeffs) = elem_type(a)(a,  0)
+one(a::SingularCoeffs)  = elem_type(a)(a,  1)
+mone(a::SingularCoeffs) = elem_type(a)(a, -1)
 
 
 ###############################################################################

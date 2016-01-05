@@ -59,8 +59,10 @@ function _PRing_clear_fn(r::PRing)
 end
 
 get_raw_ptr(R :: SingularPolynomialRing) = R.ptr
+
 base_ring(R :: SingularPolynomialRing) = R.base_ring # TODO: ? verify complience! ???
-parent(R :: SingularPolynomialRing) = base_ring(R) # TODO: ??????!
+
+#### parent(R :: SingularPolynomialRing) = base_ring(R) # TODO: ??????!
 
 #==============================================================================#
 
@@ -69,13 +71,14 @@ type PRingElem <: SingularPolynomialElem
     ptr :: libSingular.poly
     ctx :: SingularPolynomialRing
 
-    function PRingElem(c :: SingularPolynomialRing, p :: libSingular.poly)        
+    function PRingElem(c :: SingularPolynomialRing, p :: libSingular.poly)
     	const r = get_raw_ptr(c);
 	z = new(p_Test(p, r), c); 
 	finalizer(z, _SingularPolyRingElem_clear_fn); 
 	return z
-    end 
+    end
 
+end
 
     function PRingElem()
     	error("Type PRingElem requires context reference")
@@ -120,11 +123,11 @@ type PRingElem <: SingularPolynomialElem
     PRingElem(c :: SingularPolynomialRing, z::Integer) = PRingElem(c, BigInt(z))
 #    PRingElem(c :: SingularPolynomialRing, s::AbstractString) = parsePRingElem(c, s) # TODO: FIXME: go via Singular?!!
 
-end
 
 # For now - only one element type for any Singular Polynomial Ring...
 elem_type{CF<:SingularPolynomialRing}(C::CF) = PRingElem
 
+parent(p :: SingularPolynomialElem) = p.ctx
 
 function check_parent(a::SingularPolynomialElem, b::SingularPolynomialElem)
    parent(a) != parent(b) && error("Operations on elements with different parents are not supported")
@@ -144,13 +147,10 @@ function set_raw_ptr!(n :: SingularPolynomialElem, p :: libSingular.poly, C :: S
    @assert (p == get_raw_ptr(n)); # Test...
 end
 
-parent(p :: SingularPolynomialElem) = p.ctx
-
 function _SingularPolyRingElem_clear_fn(p :: SingularPolynomialElem)
    libSingular._p_Delete(get_raw_ptr(p), get_raw_ptr(parent(p)))
    p.ptr = libSingular.poly(0); # no tests...
 end
-
 
 function hash(a::SingularPolynomialElem)
    return hash(parent(a)) $ hash(string(a))  ## TODO: string may be a bit too inefficient wherever hash is used...?
@@ -158,12 +158,13 @@ end
 
 deepcopy(a::SingularPolynomialElem) = elem_type(parent(a))(a)
 
-Base.call{CF<:SingularPolynomialRing}(A::CF) = elem_type(A)(A)
-Base.call{CF<:SingularPolynomialRing}(A::CF, b::Int) = elem_type(A)(A, b)
-Base.call{CF<:SingularPolynomialRing}(A::CF, b::Integer) = elem_type(A)(A, BigInt(b))
-Base.call{CF<:SingularPolynomialRing}(A::CF, b::libSingular.poly) = elem_type(A)(A, b)
+## PRingElem?
+Base.call(A::SingularPolynomialRing) = elem_type(A)(A)
+Base.call(A::SingularPolynomialRing, b::Int) = elem_type(A)(A, b)
+Base.call(A::SingularPolynomialRing, b::Integer) = elem_type(A)(A, BigInt(b))
+Base.call(A::SingularPolynomialRing, b::libSingular.poly) = elem_type(A)(A, b)
 
-function Base.call{CF<:SingularPolynomialRing}(A::CF, b::SingularPolynomialElem)
+function Base.call(A::SingularPolynomialRing, b::SingularPolynomialElem)
    A != parent(b) && error("Operations on elements from different rings (mappings) are not supported yet!")
    return b ##   return deepcopy(b) # NOTE: fine no need in deepcopy!?? TODO?????
 end
@@ -180,12 +181,20 @@ isring(c::SingularPolynomialRing) = true; ##libSingular.nCoeff_is_Ring(get_raw_p
 
 characteristic(r::SingularPolynomialRing) = @cxx rChar(get_raw_ptr(r))
 
+gen(r::SingularPolynomialRing) = geni( ngens(r), r) ## ??
+
 ngens(r::SingularPolynomialRing) = @cxx rVar(get_raw_ptr(r))
 
-#function geni(i::Int, r::SingularPolynomialRing)
-#    ((i >= 1) && (i <= ngens(r))) && return PRingElem(r, (@cxx p_Vari(i, get_raw_ptr(r))))
-#    error("Wrong indeterminate index")
-#end
+function geni(i::Int, R::SingularPolynomialRing)
+    const N = ngens(R);
+    @assert ((i >= 1) && (i <= N))
+    ((i < 1) || (i > N)) && error("Wrong generator/variable index");
+    const r = get_raw_ptr(R);
+    const p :: libSingular.poly = libSingular.p_ISet(1, r);
+    libSingular.p_SetExp!(p, i, 1, r);    
+    libSingular.p_Setm(p, r);
+    return elem_type(R)(r, p) ## PRingElem?
+end
 
 ###############################################################################
 #
@@ -215,10 +224,10 @@ function hash(a::SingularPolynomialRing)
    return hash(string(a))  ## TODO: string may be a bit too inefficient wherever hash is used...?
 end
 
-# TODO: FIXME: avoid explicite constructor calls (PRingElem()) in the following: use elem_type?!
-zero(R::SingularPolynomialRing) = PRingElem(R, libSingular.poly(0))
-one(R::SingularPolynomialRing)  = PRingElem(R, libSingular.p_One(get_raw_ptr(R)))
-mone(R::SingularPolynomialRing) = PRingElem(R, -1)
+## TODO: FIXME: avoid explicite constructor calls (PRingElem()) in the following: use elem_type?!
+zero(R::SingularPolynomialRing) = elem_type(R)(R, libSingular.poly(0))
+one(R::SingularPolynomialRing)  =  elem_type(R)(R, libSingular.p_One(get_raw_ptr(R)))
+# mone(R::SingularPolynomialRing) =  elem_type(R)(R, -1)
 
 function string(p::SingularPolynomialElem)
    const R = parent(p);   
@@ -230,9 +239,6 @@ function string(p::SingularPolynomialElem)
 end
 
 show(io::IO, p::SingularPolynomialElem) = print(io, string(p))
-
-
-
 
         function +(x::SingularPolynomialElem, y::SingularPolynomialElem)
             check_parent(x, y)

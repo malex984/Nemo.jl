@@ -12,17 +12,20 @@ type NumberElem{CF<:SingularRing} <: SingularRingElem # TODO: rename -> NumberRE
     	error("Type NumberElem{$CF} requires context reference")
     end
 
-    function NumberElem(c :: CF)
-        const p = number(0);
-	z = new(n_Test(p, get_raw_ptr(c)), c); 
-	finalizer(z, _SingularRingElem_clear_fn); return z
-    end
-
     function NumberElem(c :: CF, p :: libSingular.number)        
         z = new(n_Test(p, get_raw_ptr(c)), c); 
 	finalizer(z, _SingularRingElem_clear_fn); return z
     end
     
+    function NumberElem(c :: CF)
+    	return NumberElem{CF}(c, 0)
+#=
+        const p = number(0);
+	z = new(n_Test(p, get_raw_ptr(c)), c); 
+	finalizer(z, _SingularRingElem_clear_fn); return z
+=#
+    end
+
     function NumberElem(c :: CF, x::Int)
         const p :: libSingular.number = libSingular.n_Init(x, get_raw_ptr(c))
     	return NumberElem{CF}(c, p)
@@ -52,12 +55,6 @@ type NumberFElem{CF<:SingularField} <: SingularFieldElem
     	error("Type NumberFElem{$CF} requires context reference")
     end
 
-    function NumberFElem(c::CF)
-        const p = number(0);
-        z = new(n_Test(p, get_raw_ptr(c)), c); 
-        finalizer(z, _SingularRingElem_clear_fn); return z
-    end
-
     function NumberFElem(c::CF, p::number)
         z = new(n_Test(p, get_raw_ptr(c)), c); 
         finalizer(z, _SingularRingElem_clear_fn); return z
@@ -67,6 +64,16 @@ type NumberFElem{CF<:SingularField} <: SingularFieldElem
     	p = libSingular.n_Init(x, get_raw_ptr(c)); 
 	return NumberFElem{CF}(c, p);
     end
+
+    function NumberFElem(c::CF)
+	return NumberFElem{CF}(c, 0);    
+#=
+        const p = number(0);
+        z = new(n_Test(p, get_raw_ptr(c)), c); 
+        finalizer(z, _SingularRingElem_clear_fn); return z
+=#
+    end
+
 
     function NumberFElem(x::NumberFElem{CF})
         c = parent(x); p = libSingular.n_Copy(get_raw_ptr(x), get_raw_ptr(c)); 
@@ -85,30 +92,44 @@ end
 type Number_Elem{CF<:SingularUniqueRing} <: SingularUniqueRingElem  # TODO: rename -> NumberR_Elem?
     ptr :: number
 
-    function Number_Elem()
-        const p = number(0)
-        z = new(n_Test(p, get_raw_ptr(CF()))); 
-        finalizer(z, _SingularRingElem_clear_fn); return z
-    end
-
-    function Number_Elem(::CF)
-    	return Number_Elem{CF}()
-    end
-
     function Number_Elem(p::number)
         z = new(n_Test(p, get_raw_ptr(CF()))); 
         finalizer(z, _SingularRingElem_clear_fn); return z
     end
 
-    function Number_Elem(::CF, p::number)
+    function Number_Elem(x::Number_Elem{CF})
+        c = parent(x); 
+        @assert is(c, CF())	
+	p = libSingular.n_Copy(get_raw_ptr(x), get_raw_ptr(c)); 
+        return Number_Elem{CF}(p)
+    end
+
+    function Number_Elem()
+    	return Number_Elem{CF}(0)
+#=
+        const p = number(0)
+        z = new(n_Test(p, get_raw_ptr(CF()))); 
+        finalizer(z, _SingularRingElem_clear_fn); return z
+=#
+    end
+
+    function Number_Elem(c::CF)
+        @assert is(c, CF())
+    	return Number_Elem{CF}()
+    end
+
+    function Number_Elem(c::CF, p::number)
+        @assert is(c, CF())
     	return Number_Elem{CF}(p);
     end
 
     function Number_Elem(c::CF, x::Int)
+        @assert is(c, CF())
     	p = libSingular.n_Init(x, get_raw_ptr(c)); return Number_Elem{CF}(p);
     end
 
     function Number_Elem(c::CF, b::BigInt)
+        @assert is(c, CF())
         p = libSingular.n_InitMPZ(b, get_raw_ptr(c)); 
 	return Number_Elem{CF}(p)
     end
@@ -120,12 +141,6 @@ type Number_Elem{CF<:SingularUniqueRing} <: SingularUniqueRingElem  # TODO: rena
     function Number_Elem(b::BigInt)
 	return Number_Elem{CF}(CF(), b)
     end
-
-    function Number_Elem(x::Number_Elem{CF})
-        c = parent(x); p = libSingular.n_Copy(get_raw_ptr(x), get_raw_ptr(c)); 
-        return Number_Elem{CF}(p)
-    end
-
 end
 
 #==============================================================================#
@@ -134,15 +149,18 @@ end
 type NumberF_Elem{CF<:SingularUniqueField} <: SingularUniqueFieldElem
     ptr :: number
 
-    function NumberF_Elem()
-    	const p = number(0); 
-        z = new(n_Test(p, get_raw_ptr(CF()))); 
-        finalizer(z, _SingularRingElem_clear_fn); return z
-    end
-
     function NumberF_Elem(p::number)
         z = new(n_Test(p, get_raw_ptr(CF()))); 
 	finalizer(z, _SingularRingElem_clear_fn); return z
+    end
+
+    function NumberF_Elem()
+        return NumberF_Elem{CF}(0);
+#=    	     
+    	const p = number(0); 
+        z = new(n_Test(p, get_raw_ptr(CF()))); 
+        finalizer(z, _SingularRingElem_clear_fn); return z
+=#
     end
 
     function NumberF_Elem(x::Int)
@@ -152,7 +170,9 @@ type NumberF_Elem{CF<:SingularUniqueField} <: SingularUniqueFieldElem
     end
 
     function NumberF_Elem(x::NumberF_Elem{CF})
-        const cf = get_raw_ptr(parent(x)); 
+        const C = parent(x);
+    	@assert is(C, CF())
+        const cf = get_raw_ptr(C); 
   	const p = libSingular.n_Copy(get_raw_ptr(x), cf);
         return NumberF_Elem{CF}(p)
     end
@@ -180,10 +200,13 @@ type Singular_ZZElem <: SingularIntegerRingElem
     ptr :: number
 
     function Singular_ZZElem()
+        return Singular_ZZElem(0)
+#=    
     	const p = number(0); 
     	const c = libSingular.ptr_ZZ;
         z = new(n_Test(p, c)); 
         finalizer(z, _SingularRingElem_clear_fn); return z
+=#
     end
 
     function Singular_ZZElem(p::number)
@@ -193,8 +216,8 @@ type Singular_ZZElem <: SingularIntegerRingElem
     end
 
     function Singular_ZZElem(x::Int)
-    	const c = libSingular.ptr_ZZ;
-    	const p = libSingular.n_Init(x, c); 
+    	const c :: libSingular.coeffs = libSingular.ptr_ZZ;
+    	const p :: libSingular.number = libSingular.n_Init(x, c); 
 	return Singular_ZZElem(p);
     end
 
@@ -220,10 +243,13 @@ type Singular_QQElem <: SingularFractionElem{Singular_ZZElem}
     ptr :: number
 
     function Singular_QQElem()
+        return Singular_ZZElem(0)
+#=
     	const p = number(0); 
     	const c = libSingular.ptr_QQ;
         z = new(n_Test(p, c)); 
         finalizer(z, _SingularRingElem_clear_fn); return z
+=#
     end
 
     function Singular_QQElem(p::number)
