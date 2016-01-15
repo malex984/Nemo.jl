@@ -362,28 +362,30 @@ function test_singular_lowlevel_coeffs()
 end
 
 
-function test_singular_polynomial_ring(C)
+
+
+function test_singular_polynomial_ring(C, s)
 
    print("Constructing Singular Polynomial Ring over $C: \n")  
 
-   R = Nemo.PRing(C, "x, y"); # just testing ATM!
+   R = Nemo.PRing(C, s); # just testing ATM!
 
-   print("_ Over [", string(C), "]: ", string(R))
+   println("_ Over [", string(C), "]: ", string(R))
    @test base_ring(R) == C # ?
 
    p = one(R) * R(2) + 3 + gen(R);
 
-   println(p, " @@ ", typeof(p))
+   println("1*2+3+lastgen(): ", p, " @@ ", typeof(p))
 
    p = 0
 
-   for i in 1:Int(Nemo.ngens(R))
-       p += (10 * Int(i)) * Nemo.geni(Int(i), R)
+   for i in 1:Nemo.ngens(R)
+       p += (10 * Int(i)) * Nemo.geni(i, R)
    end
 
 ## TODO: FIXME: add automatic mapping K -> K[x,y,z...]!?
 
-   println(p, " @@ ", typeof(p))
+   println("sum(10*i*gen(i)): ", p, " @@ ", typeof(p))
 
    println("...PASS")
 end
@@ -409,12 +411,16 @@ ring test_construct_ring()
    println("PASS")
 
 
-   test_singular_polynomial_ring(Nemo.SingularZZ())
-   test_singular_polynomial_ring(Nemo.SingularQQ())
+   test_singular_polynomial_ring(Nemo.SingularZZ(), "z1")
+   test_singular_polynomial_ring(Nemo.SingularZZ(), "z1, z2")
+   test_singular_polynomial_ring(Nemo.SingularZZ(), "z1, z2, z3")
+   test_singular_polynomial_ring(Nemo.SingularZZ(), "z1, z2, z3, z4")
+   test_singular_polynomial_ring(Nemo.SingularQQ(), "q1, q2, q3")
+   test_singular_polynomial_ring(Nemo.SingularQQ(), "q1, q2, q3,q4,q5,q6")
 
-   test_singular_polynomial_ring(Nemo.SingularZp(3))
-   test_singular_polynomial_ring(Nemo.SingularZp(5))
-   test_singular_polynomial_ring(Nemo.SingularZp(11))
+   test_singular_polynomial_ring(Nemo.SingularZp(3), "p1, p2, p3, p4, p5, p6")
+   test_singular_polynomial_ring(Nemo.SingularZp(5), "p, pp, ppp")
+   test_singular_polynomial_ring(Nemo.SingularZp(11), "p")
 
 ## TODO: FIXME: GF!
 #   test_singular_polynomial_ring(Nemo.SingularGF(7, 1, "T")) #  // ** illegal GF-table size: 7  // ** Sorry: cannot init lookup table!??
