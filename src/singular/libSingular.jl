@@ -1,5 +1,5 @@
 module libSingular
-export n_coeffType, number, coeffs, n_Test, p_Test
+export n_coeffType, number, coeffs, n_Test, p_Test, r_Test
 using Cxx
 function __libSingular_init__()
    const local prefix = joinpath(Pkg.dir("Nemo"), "local")
@@ -66,11 +66,11 @@ cxx"""#line 20 "libSingular.jl"
 //    static void _n_MPZ(void *r, number *n, const coeffs cf)
 //    { n_MPZ((mpz_t)r, *n, cf); }
 
-    static ring test_create_ring2(const coeffs cf)
-    { char* ns[] = {(char*)"x", (char*)"y"}; return rDefault( cf, 2, ns); }
+//    static ring test_create_ring2(const coeffs cf)
+//    { char* ns[] = {(char*)"x", (char*)"y"}; return rDefault( cf, 2, ns); }
 
-    static poly test_create_poly(const long n, const ring r)
-    { return p_ISet(n, r); }
+//    static poly test_create_poly(const long n, const ring r)
+//    { return p_ISet(n, r); }
 
    static coeffs rGetCoeffs(const ring r)
    { return r->cf; }
@@ -107,6 +107,16 @@ cxx"""#line 20 "libSingular.jl"
 #ifdef PDEBUG
        if(a == NULL) return (true);
        return (_p_Test(a, r, PDEBUG));
+#else
+       return (true);	
+#endif
+    }
+
+
+    static bool _r_Test(const ring r)
+    { 
+#ifdef RDEBUG
+       return (rTest(r));
 #else
        return (true);	
 #endif
@@ -663,7 +673,95 @@ typealias poly Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:spolyrec},(false,fals
 ###pcpp"poly" #Ptr{Void} ### TODO!!!
 
 #   static coeffs rGetCoeffs(const ring r)
-rGetCoeffs(r :: ring) = @cxx rGetCoeffs(r)
+function rGetCoeffs(r :: ring) 
+   return @cxx rGetCoeffs(r)
+end
+
+function rDelete(r :: ring)
+   # void rDelete(ring r); // To be used instead of rKill!
+   @cxx rDelete(r)
+end
+
+function rCopy(r :: ring)
+   # ring   rCopy(ring r);
+   return @cxx rCopy(r)
+end
+
+function rCopy0(r :: ring, copy_Qideal::Bool = true, copy_Ordering::Bool = true )
+   bQ :: Int = (copy_Qideal? 1 : 0)
+   bO :: Int = (copy_Ordering? 1 : 0)
+   # rCopy0(const ring r, BOOLEAN copy_qideal = TRUE, BOOLEAN copy_ordering = TRUE);
+   return @cxx rCopy0(r, bQ, bO)
+end
+
+function rWrite(r :: ring, details::Bool = false)
+   d :: Int = (details? 1 : 0)
+   # void   rWrite(ring r, BOOLEAN details = FALSE);
+   @cxx rWrite(r, d)
+end
+
+function rDefault{T}(cf :: coeffs, vars::Array{T,1})
+   # ring   rDefault(const coeffs cf, int N, char **n);
+   return @cxx rDefault(cf, length(vars), Ptr{Ptr{Cuchar}}(pointer(vars)))
+end
+
+function rDefault{T}(cf :: coeffs, vars::Array{T,1}, ord::Array{Cint, 1}, blk0::Array{Cint, 1}, blk1::Array{Cint, 1}, wvhdl::Ptr{Ptr{Cint}} = C_NULL)
+   #ring   rDefault(const coeffs cf, int N, char **n,
+   #####                  int ord_size, int *ord, int *block0, int *block1, int **wvhdl=NULL);
+   @assert length(ord) == length(blk0)
+   @assert length(ord) == length(blk1)
+   return @cxx rDefault(cf, length(vars), Ptr{Ptr{Cuchar}}(pointer(vars)), length(ord), pointer(ord), pointer(blk0), pointer(blk1), wvhdl)
+end
+
+
+
+#const char * rSimpleOrdStr(int ord);
+#int rOrderName(char * ordername);
+#char * rOrdStr(ring r);
+#char * rVarStr(ring r);
+#char * rCharStr(ring r);
+#char * rString(ring r);
+#int    rChar(ring r);
+#char * rParStr(ring r);
+#int    rSum(ring r1, ring r2, ring &sum);
+
+# static inline char* rRingVar(short i, const ring r)
+# static inline char const ** rParameter(const ring r) 
+
+# static inline number n_Param(const short iParameter, const ring r)
+
+#/// returns TRUE, if r1 equals r2 FALSE, otherwise Equality is
+#/// determined componentwise, if qr == 1, then qrideal equality is
+#/// tested, as well
+#BOOLEAN rEqual(ring r1, ring r2, BOOLEAN qr = TRUE);
+
+#/// returns TRUE, if r1 and r2 represents the monomials in the same way
+#/// FALSE, otherwise
+#/// this is an analogue to rEqual but not so strict
+#BOOLEAN rSamePolyRep(ring r1, ring r2);
+
+function  rGetVar(varIndex :: Cint, r :: ring)
+   # // return the varIndex-th ring variable as a poly; varIndex starts at index 1
+   # poly rGetVar(const int varIndex, const ring r)
+   return @cxx rGetVar(varIndex, r)
+end
+
+function _r_Test(r :: ring)
+   return (@cxx _r_Test(r)) # NOTE: returns bool!
+end
+
+r_Test(r :: ring) = r_TestDebug(r) # or just return p!
+
+function r_TestDebug(r :: ring)
+      if !_r_Test(r)
+         BT()
+#	 @cxx _break()
+#         @assert (_p_Test(p, r) == true)
+#         throw(ErrorException("r_Test: Wrong Singular ring"))
+       end
+   return r
+end
+
 
 function _p_Test(p :: poly, r :: ring)
    return (@cxx __p_Test(p, r)) # NOTE: returns bool!

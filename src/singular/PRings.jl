@@ -8,14 +8,34 @@ type PRing <: SingularPolynomialRing
    ptr :: libSingular.ring
    base_ring :: SingularCoeffs
 
-   function PRing(cf::SingularCoeffs, vars::AbstractString{}) 
+   function PRing(cf::SingularCoeffs, _v::ASCIIString) 
+      vv = split(_v, ',')
+      vars = Array(AbstractString, length(vv));
+      vvv = Array(Ptr{Cuchar}, length(vv))
+      for i = 1:length(vv)
+      	  const v = strip(vv[i]);
+
+	  @assert (length(v) > 0)
+	  const c = v[1];
+	  @assert isalpha(c) || (c == '@') || (c == '_')
+	  for j = 1:(i - 1)
+	      @assert v != vars[j] # all distinct!
+	  end
+	  vars[i] = v * "\0";
+
+	  vvv[i] = pointer(vars[i]);
+      end
+
+##      println(vars)
+
       try
           return SRingID[cf, vars]
       catch
       end
 
       # TODO: FIXME: switch from this POC to a proper generic construction
-      ptr = @cxx test_create_ring2(get_raw_ptr(cf))
+      ptr = r_Test(libSingular.rDefault(get_raw_ptr(cf), vvv));
+      #@cxx test_create_ring2(get_raw_ptr(cf))
 
       (ptr == libSingular.ring(0)) && error("Singular polynomial ring construction failure")
 
@@ -32,7 +52,7 @@ type PRing <: SingularPolynomialRing
    end
 
    function PRing(ptr::libSingular.ring) 
-      (ptr == libSingular.ring(0)) && error("Singular polynomial ring construction failure")
+      (r_Test(ptr) == libSingular.ring(0)) && error("Singular polynomial ring construction failure")      
 
       try
          R = SRingID[ptr]
@@ -55,7 +75,7 @@ type PRing <: SingularPolynomialRing
 end
 
 function _PRing_clear_fn(r::PRing)
-   @cxx rDelete(get_raw_ptr(r))
+   libSingular.rDelete(get_raw_ptr(r))
 end
 
 get_raw_ptr(R :: SingularPolynomialRing) = R.ptr
@@ -184,15 +204,17 @@ characteristic(r::SingularPolynomialRing) = @cxx rChar(get_raw_ptr(r))
 gen(r::SingularPolynomialRing) = geni( ngens(r), r) ## ??
 
 ngens(r::SingularPolynomialRing) = Int(@cxx rVar(get_raw_ptr(r)))
+npars(r::SingularPolynomialRing) = Int(@cxx rPar(get_raw_ptr(r)))
 
 function geni(i::Int, R::SingularPolynomialRing)
     const N = ngens(R);
     @assert ((i >= 1) && (i <= N))
     ((i < 1) || (i > N)) && error("Wrong generator/variable index");
+
     const r = get_raw_ptr(R);
-    const p :: libSingular.poly = libSingular.p_ISet(1, r);
-    libSingular.p_SetExp!(p, i, 1, r);    
-    libSingular.p_Setm(p, r);
+    const p :: libSingular.poly = libSingular.rGetVar(Cint(i), r);
+#    libSingular.p_SetExp!(p, i, 1, r);    
+#    libSingular.p_Setm(p, r);
     return elem_type(R)(R, p) ## PRingElem?
 end
 
