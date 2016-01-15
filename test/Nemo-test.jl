@@ -13,27 +13,10 @@ Nemo.with_singular() && include("singular/all-tests.jl")
 
 function test_all()
    Nemo.with_singular() && test_singular()
-
-   gc()
-
-   test_groups(); test_rings(); test_fields(); test_benchmarks()
-
-#   if Nemo.with_singular()
-#      for (c,nn) in Nemo.leftovers
-#         println(c); println("Numbers: ")
-#         
-#         for (k,v) in nn
-#            if (v > 1)
-#                 println(k, "   ====>>>>   ", v)
-#            end
-#         end
-#             
-#	 println()
-#     end
-#   end
-
-   gc()
-   Nemo.with_singular() && Nemo.libSingular.omPrintInfoStats()
+#=
+   gc(); test_groups(); test_rings(); test_fields(); test_benchmarks()
+=#
+   gc(); Nemo.with_singular() && Nemo.libSingular.omPrintInfoStats()
 end
 
 end # module
