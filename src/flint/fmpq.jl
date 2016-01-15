@@ -371,7 +371,7 @@ divexact(a::Integer, b::fmpq) = inv(b)*a
 
 function mod(a::fmpq, b::fmpz)
    const aa = den(a)
-   return (mod(num(a), aa*b) // aa)
+   return fmpq(mod(num(a), aa*b), aa)
 
 #   z = fmpz()
 #   ccall((:fmpq_mod_fmpz, :libflint), Void,

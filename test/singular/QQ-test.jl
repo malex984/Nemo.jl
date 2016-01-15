@@ -319,9 +319,12 @@ function test_QQ_modular_arithmetic_singular()
    mm = mod(b, ZZ(5))
 #   println(": ", mm)
 
-   @test m == QQ(mod(Rational{Int}(Int(num(a)), Int(den(a))), 7))
-   @test mm == QQ(mod(Rational{Int}(Int(num(b)), Int(den(b))), 5))
+#   @test m == QQ(mod(Rational{Int}(Int(num(a)), Int(den(a))), 7))
+#   @test mm == QQ(mod(Rational{Int}(Int(num(b)), Int(den(b))), 5))
    
+   @test m  == QQ(19, 3) 
+   @test mm == QQ( 1, 2) 
+
    println("PASS")
 end
 
