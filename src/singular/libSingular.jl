@@ -166,7 +166,7 @@ end
 
 typealias nMapFunc Cxx.CppFptr{Cxx.CppFunc{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Tuple{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}}}}
 
-typealias n_coeffType Cxx.CppEnum{:n_coeffType} # pcpp"n_coeffType" # 
+typealias n_coeffType Cxx.CppEnum{:n_coeffType} # vcpp"n_coeffType" ## ? 
 
 typealias __mpz_struct pcpp"__mpz_struct"
 #Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:__mpz_struct},(false,false,false)},(false,false,false)}
@@ -221,9 +221,16 @@ end
 function PrintLn()
    @cxx _PrintLn()
 end 
-function omFree(m)
-   @cxx _omFree(m)
+function omFree(m :: Ptr{Void})
+   icxx"""omFree($m); """ #  @cxx _omFree(m)
 end 
+function omAlloc(size :: Csize_t)
+   return icxx""" return (void*)omAlloc($size); """ 	 
+end
+
+function omAlloc0(size :: Csize_t)
+   return icxx""" return (void*)omAlloc0($size); """ 	 
+end
 function siRand()
    return Int(@cxx _siRand())
 end
@@ -249,7 +256,7 @@ function PrintResources(s)
    feStringAppendResources(0)
    m = StringEndS()
    PrintS(m)
-   omFree(m)
+   omFree(Ptr{Void}(m))
 end
 
 
@@ -425,8 +432,6 @@ for (f) in ((:n_DivBy), (:n_Greater), (:n_Equal))
     end
 end
 
-
-
 #### Metaprogram to define functions :
 # BOOLEAN n_IsOne(number n,  const coeffs r)
 # BOOLEAN n_IsMOne(number n, const coeffs r)
@@ -573,8 +578,8 @@ function n_QuotRem(a::number, b::number, cf::coeffs)
 end
 
 
-# void   n_Power(number a, int b, number *res, const coeffs r)
 function n_Power(a::number, b::Int, cf::coeffs)
+    # void   n_Power(number a, int b, number *res, const coeffs r)
     return n_Test((@cxx _n_Power(n_Test(a,cf), b, cf)), cf);
 end
 
@@ -655,10 +660,6 @@ function getCoeffType(r :: coeffs )
    return @cxx getCoeffType(r) 
 end
 
-
-
-
-
 ### TODO: move above
 # number  n_InpNeg(number n, const coeffs r) # to be used only as: n = n_InpNeg(n, cf);
 
@@ -668,12 +669,54 @@ function n_Neg(x :: number, cf :: coeffs)
 end
 
 
+#===========================================================================================#
+# Singular Multivariate Polynomial Rings (with a unit) over Coeffs (Rings or Fields)
+#===========================================================================================#
+
+typealias rRingOrder_t Cxx.CppEnum{:rRingOrder_t} # vcpp"rRingOrder_t" ## ?
+
+function ringorder_lp(); return(@cxx ringorder_lp); end
+function ringorder_dp(); return(@cxx ringorder_dp); end
+
+function ringorder_no(); return(@cxx ringorder_no); end # = 0 # the last block ord!
+
+#  ringorder_no = 0,
+#  ringorder_a,
+#  ringorder_a64, ///< for int64 weights
+#  ringorder_c,
+#  ringorder_C,
+#  ringorder_M,
+#  ringorder_S, ///< S?
+#  ringorder_s, ///< s?
+#  ringorder_lp,
+#  ringorder_dp,
+#  ringorder_rp,
+#  ringorder_Dp,
+#  ringorder_wp,
+#  ringorder_Wp,
+#  ringorder_ls,
+#  ringorder_ds,
+#  ringorder_Ds,
+#  ringorder_ws,
+#  ringorder_Ws,
+#  ringorder_am,
+#  ringorder_L,
+#  // the following are only used internally:
+#  ringorder_aa, ///< for idElimination, like a, except pFDeg, pWeigths ignore it
+#  ringorder_rs, ///< opposite of ls
+#  ringorder_IS, ///< Induced (Schreyer) ordering
+
+
 typealias ring Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:ip_sring},(false,false,false)},(false,false,false)}
+typealias ring_ref Ref{ring} ###   rcpp"ring" #  ??
+
 typealias poly Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:spolyrec},(false,false,false)},(false,false,false)}
 ###pcpp"poly" #Ptr{Void} ### TODO!!!
+typealias poly_ref Ref{poly} ###   rcpp"poly" #  ??
 
-#   static coeffs rGetCoeffs(const ring r)
+
 function rGetCoeffs(r :: ring) 
+   #   static coeffs rGetCoeffs(const ring r)
    return @cxx rGetCoeffs(r)
 end
 
@@ -705,12 +748,19 @@ function rDefault{T}(cf :: coeffs, vars::Array{T,1})
    return @cxx rDefault(cf, length(vars), Ptr{Ptr{Cuchar}}(pointer(vars)))
 end
 
-function rDefault{T}(cf :: coeffs, vars::Array{T,1}, ord::Array{Cint, 1}, blk0::Array{Cint, 1}, blk1::Array{Cint, 1}, wvhdl::Ptr{Ptr{Cint}} = C_NULL)
-   #ring   rDefault(const coeffs cf, int N, char **n,
-   #####                  int ord_size, int *ord, int *block0, int *block1, int **wvhdl=NULL);
+function rDefault{T}(cf :: coeffs, vars::Array{T,1}, ord::Array{rRingOrder_t, 1}, blk0::Array{Cint, 1}, blk1::Array{Cint, 1}, wvhdl::Ptr{Ptr{Cint}} = Ptr{Ptr{Cint}}(C_NULL))
    @assert length(ord) == length(blk0)
    @assert length(ord) == length(blk1)
-   return @cxx rDefault(cf, length(vars), Ptr{Ptr{Cuchar}}(pointer(vars)), length(ord), pointer(ord), pointer(blk0), pointer(blk1), wvhdl)
+
+   # last order block: all zeroes:
+   @assert ord[length(ord)] == ringorder_no() 
+   @assert blk0[length(ord)] == 0
+   @assert blk1[length(ord)] == 0
+
+   #ring   rDefault(const coeffs cf, int N, char **n,
+   #####                  int ord_size, int *ord, int *block0, int *block1, int **wvhdl=NULL);
+
+   return @cxx rDefault(cf, length(vars), Ptr{Ptr{Cuchar}}(pointer(vars)), length(ord), Ptr{Cint}(pointer(ord)), pointer(blk0), pointer(blk1), wvhdl)
 end
 
 
@@ -723,7 +773,14 @@ end
 #char * rString(ring r);
 #int    rChar(ring r);
 #char * rParStr(ring r);
-#int    rSum(ring r1, ring r2, ring &sum);
+
+function rSum(A :: ring, B :: ring)
+    S = ring_ref(ring(C_NULL));    
+    #   int    rSum(ring A, ring B, ring &sum);
+    ret :: Cint = icxx""" return rSum($A,$B,$S); """
+    @assert (ret == 1)
+    return r_Test(S[])
+end
 
 # static inline char* rRingVar(short i, const ring r)
 # static inline char const ** rParameter(const ring r) 
@@ -871,6 +928,21 @@ function pp_Add_qq(p :: poly, q :: poly, r :: ring)
    return @cxx p_Add_q(p_Copy(p,r), p_Copy(q, r), r)
 end
 
+function p_Neg(p :: poly, r :: ring)
+   # // returns -p, destroys p
+   # static inline poly p_Neg(poly p, const ring r)   
+   return (@cxx p_Neg(p, r))
+end
+
+
+function pp_Neg(p :: poly, r :: ring)
+   return p_Neg(p_Copy(p, r), r)
+end
+
+function pp_Sub_qq(p :: poly, q :: poly, r :: ring)
+   return (@cxx p_Add_q(p_Copy(p,r), pp_Neg(q, r), r))
+end
+
 
 function p_Mult_q(p :: poly, q :: poly, r :: ring)
    #// returns p*q, destroys p and q
@@ -890,9 +962,35 @@ function p_String(p :: poly, r :: ring)
 end
 
 function p_Setm(p :: poly, r :: ring)
-   #static inline void p_Setm(poly p, const ring r)
-   return @cxx p_Setm(p, r)
+   #static inline void p_Setm(poly p, const ring r) 
+   # NOTE: changes input term p!
+   @cxx p_Setm(p, r)
+   return p
 end
+
+function pp_Power(a::poly, b::Cint, r::ring)
+    # returns the i-th power of p. NOTE: p will be destroyed
+    # poly      p_Power(poly p, int i, const ring r);
+    return (@cxx p_Power(p_Copy(a, r), b, r))
+end
+
+        function pp_IsOne(x :: poly, r :: ring)
+	    ## static inline BOOLEAN p_IsOne(const poly p, const ring R)
+            const ret = ( @cxx p_IsOne(x, r) );
+            return (ret > 0)
+        end
+
+        function pp_IsConstant(x :: poly, r :: ring)
+	    # static inline BOOLEAN p_IsConstant(const poly p, const ring r)
+            const ret = ( @cxx p_IsConstant(x, r) );
+            return (ret > 0)
+        end
+
+
+        function pp_IsMOne(x :: poly, r :: ring)
+	    # (p_IsConstant(p, R) && n_IsMOne(p_GetCoeff(p, R), R->cf))
+            return pp_IsConstant(x, r) && n_IsMOne(pGetCoeff!(x), rGetCoeffs(r))
+        end
 
 
 end # libSingular module

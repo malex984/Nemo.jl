@@ -112,7 +112,7 @@ function string!(n::SingularCoeffsElems)
 
    m = libSingular.StringEndS()
    s = bytestring(m) 
-   libSingular.omFree(m)
+   libSingular.omFree(Ptr{Void}(m))
 
    return s
 end

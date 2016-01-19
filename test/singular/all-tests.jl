@@ -1,6 +1,29 @@
 using Base.Test
 using Cxx
 
+###############################################################################
+#
+#   PolynomialRing constructor
+#
+###############################################################################
+
+#=
+function PolynomialRing(R::Nemo.SingularCoeffs, s::AbstractString{})
+#   S = symbol(s)
+   parent_obj = Nemo.PRing(R, s);
+   return parent_obj, Nemo.gens(parent_obj)
+end
+
+function PolynomialRing(P::Nemo.SingularPolynomialRing, s::AbstractString{})
+   R = Nemo.PRing(base_ring(P), s);
+
+   parent_obj = P + R; # TODO: FIXME: does NOT work yet! :((
+   
+   return parent_obj, Nemo.gens(parent_obj)
+end
+=#
+
+
 include("generic/Fraction-test.jl")
 include("generic/Residue-test.jl") # TODO >= unary ops
 include("generic/Poly-test.jl")
@@ -10,6 +33,10 @@ include("Benchmark-test.jl")
 
 include("ZZ-test.jl")
 include("QQ-test.jl")
+
+
+include("ZZ_poly-test.jl")
+include("QQ_poly-test.jl")
 
 function test_singular_wrappers()
    println("Printing Singular resources pathes...")  
@@ -69,7 +96,6 @@ end
 
 
 
-
 function test_generic_polys(C::Nemo.SingularCoeffs)
    println("test_generic_polys for 'C'...")
    println("C: ", C)
@@ -82,7 +108,7 @@ function test_generic_polys(C::Nemo.SingularCoeffs)
 
    print("R = C[x].... "); 
 
-   R, x = PolynomialRing(C, "x")
+   R, xx = PolynomialRing(C, "x"); x = xx; # [1];
 
    print("R(0): "); 
    println(R(0))
@@ -99,8 +125,17 @@ function test_generic_polys(C::Nemo.SingularCoeffs)
    ff = R(3)*x + R(1) ### ??? 
    println("ff: ", ff)
 
-   f = x^3 + 3x - 1 ### ??? 
-   print("f: ")
+   print("f")
+   f = 0
+   print(" :")
+   f = f - 1 ### ??? 
+   print(";")
+   f = f + 3x
+   print(":")
+   f = f + x^3
+   print(";")
+   f = x^3 + 3x - 1  
+   print(" : ")
    println(f)
 
 
@@ -132,7 +167,8 @@ function test_generic_polys(C::Nemo.SingularCoeffs)
    h = h + 1
    println(h)
 
-   @test g == h
+   println("h - g: ", h - g)
+#   @test g == h
 
    print("f*g: ")
    println(f*g)
@@ -143,9 +179,11 @@ function test_generic_polys(C::Nemo.SingularCoeffs)
 #        end
 
    # Benchmark:
-	S, y = PolynomialRing(R, "y")
-        T, z = PolynomialRing(S, "z")
-	U, t = PolynomialRing(T, "t")
+	S, yy = PolynomialRing(R, "y"); y = yy;# [1];
+        T, zz = PolynomialRing(S, "z"); z = zz;# [1];
+	U, tt = PolynomialRing(T, "t"); t = tt;# [1];
+
+	println(U);
 
         p = (1+x+y+z+t);
         println("p: ", p)
@@ -437,7 +475,7 @@ function test_singular()
    println(); gc(); test_singular_wrappers()
 
    println(); gc(); test_singular_polynomial_rings()
-#=
+
    println(); gc(); test_singular_lowlevel_coeffs()
 
    println(); gc(); test_ZZ_singular()
@@ -455,7 +493,12 @@ function test_singular()
    println(); gc(); test_benchmarks_singular()
 
    println(); gc(); test_matrix_singular()
+
+#= 
+   println(); gc(); test_ZZ_poly_singular();
+   println(); gc(); test_QQ_poly_singular()
 =#
+
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
 
    println()
