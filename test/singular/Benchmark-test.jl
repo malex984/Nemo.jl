@@ -219,7 +219,96 @@ function test_benchmark_resultant_singular()
 end
 
 
+function test_singular_det_poly_benchmark_flint_vs_singular()
+   print("Matrix.clow_determinant of poly rings: Singular vs Flint...")
+
+   const maxD = 9;
+   const maxK = div(maxD * maxD + 1, 2);
+
+   # Flint & Singular both work over Z/2Z:
+   p = 2;
+   CF_F = ResidueRing(Nemo.FlintZZ, p);
+   CF_S = Nemo.SingularZp(p);
+
+
+   VV = Array(Nemo.RingElem, maxK); # Flint variables...
+
+   k = 1;
+   s = "x($k)";
+   FF, VV[1] = PolynomialRing(CF_F, s);
+
+   for dim = 1:2:maxD   
+      const K = div(dim*dim + 1, 2);
+
+      println(); println("dim: $dim, k: $k, K: $K");
+
+      for i = (k+1):K
+      	  const _s = "x($i)";
+	  s = s * "," * _s;
+	  FF, VV[i] = PolynomialRing(FF, _s);
+
+	  for j = 1:(i-1)
+	      VV[j] = FF(VV[j]); # TODO: For **each** new FF??
+	  end
+      end
+
+      SS, last = SingularPolynomialRing(CF_S, s, :lex); # L(K)?
+      println(SS);
+
+      MMS = MatrixSpace(SS, dim, dim)();
+      MMF = MatrixSpace(FF, dim, dim)();
+
+      for j = 1:dim
+      	  println("Try $j / $dim @ [$dim x $dim]: ")
+	  
+	  for r = 1:dim; for c = 1:dim; MMF[r,c] = zero(FF); MMS[r,c] = zero(SS); end; end;
+
+      	  i = 1;
+	  while (i <= K)
+              r = rand(1:dim); c = rand(1:dim);
+
+	      if iszero(MMS[r,c])
+                  @assert iszero(MMF[r,c])
+
+             	  MMF[r,c] = VV[i];
+             	  MMS[r,c] = Nemo.geni(i, SS);
+
+             	  i += 1;
+              end
+      	  end
+
+	  println("Random Matrix (50%-vars): ");
+
+	  println()
+      	  println(MMS);
+#      	  println(MMF);
+	  println()
+
+      	  println("Singular: Nemo.determinant_clow(MMS)... ")
+      	  @time d_s = Nemo.determinant_clow(MMS)
+#      	  println("Nemo.determinant_clow(MMS): ", d_s)
+
+      	  println("Flint: Nemo.determinant_clow(MMF)...")
+          @time d_f = Nemo.determinant_clow(MMF);
+#          println("Nemo.determinant_clow(MMF): ", d_f)
+
+	  println()
+      end
+
+      k = K;
+   end
+
+   println("PASS..?")
+   
+
+end
+
+
 function test_benchmarks_singular()
+
+
+   test_singular_det_poly_benchmark_flint_vs_singular()
+
 
    CF_F = Nemo.FlintZZ;
    CF_S = Nemo.SingularZZ();
