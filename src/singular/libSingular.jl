@@ -12,7 +12,7 @@ function __libSingular_init__()
    cxxinclude(joinpath("gmp.h"), isAngled=false)
    cxxinclude(joinpath("debugbreak.h"), isAngled=false)
    cxxinclude(joinpath("reporter", "reporter.h"), isAngled=false)
-   cxxinclude(joinpath("coeffs", "coeffs.h"), isAngled=false)
+   cxxinclude(joinpath("coeffs", "coeffs.h"), isAngled=false); cxxinclude(joinpath("polys", "clapsing.h"), isAngled=false);
    cxxinclude(joinpath("polys", "monomials", "ring.h"), isAngled=false)
    cxxinclude(joinpath("polys", "monomials", "p_polys.h"), isAngled=false)
 ## NOTE: make sure the line number is correct in case of any changes above here!!!!
@@ -23,8 +23,9 @@ cxx"""#line 20 "libSingular.jl"
     #include "reporter/reporter.h"
     #include "coeffs/coeffs.h"
 
-    #include <polys/monomials/ring.h>
-    #include <polys/monomials/p_polys.h>
+    #include "polys/monomials/ring.h"
+    #include "polys/monomials/p_polys.h"
+    #include "polys/clapsing.h"
 
     #include "debugbreak.h"
     #include <cassert>
@@ -71,9 +72,6 @@ cxx"""#line 20 "libSingular.jl"
 
 //    static poly test_create_poly(const long n, const ring r)
 //    { return p_ISet(n, r); }
-
-   static coeffs rGetCoeffs(const ring r)
-   { return r->cf; }
 
     static void omalloc_mem_info_and_stats()
     {
@@ -125,6 +123,40 @@ cxx"""#line 20 "libSingular.jl"
     static void _p_Delete(poly a,const ring r)
     { poly t = a; if(t != NULL) p_Delete(&t,r); /*return (t);*/ }
 
+
+    static coeffs rGetCoeffs(const ring r)
+    { return r->cf; }
+
+    static int pp_IsVar(const poly p, const ring r)
+    { 
+      if (pNext(p) != NULL) 
+        return -1;
+
+      if( !n_IsOne(p_GetCoeff(p, r), r->cf) )
+        return -1;
+      
+      int ret = -1;
+
+      for(int i = r->N; i > 0; i--)
+      {
+        const int e = p_GetExp(p,i,r);
+	assume( e >= 0 );
+
+        if(e == 0) 
+           continue;
+
+	if(e > 1) 
+          return -1;
+
+//	assume( e == 1 );
+	if (ret > 0) 
+          return -1;
+
+	ret = i;
+      }
+      return ret;
+    }
+
     static void _break(){ assume(false); assert(false); debug_break(); }
 
 """
@@ -138,9 +170,7 @@ cxx"""#line 20 "libSingular.jl"
    # unique coeffs:
 
    # Ring:
-   global ptr_ZZ = (@cxx coeffs_BIGINT)
-
-# nInitChar(n_Z(), Ptr{Void}(0)) 
+   global ptr_ZZ = (@cxx coeffs_BIGINT) ## nInitChar(n_Z(), Ptr{Void}(0))  ### (@cxx coeffs_BIGINT) # NOTE: wrong n_IsUnit!??
    @assert (ptr_ZZ != C_NULL)
 
    # Fields:
@@ -162,6 +192,13 @@ cxx"""#line 20 "libSingular.jl"
 
    global setMap_ZZ2QQ = n_SetMap(ptr_ZZ, ptr_QQ)
    @assert (setMap_ZZ2QQ != C_NULL)
+
+   global const dictOrdSymbols = Dict{Symbol, libSingular.rRingOrder_t}(
+   	  :lex => ringorder_lp(), :revlex => ringorder_rp(), 
+   	  :neglex => ringorder_ls(), :negrevlex => ringorder_rs(), 
+	  :degrevlex => ringorder_dp(), :deglex => ringorder_Dp(),
+	  :negdegrevlex => ringorder_ds(), :negdeglex => ringorder_Ds(),
+	  :comp1max => ringorder_c(), :comp1min => ringorder_C() );
 end
 
 typealias nMapFunc Cxx.CppFptr{Cxx.CppFunc{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Tuple{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}}}}
@@ -437,8 +474,9 @@ end
 # BOOLEAN n_IsMOne(number n, const coeffs r)
 # BOOLEAN n_GreaterZero(number n, const coeffs r)
 # BOOLEAN n_IsZero(number n, const coeffs r)
+## static FORCE_INLINE BOOLEAN n_IsUnit(number n, const coeffs r)
 
-for (f) in ((:n_IsOne), (:n_IsMOne), (:n_IsZero), (:n_GreaterZero))
+for (f) in ((:n_IsOne), (:n_IsMOne), (:n_IsZero), (:n_GreaterZero), (:n_IsUnit))
     @eval begin
         function ($f)(x :: number, cf :: coeffs)
             ret = @cxx ($f)(n_Test(x, cf), cf)
@@ -488,7 +526,6 @@ function n_Normalize(x :: number_ref, cf :: coeffs)
     icxx""" n_Normalize($x, $cf); """
     n_Test(x[], cf)
 end
-
 
 # number n_GetNumerator(number& n, const coeffs r)
 function _n_GetNumerator(x :: number_ref, cf :: coeffs)
@@ -675,10 +712,22 @@ end
 
 typealias rRingOrder_t Cxx.CppEnum{:rRingOrder_t} # vcpp"rRingOrder_t" ## ?
 
-function ringorder_lp(); return(@cxx ringorder_lp); end
-function ringorder_dp(); return(@cxx ringorder_dp); end
+#### http://www.singular.uni-kl.de/Manual/latest/sing_31.htm#SEC43
 
 function ringorder_no(); return(@cxx ringorder_no); end # = 0 # the last block ord!
+
+function ringorder_lp(); return(@cxx ringorder_lp); end # lexicographical ordering
+function ringorder_rp(); return(@cxx ringorder_rp); end # reverse lexicographical ordering
+function ringorder_dp(); return(@cxx ringorder_dp); end # degree reverse lexicographical ordering
+function ringorder_Dp(); return(@cxx ringorder_Dp); end # degree lexicographical ordering
+
+function ringorder_ls(); return(@cxx ringorder_ls); end # negative lexicographical ordering
+function ringorder_rs(); return(@cxx ringorder_rs); end # negative reverse lexicographical ordering
+function ringorder_ds(); return(@cxx ringorder_ds); end # negative degree reverse lexicographical ordering
+function ringorder_Ds(); return(@cxx ringorder_Ds); end # negative degree lexicographical ordering
+
+function ringorder_c(); return(@cxx ringorder_c); end # gen(1) = max gen(i)
+function ringorder_C(); return(@cxx ringorder_C); end # gen(1) = min gen(i)
 
 #  ringorder_no = 0,
 #  ringorder_a,
@@ -717,35 +766,35 @@ typealias poly_ref Ref{poly} ###   rcpp"poly" #  ??
 
 function rGetCoeffs(r :: ring) 
    #   static coeffs rGetCoeffs(const ring r)
-   return @cxx rGetCoeffs(r)
+   return (@cxx rGetCoeffs( r_Test(r) ))
 end
 
 function rDelete(r :: ring)
    # void rDelete(ring r); // To be used instead of rKill!
-   @cxx rDelete(r)
+   @cxx rDelete( r_Test(r) )
 end
 
 function rCopy(r :: ring)
    # ring   rCopy(ring r);
-   return @cxx rCopy(r)
+   return r_Test( @cxx rCopy( r_Test(r) ) )
 end
 
 function rCopy0(r :: ring, copy_Qideal::Bool = true, copy_Ordering::Bool = true )
    bQ :: Int = (copy_Qideal? 1 : 0)
    bO :: Int = (copy_Ordering? 1 : 0)
    # rCopy0(const ring r, BOOLEAN copy_qideal = TRUE, BOOLEAN copy_ordering = TRUE);
-   return @cxx rCopy0(r, bQ, bO)
+   return r_Test( (@cxx rCopy0( r_Test(r), bQ, bO)) )
 end
 
 function rWrite(r :: ring, details::Bool = false)
    d :: Int = (details? 1 : 0)
    # void   rWrite(ring r, BOOLEAN details = FALSE);
-   @cxx rWrite(r, d)
+   @cxx rWrite( r_Test(r), d)
 end
 
 function rDefault{T}(cf :: coeffs, vars::Array{T,1})
    # ring   rDefault(const coeffs cf, int N, char **n);
-   return @cxx rDefault(cf, length(vars), Ptr{Ptr{Cuchar}}(pointer(vars)))
+   return r_Test( ( @cxx rDefault(cf, length(vars), Ptr{Ptr{Cuchar}}(pointer(vars))) ) )
 end
 
 function rDefault{T}(cf :: coeffs, vars::Array{T,1}, ord::Array{rRingOrder_t, 1}, blk0::Array{Cint, 1}, blk1::Array{Cint, 1}, wvhdl::Ptr{Ptr{Cint}} = Ptr{Ptr{Cint}}(C_NULL))
@@ -760,7 +809,7 @@ function rDefault{T}(cf :: coeffs, vars::Array{T,1}, ord::Array{rRingOrder_t, 1}
    #ring   rDefault(const coeffs cf, int N, char **n,
    #####                  int ord_size, int *ord, int *block0, int *block1, int **wvhdl=NULL);
 
-   return @cxx rDefault(cf, length(vars), Ptr{Ptr{Cuchar}}(pointer(vars)), length(ord), Ptr{Cint}(pointer(ord)), pointer(blk0), pointer(blk1), wvhdl)
+   return r_Test( (@cxx rDefault(cf, length(vars), Ptr{Ptr{Cuchar}}(pointer(vars)), length(ord), Ptr{Cint}(pointer(ord)), pointer(blk0), pointer(blk1), wvhdl) ) )
 end
 
 
@@ -777,8 +826,13 @@ end
 function rSum(A :: ring, B :: ring)
     S = ring_ref(ring(C_NULL));    
     #   int    rSum(ring A, ring B, ring &sum);
-    ret :: Cint = icxx""" return rSum($A,$B,$S); """
+    r_Test(A)
+    r_Test(B)
+    println(A)
+    println(B)
+    const ret = icxx""" return rSum($A,$B,$S); """
     @assert (ret == 1)
+    println(S)
     return r_Test(S[])
 end
 
@@ -800,7 +854,7 @@ end
 function  rGetVar(varIndex :: Cint, r :: ring)
    # // return the varIndex-th ring variable as a poly; varIndex starts at index 1
    # poly rGetVar(const int varIndex, const ring r)
-   return @cxx rGetVar(varIndex, r)
+   return p_Test( (@cxx rGetVar(varIndex, r)), r)
 end
 
 function _r_Test(r :: ring)
@@ -849,22 +903,22 @@ end
 
 function p_One(r :: ring)
    # poly p_One(const ring r)
-   return @cxx p_One(r)
+   return p_Test( (@cxx p_One(r)), r)
 end
 
 function p_ISet(i :: Int64, r :: ring)
    # poly p_ISet(long i, const ring r);
-   return @cxx p_ISet(i, r)
+   return p_Test( (@cxx p_ISet(i, r)), r)
 end
 
 function p_NSet(n :: number, r :: ring)
    # poly p_NSet(number n, const ring r); // returns the poly representing the number n, NOTE: destroys n
-   return @cxx p_NSet(n, r)
+   return p_Test( (@cxx p_NSet(n, r)), r)
 end
 
 # static inline poly p_Copy(poly p, const ring r)
 function p_Copy(p :: poly, r :: ring)
-   return @cxx p_Copy(p, r)
+   return p_Test( (@cxx p_Copy(p_Test(p,r), r)), r)
 end
 
 function pLength(p :: poly)
@@ -874,19 +928,23 @@ end
 
 function p_Deg(p :: poly, r :: ring)
    # long p_Deg(poly a, const ring r)
-   return @cxx p_Deg(p, r)
+   return (@cxx p_Deg(p_Test(p,r), r))
 end
 
-function p_Head(p :: poly, r :: ring)
+function pp_Head(p :: poly, r :: ring)
     #static inline poly p_Head(poly p, const ring r)
-   return @cxx p_Head(p, r)
+   return p_Test( (@cxx p_Head( p_Test(p,r), r)), r)
 end
-
 
 function pGetCoeff!(p :: poly)
    #static inline number& pGetCoeff(poly p)
    return icxx""" return pGetCoeff($p); """ # NOTE: supposed to return a reference to the actual coeff!
 end
+
+function pGetCoeff(p :: poly)
+   return icxx""" number n = pGetCoeff($p); return n; """
+end
+
 
 function pSetCoeff!(p :: poly, n :: number) 
    ##define pSetCoeff0(p,n)     (p)->coef=(n) # NOTE: no cleanup!
@@ -911,27 +969,33 @@ function p_SetExp!(p :: poly, v :: Int, e :: Int64, r :: ring)
    return @cxx p_SetExp(p, v, e, r)
 end
 
+function p_Mult_nn(p :: poly, n :: number, r :: ring)
+   #// returns p*n, destroys p
+   #static inline poly p_Mult_nn(poly p, number n, const ring r)
+   return p_Test((@cxx p_Mult_nn(p, n, r)), r)
+end
+
 function pp_Mult_nn(p :: poly, n :: number, r :: ring)
    #// returns p*n, does not destroy p
    #static inline poly pp_Mult_nn(poly p, number n, const ring r)
-   return @cxx pp_Mult_nn(p, n, r)
+   return p_Test((@cxx pp_Mult_nn(p, n, r)), r)
 end
 
 function p_Add_q(p :: poly, q :: poly, r :: ring)
    #// returns p+q, destroys p and q
    #static inline poly p_Add_q(poly p, poly q, const ring r)
-   return @cxx p_Add_q(p, q, r)
+   return p_Test((@cxx p_Add_q(p, q, r)), r)
 end
 
 
 function pp_Add_qq(p :: poly, q :: poly, r :: ring)
-   return @cxx p_Add_q(p_Copy(p,r), p_Copy(q, r), r)
+   return (@cxx p_Add_q(p_Copy(p,r), p_Copy(q, r), r))
 end
 
 function p_Neg(p :: poly, r :: ring)
    # // returns -p, destroys p
    # static inline poly p_Neg(poly p, const ring r)   
-   return (@cxx p_Neg(p, r))
+   return p_Test( (@cxx p_Neg(p, r)), r)
 end
 
 
@@ -940,57 +1004,138 @@ function pp_Neg(p :: poly, r :: ring)
 end
 
 function pp_Sub_qq(p :: poly, q :: poly, r :: ring)
-   return (@cxx p_Add_q(p_Copy(p,r), pp_Neg(q, r), r))
+   return p_Test( (@cxx p_Add_q(p_Copy(p,r), pp_Neg(q, r), r)), r)
 end
 
 
 function p_Mult_q(p :: poly, q :: poly, r :: ring)
    #// returns p*q, destroys p and q
    #static inline poly p_Mult_q(poly p, poly q, const ring r)
-   return @cxx p_Mult_q(p, q, r)
+   return p_Test( (@cxx p_Mult_q( p_Test(p,r), p_Test(q,r), r)), r)
 end
 
 function pp_Mult_qq(p :: poly, q :: poly, r :: ring)
    #// returns p*q, does neither destroy p nor q
    #static inline poly pp_Mult_qq(poly p, poly q, const ring r)
-   return @cxx pp_Mult_qq(p, q, r)
+   return p_Test( (@cxx pp_Mult_qq( p_Test(p,r), p_Test(q,r), r)), r)
 end
 
 function p_String(p :: poly, r :: ring)
    #static inline char*     p_String(poly p, ring p_ring)
-   return @cxx p_String(p, r)
+   return (@cxx p_String(p_Test(p,r), r))
 end
 
 function p_Setm(p :: poly, r :: ring)
    #static inline void p_Setm(poly p, const ring r) 
    # NOTE: changes input term p!
    @cxx p_Setm(p, r)
-   return p
+   return p_Test(p, r)
+end
+
+function p_Power(a::poly, b::Cint, r::ring)
+    # returns the i-th power of p. NOTE: p will be destroyed
+    # poly      p_Power(poly p, int i, const ring r);
+    return p_Test((@cxx p_Power(p_Test(a,r), b, r)),r)
 end
 
 function pp_Power(a::poly, b::Cint, r::ring)
-    # returns the i-th power of p. NOTE: p will be destroyed
-    # poly      p_Power(poly p, int i, const ring r);
-    return (@cxx p_Power(p_Copy(a, r), b, r))
+    return p_Power(p_Copy(a, r), b, r)
 end
 
         function pp_IsOne(x :: poly, r :: ring)
 	    ## static inline BOOLEAN p_IsOne(const poly p, const ring R)
-            const ret = ( @cxx p_IsOne(x, r) );
+            const ret = ( @cxx p_IsOne(p_Test(x,r), r) );
             return (ret > 0)
         end
 
+
+        function pp_IsUnit(x :: poly, r :: ring) # LT is an invertible constant?
+	    # static inline BOOLEAN p_IsUnit(const poly p, const ring r)
+            const ret = ( @cxx p_IsUnit(p_Test(x,r), r) );
+            return (ret > 0)
+        end
+
+
         function pp_IsConstant(x :: poly, r :: ring)
 	    # static inline BOOLEAN p_IsConstant(const poly p, const ring r)
-            const ret = ( @cxx p_IsConstant(x, r) );
+            const ret = ( @cxx p_IsConstant(p_Test(x,r), r) );
             return (ret > 0)
+        end
+
+        function pp_IsVar(x :: poly, r :: ring)
+	    #    static int pp_IsVar(const poly p, const ring r)
+            const ret = ( @cxx pp_IsVar(p_Test(x,r), r) ); # either ret = -1 or x == var(ret)!
+            return (ret != -1)
         end
 
 
         function pp_IsMOne(x :: poly, r :: ring)
 	    # (p_IsConstant(p, R) && n_IsMOne(p_GetCoeff(p, R), R->cf))
-            return pp_IsConstant(x, r) && n_IsMOne(pGetCoeff!(x), rGetCoeffs(r))
+            return pp_IsConstant(p_Test(x,r), r) && n_IsMOne(pGetCoeff(x), rGetCoeffs(r))
         end
 
+
+        function pp_EqualPolys(p1 :: poly, p2 :: poly, r :: ring)
+	    # BOOLEAN p_EqualPolys(poly p1, poly p2, const ring r);
+            const ret = ( @cxx p_EqualPolys( p_Test(p1,r), p_Test(p2, r), r) );
+            return (ret > 0)
+        end
+
+
+
+function singclap_gcd(p :: poly_ref, q :: poly_ref, r :: ring)
+   p_Test(p[], r)
+   p_Test(q[], r)
+   # returns gcd(p, q), destroys p and q
+   # poly singclap_gcd ( poly f, poly g, const ring r );
+   return p_Test( (icxx""" return singclap_gcd($p, $q, $r); """), r)
+end
+
+
+### NOTE: the following only works over several Factory-supported fields!!
+function singclap_pdivide(p :: poly, q :: poly, r :: ring) ## p / q, no destruction!
+   # poly singclap_pdivide ( poly f, poly g, const ring r );
+   return p_Test((@cxx singclap_pdivide(p_Test(p,r), p_Test(q,r), r)),r)
+end
+
+function singclap_extgcd(f :: poly, g :: poly, r :: ring)
+   p_Test(f , r);
+   p_Test(g , r);
+   res = poly_ref(poly(C_NULL)); a = poly_ref(poly(C_NULL)); b = poly_ref(poly(C_NULL));
+
+   # BOOLEAN singclap_extgcd ( poly f, poly g, poly &res, poly &pa, poly &pb , const ring r);
+   const ret = icxx""" return singclap_extgcd($f, $g, $res, $a, $b, $r); """
+   @assert (ret == 0)
+   
+   return p_Test(res[],r), p_Test(a[],r), p_Test(b[],r)
+end
+
+
+function pp_Diff(a :: poly, k :: Cint, r :: ring)
+    
+    ## returns the partial differentiate of a by the k-th variable, does not destroy the input
+    #  poly p_Diff(poly a, int k, const ring r)
+    return p_Test((@cxx p_Diff(p_Test(a, r), k, r)), r)
+end
+
+
+function p_Content(x :: poly_ref, r :: ring)
+    p_Test(x[], cf)
+    ## void p_Content(poly ph, const ring r), changes the input polynomial!
+    icxx"""poly x = $x; p_Content(x, $r); """
+    p_Test(x[], cf)
+end
+
+function p_Normalize(x :: poly_ref, cf :: ring)
+    p_Test(x[], cf)
+    #void p_Normalize(poly p,const ring r)
+    icxx""" p_Normalize($x, $cf); """
+    p_Test(x[], cf)
+end
+
+
+
+# void singclap_divide_content ( poly f, const ring r);
+# poly singclap_resultant ( poly f, poly g , poly x, const ring r);
 
 end # libSingular module

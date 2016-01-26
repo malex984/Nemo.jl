@@ -158,11 +158,6 @@ deepcopy(a::SingularCoeffsElems) = elem_type(parent(a))(a)
 ##### FIXME: wrong? for printing & normalization of fractions?
 canonical_unit(x::SingularCoeffsElems) = isnegative(x) ? mone(parent(x)) : one(parent(x)) ## ZZ
 
-#### TODO: FIXME: wrong for Rings (e.g.ZZ)!!!! 
-isunit(a::SingularCoeffsElems) = !iszero(a) # FIXME: NOTE: Coeff-Rings are now also supported!
-
-
-
 
 ###############################################################################
 #
@@ -431,13 +426,14 @@ end
 
 for (fJ, fC) in ((:isone, :n_IsOne), (:ismone, :n_IsMOne), 
                 (:iszero, :n_IsZero), (:ispositive, :n_GreaterZero), 
-		(:size,   :n_Size)) 
+		(:size,   :n_Size), (:isunit, :n_IsUnit)) 
     @eval begin
         function ($fJ)(x :: SingularCoeffsElems)
             return (libSingular.$fC)(get_raw_ptr(x), get_raw_ptr(parent(x)))
         end
     end
 end
+
 
 isnegative(a::SingularCoeffsElems) = (!iszero(a)) && (!ispositive(a))
 
@@ -478,14 +474,14 @@ end
 #
 ###############################################################################
 
-==(x::SingularCoeffsElems, y::Int) = (x ==  parent(x)(y))
-==(x::Int, y::SingularCoeffsElems) = (parent(y)(x) == y)
+==(x::SingularCoeffsElems, y::Integer) = (x ==  parent(x)(y))
+==(x::Integer, y::SingularCoeffsElems) = (parent(y)(x) == y)
 
-isequal(x::SingularCoeffsElems, y::Int) = (x == y)
-isequal(x::Int, y::SingularCoeffsElems) = (x == y)
+isequal(x::SingularCoeffsElems, y::Integer) = (x == y)
+isequal(x::Integer, y::SingularCoeffsElems) = (x == y)
 
-isless(x::SingularCoeffsElems, y::Int) = isless(x, parent(x)(y))
-isless(x::Int, y::SingularCoeffsElems) = isless(parent(y)(x), y)
+isless(x::SingularCoeffsElems, y::Integer) = isless(x, parent(x)(y))
+isless(x::Integer, y::SingularCoeffsElems) = isless(parent(y)(x), y)
 
 
 ###############################################################################

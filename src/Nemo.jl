@@ -30,7 +30,9 @@ function _check_precompile_()
    return true # Ok... let's try to precompile Nemo (without Cxx / Singular)
 end
 
-### _check_precompile_() && __precompile__()
+### _check_precompile_() && 
+
+__precompile__(false) # NOTE: due to Cxx!
 
 module Nemo
 

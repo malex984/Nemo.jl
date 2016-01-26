@@ -13,13 +13,13 @@ function test_benchmark_fateman_singular(CF_F, CF_S)
 
    println( "Flint CF: $CF_F, types: ")
    println( typeof(CF_F), "  @    ", typeof(one(CF_F)) )
-   println( typeof(R),    "  @    ", typeof(one(R   )) )
-   println( typeof(S),    "  @    ", typeof(one(S   )) )
-   println( typeof(T),    "  @    ", typeof(one(T   )) )
-   println( typeof(U),    "  @    ", typeof(one(U   )) )
+#   println( typeof(R),    "  @    ", typeof(one(R   )) )
+#   println( typeof(S),    "  @    ", typeof(one(S   )) )
+#   println( typeof(T),    "  @    ", typeof(one(T   )) )
+   println( U, " of Julia Type: ", typeof(U),    "  @    ", typeof(one(U   )) )
 
    @time p = (x + y + z + t + 1)^10
-   @time p = (x + y + z + t + 1)^10
+   @time p == (x + y + z + t + 1)^10
 
    println()
    @time q = p*(p + 1)
@@ -39,32 +39,37 @@ function test_benchmark_fateman_singular(CF_F, CF_S)
    gc()
 
 
-   R, x = PolynomialRing(CF_S, "x")
-   S, y = PolynomialRing(R, "y")
-   T, z = PolynomialRing(S, "z")
+   U, t = SingularPolynomialRing(CF_S, "x, y, z, t", :lex);
+   x = Nemo.gen(1, U);   y = Nemo.gen(2, U);   z = Nemo.gen(3, U);
+#   S, y = PolynomialRing(R, "y")
+#   T, z = PolynomialRing(S, "z")
 #   U, t = PolynomialRing(T, "t")
 
    println( "Singular CF: $CF_S, types: ")
    println( typeof(CF_S), "  @    ", typeof(one(CF_S)) )
-   println( typeof(R),    "  @    ", typeof(one(R   )) )
-   println( typeof(S),    "  @    ", typeof(one(S   )) )
-   println( typeof(T),    "  @    ", typeof(one(T   )) )
-#   println( typeof(U),    "  @    ", typeof(one(U   )) )
+#   println( typeof(R),    "  @    ", typeof(one(R   )) )
+#   println( typeof(S),    "  @    ", typeof(one(S   )) )
+#   println( typeof(T),    "  @    ", typeof(one(T   )) )
+   println( U, " of Julia Type: ", typeof(U),    "  @    ", typeof(t) )
 
    Nemo.libSingular.omPrintInfoStats()
    println("")
 
-   @time p = (x + y + z + CF_S(1))^10 # + t 
-   @time p = (x + y + z + CF_S(1))^10 # + t+ z 
+   @time p = (x + y + z + t + 1)^10
+   @time p == (x + y + z + t + 1)^10
 
-   println()
-   @time q = p*(p + CF_S(1))
+   @time q = p*(p + 1)
 #   @test length(q) == 21
 
    println()
-   @time p = (x + y + z + CF_S(1))^20 # + z + t 
-   @time q = p*(p + CF_S(1))
+   @time p = (x + y + z + t + 1)^20
+
+   println(length(p))
+
+   @time q = p*(p + 1)
+
 #   @test length(q) == 41
+
 # REAL Thing: p = ()^30 !?
 
    gc()
@@ -88,19 +93,23 @@ function test_benchmark_pearce_singular(CF_F, CF_S)
    println( typeof(S),    "  @    ", typeof(one(S   )) )
    println( typeof(T),    "  @    ", typeof(one(T   )) )
    println( typeof(U),    "  @    ", typeof(one(U   )) )
-   println( typeof(V),    "  @    ", typeof(one(V   )) )
+   println( V, " of Julia Type: ", typeof(V),    "  @    ", typeof(one(V   )) )
 
    f = (x + y + 2z^2 + 3t^3 + 5u^5 + 1)^5
    g = (u + t + 2z^2 + 3y^3 + 5x^5 + 1)^5 
 
    @time q = f*g
-   @time q = f*g
+   @time q == f*g
    @test length(q) == 31
 
    println()
 
-   f = f * f # (x + y + 2z^2 + 3t^3 + 5u^5 + 1)^10
-   g = g * g # (u + t + 2z^2 + 3y^3 + 5x^5 + 1)^10 
+   
+   f *= f # (x + y + 2z^2 + 3t^3 + 5u^5 + 1)^10
+   g *= g # (u + t + 2z^2 + 3y^3 + 5x^5 + 1)^10 
+
+   println(length(f))
+   println(length(g))
 
    @time q = f*g
    @test length(q) == 61
@@ -109,37 +118,44 @@ function test_benchmark_pearce_singular(CF_F, CF_S)
 
 ########################################################
 
-   println("Benchmark.pearce / Singular Coeffs...")
    gc()
 
-   R, x = PolynomialRing(CF_S, "x")
-   S, y = PolynomialRing(R, "y")
+   println("Benchmark.pearce / Singular Coeffs...")
+
+   V, u = SingularPolynomialRing(CF_S, "x, y, z, t, u", :lex);
+   x = Nemo.geni(1, V);   y = Nemo.geni(2, V);   z = Nemo.geni(3, V); t = Nemo.geni(4, V);
+
+#   R, x = PolynomialRing(CF_S, "x")
+#   S, y = PolynomialRing(R, "y")
 #   T, z = PolynomialRing(S, "z")
-   U, t = PolynomialRing(S, "t") # T
-   V, u = PolynomialRing(U, "u")
+#   U, t = PolynomialRing(S, "t") # T
+#   V, u = PolynomialRing(U, "u")
 
    println( "Singular CF: $CF_S, types: ")
    println( typeof(CF_S), "  @    ", typeof(one(CF_S)) )
-   println( typeof(R),    "  @    ", typeof(one(R   )) )
-   println( typeof(S),    "  @    ", typeof(one(S   )) )
+#   println( typeof(R),    "  @    ", typeof(one(R   )) )
+#   println( typeof(S),    "  @    ", typeof(one(S   )) )
 #   println( typeof(T),    "  @    ", typeof(one(T   )) )
-   println( typeof(U),    "  @    ", typeof(one(U   )) )
-   println( typeof(V),    "  @    ", typeof(one(V   )) )
+#   println( typeof(U),    "  @    ", typeof(one(U   )) )
+   println( V, " of Julia Type: ", typeof(V),    "  @    ", typeof(u) )
 
    Nemo.libSingular.omPrintInfoStats()
    println("")
 
-   f = (x + y +  3t^3 + 5u^5 + 1)^5 # 2z^2 +
-   g = (u + t +  3y^3 + 5x^5 + 1)^5  # 2z^2 
+   f = (x + y + 2z^2 + 3t^3 + 5u^5 + 1)^5
+   g = (u + t + 2z^2 + 3y^3 + 5x^5 + 1)^5 
 
    @time q = f*g
-   @time q = f*g
+   @time q == f*g
 #   @test length(q) == 31
 
    println()
 
-   f = f * f # (x + y + 2z^2 + 3t^3 + 5u^5 + 1)^10
-   g = g * g # (u + t + 2z^2 + 3y^3 + 5x^5 + 1)^10 
+   f *= f # (x + y + 2z^2 + 3t^3 + 5u^5 + 1)^7
+   g *= g # (u + t + 2z^2 + 3y^3 + 5x^5 + 1)^7 
+
+   println(length(f))
+   println(length(g))
 
    @time q = f*g
 #   @test length(q) == 61
@@ -147,7 +163,7 @@ function test_benchmark_pearce_singular(CF_F, CF_S)
 ### Real thing ^ 16 - tooo long with Singular :( 
 
    gc()
-   println("..........................................PASS")
+   println("..........................................'PASS'")
 
 end
 
@@ -208,19 +224,6 @@ function test_benchmarks_singular()
    CF_F = Nemo.FlintZZ;
    CF_S = Nemo.SingularZZ();
 
-   println("Testing Rings over Integers: ");
-
-   Nemo.libSingular.omPrintInfoStats()
-   test_benchmark_pearce_singular(CF_F, CF_S)
-
-   println("")
-   Nemo.libSingular.omPrintInfoStats()
-   println("")
-
-   test_benchmark_fateman_singular(CF_F, CF_S)
-   Nemo.libSingular.omPrintInfoStats()
-   println("")
-
    p = 32003;
    CF_F = ResidueRing(Nemo.FlintZZ, p);
    CF_S = Nemo.SingularZp(p); ## ???
@@ -239,8 +242,6 @@ function test_benchmarks_singular()
    println("")
 
 
-
-
    CF_F = Nemo.FlintQQ;
    CF_S = Nemo.SingularQQ();
 
@@ -256,6 +257,24 @@ function test_benchmarks_singular()
    test_benchmark_fateman_singular(CF_F, CF_S)
    Nemo.libSingular.omPrintInfoStats()
    println("")
+
+
+
+
+
+   println("Testing Rings over Integers: ");
+
+   Nemo.libSingular.omPrintInfoStats()
+   test_benchmark_pearce_singular(CF_F, CF_S)
+
+   println("")
+   Nemo.libSingular.omPrintInfoStats()
+   println("")
+
+   test_benchmark_fateman_singular(CF_F, CF_S)
+   Nemo.libSingular.omPrintInfoStats()
+   println("")
+
 
 
 ###   test_benchmark_resultant_singular() # ERROR: `start` has no method matching start(::Nemo.CoeffsField) ???
