@@ -1,25 +1,44 @@
 using Base.Test
 using Cxx
 
-###############################################################################
-#
+#==============================================================================
 #   PolynomialRing constructor
-#
-###############################################################################
+==============================================================================#
 
-#=
-function PolynomialRing(R::Nemo.SingularCoeffs, s::AbstractString{})
-#   S = symbol(s)
-   parent_obj = Nemo.PRing(R, s);
-   return parent_obj, Nemo.gens(parent_obj)
+# Union{Type{Val{:lex}}, Type{Val{:degrevlex}}}
+
+function SingularPolynomialRing(R::Nemo.SingularCoeffs, varstr::AbstractString{}, ordering::Symbol = :degrevlex) 
+   try
+       parent_obj = Nemo.PRing(R, varstr, Nemo.libSingular.dictOrdSymbols[ordering]);
+       return parent_obj, Nemo.gen(parent_obj)
+   catch
+       error("Could not create a singular polynomial ring $R [$varstr] ordered via '$ordering'") 
+   end
+   error("Sorry: something went wrong... ")
 end
 
-function PolynomialRing(P::Nemo.SingularPolynomialRing, s::AbstractString{})
-   R = Nemo.PRing(base_ring(P), s);
+#=
+function PolynomialRing(R::Nemo.SingularCoeffs, s::AbstractString{}, ordering::Symbol = :lex)
+   try
+       parent_obj = Nemo.PRing(R, s, Nemo.libSingular.dictOrdSymbols[ordering]);
+       return parent_obj, Nemo.gen(parent_obj)
+   catch
+       error("Could not create a singular polynomial ring '$R' [$s] ordered via '$ordering'") 
+   end
+   error("Sorry: something went wrong... ")
+end
 
-   parent_obj = P + R; # TODO: FIXME: does NOT work yet! :((
-   
-   return parent_obj, Nemo.gens(parent_obj)
+function PolynomialRing(P::Nemo.SingularPolynomialRing, s::AbstractString{}, ordering::Symbol = :lex)
+   try
+      R = Nemo.PRing(base_ring(P), s, Nemo.libSingular.dictOrdSymbols[ordering]);
+
+      parent_obj = P + R; # TODO: FIXME: does NOT work yet! :(( 
+
+      return parent_obj, Nemo.gen(parent_obj)
+   catch
+       error("Could not create a singular polynomial ring '$P' [$s] ordered via '$ordering'") 
+   end
+   error("Sorry: something went wrong... ")
 end
 =#
 
@@ -29,14 +48,15 @@ include("generic/Residue-test.jl") # TODO >= unary ops
 include("generic/Poly-test.jl")
 include("generic/Matrix-test.jl")
 include("generic/PowerSeries-test.jl")
-include("Benchmark-test.jl")
 
 include("ZZ-test.jl")
 include("QQ-test.jl")
 
 
 include("ZZ_poly-test.jl")
-include("QQ_poly-test.jl")
+## include("QQ_poly-test.jl") # NOTE: not yet... maybe almost...?
+
+include("Benchmark-test.jl")
 
 function test_singular_wrappers()
    println("Printing Singular resources pathes...")  
@@ -47,54 +67,6 @@ function test_singular_wrappers()
    Nemo.libSingular.omPrintInfoStats()
    println("PASS")
 end
-
-function _PolynomialRing(R::Nemo.Ring, s::AbstractString{})
-   S = symbol(s)
-   print("S: "); println(S)
-
-   # ERROR: LoadError: TypeError: Type: in parameter, expected Type{T}, got Nemo.Coeffs
-   # ERROR: LoadError: TypeError: NumberElem: in parameter, expected Type{T}, got Nemo.Coeffs
-   T = Nemo.elem_type(R)
-   print("T: "); println(T)
-
-   parent_obj = Nemo.PolynomialRing{T}(R, S)
-   print("parent_obj: "); println(parent_obj)
-
-   base = Nemo.base_ring(R)
-   print("base: "); println(base)
-
-   R2 = R
-
-   parent_type = Nemo.Poly{T}
-   print("parent_type: "); println(parent_type)
-
-   b = Nemo.base_ring(R2)
-   print("b: "); println(b)
-
-   while b != Union{}
-      R2 = Nemo.base_ring(R2)
-      print("R2: "); println(R2)
-
-      T2 = Nemo.elem_type(R2)
-
-      print("T2: "); println(T2)
-
-      println(:(Base.promote_rule(::Type{$parent_type}, ::Type{$T2}) = $parent_type))
-      eval(:(Base.promote_rule(::Type{$parent_type}, ::Type{$T2}) = $parent_type))
-
-      b = Nemo.base_ring(R2)
-      print("b: "); println(b)
-   end
-
-   print("v: ");
-   v = parent_obj([R(0), R(1)]);
-   println(v);
-
-   return parent_obj, v
-end
-
-
-
 
 function test_generic_polys(C::Nemo.SingularCoeffs)
    println("test_generic_polys for 'C'...")
@@ -108,19 +80,16 @@ function test_generic_polys(C::Nemo.SingularCoeffs)
 
    print("R = C[x].... "); 
 
-   R, xx = PolynomialRing(C, "x"); x = xx; # [1];
+   R, x = SingularPolynomialRing(C, "x");
+   println(R);
+   
+   println("x: $x"); 
 
    print("R(0): "); 
    println(R(0))
 
    print("zero(R): "); 
    println(zero(R))
-
-   print("x: "); 
-   println(x)
-
-   print("C[x]: "); 
-   println(R)
 
    ff = R(3)*x + R(1) ### ??? 
    println("ff: ", ff)
@@ -168,10 +137,12 @@ function test_generic_polys(C::Nemo.SingularCoeffs)
    println(h)
 
    println("h - g: ", h - g)
-#   @test g == h
+   @test (g == h)
 
    print("f*g: ")
    println(f*g)
+
+   g = h^5; ## bug in powering ???
 
 #	if !Nemo.isring(C)  # use isa(...Field)?
 #           println("C is not a RING - Field?")
@@ -179,9 +150,14 @@ function test_generic_polys(C::Nemo.SingularCoeffs)
 #        end
 
    # Benchmark:
-	S, yy = PolynomialRing(R, "y"); y = yy;# [1];
-        T, zz = PolynomialRing(S, "z"); z = zz;# [1];
-	U, tt = PolynomialRing(T, "t"); t = tt;# [1];
+
+   U, t = SingularPolynomialRing(C, "x, y, z, t"); #PolynomialRing(C, "x");
+
+#	S, y = PolynomialRing(R, "y"); 
+#        T, z = PolynomialRing(S, "z"); 
+#	U, t = PolynomialRing(T, "t");
+
+   x = Nemo.gen(1, U); y = Nemo.gen(2, U); z = Nemo.gen(3, U);
 
 	println(U);
 
@@ -192,7 +168,6 @@ function test_generic_polys(C::Nemo.SingularCoeffs)
         # println("pp: ", pp)
         @time ppp = pp*(pp+1);
 
-###	g = h^5 ## bug in powering ???
 		
         println("\n...PASS")
 end
@@ -406,19 +381,20 @@ function test_singular_polynomial_ring(C, s)
 
    print("Constructing Singular Polynomial Ring over $C: \n")  
 
-   R = Nemo.PRing(C, s); # just testing ATM!
+#   R = Nemo.PRing(C, s); # just testing ATM!
+   R, lastvar = SingularPolynomialRing(C, s, :degrevlex); # Nemo.
 
    println("_ Over [", string(C), "]: ", string(R))
    @test base_ring(R) == C # ?
 
-   p = one(R) * R(2) + 3 + gen(R);
+   p = one(R) * R(2) + 3 + lastvar * gen(R);
 
-   println("1*2+3+lastgen(): ", p, " @@ ", typeof(p))
+   println("1*2+3+lastgen()^2: ", p, " @@ ", typeof(p))
 
    p = 0
 
    for i in 1:Nemo.ngens(R)
-       p += (10 * Int(i)) * Nemo.geni(i, R)
+       p += (10 * Int(i)) * Nemo.gen(i, R)
    end
 
 ## TODO: FIXME: add automatic mapping K -> K[x,y,z...]!?
@@ -474,6 +450,8 @@ function test_singular()
 
    println(); gc(); test_singular_wrappers()
 
+   println(); gc(); test_benchmarks_singular()
+
    println(); gc(); test_singular_polynomial_rings()
 
    println(); gc(); test_singular_lowlevel_coeffs()
@@ -482,22 +460,20 @@ function test_singular()
 
    println(); gc(); test_QQ_singular() 
 
+   println(); gc(); test_ZZ_poly_singular(); # TODO: FIXME: many things are missing at the moment :(
+
+##   println(); gc(); test_QQ_poly_singular() # Not yet :( TODO!!!
+#= =#
+
+   println(); gc(); test_poly_singular() # TODO: FIXME: rSum!?
+
    println(); gc(); test_fraction_singular()
 
    println(); gc(); test_residue_singular() 
 
    println(); gc(); test_series_singular()
 
-   println(); gc(); test_poly_singular()
-
-   println(); gc(); test_benchmarks_singular()
-
    println(); gc(); test_matrix_singular()
-
-#= 
-   println(); gc(); test_ZZ_poly_singular();
-   println(); gc(); test_QQ_poly_singular()
-=#
 
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
 
