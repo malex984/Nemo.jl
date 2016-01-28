@@ -67,18 +67,16 @@ run(`$srcs/autogen.sh`)
 if !on_windows
    cd( mktempdir(tmp) )
    ## requires NTL on host system... TODO: install it as well?
-  withenv(()->run(`$srcs/configure --prefix=$vdir --disable-static --disable-p-procs-static --enable-p-procs-dynamic --enable-shared --with-gmp=$vdir --with-flint=$vdir --with-ntl=$vdir --without-python --with-readline=no --disable-gfanlib --with-debug --enable-debug --disable-optimizationflags`), "LD_LIBRARY_PATH"=>"$vdir/lib", "LDFLAGS"=>LDFLAGS, "CFLAGS"=>LDFLAGS)
+###  withenv(()->run(`$srcs/configure --prefix=$vdir --disable-static --disable-p-procs-static --enable-p-procs-dynamic --enable-shared --with-gmp=$vdir --with-flint=$vdir --with-ntl=$vdir --without-python --with-readline=no --disable-gfanlib --with-debug --enable-debug --disable-optimizationflags`), "LD_LIBRARY_PATH"=>"$vdir/lib", "LDFLAGS"=>LDFLAGS, "CFLAGS"=>LDFLAGS)
 
-######   withenv(()->run(`$srcs/configure --prefix=$vdir --disable-static --disable-p-procs-static --enable-p-procs-dynamic --enable-shared --with-gmp=$vdir --with-flint=$vdir --with-ntl=$vdir --without-python --with-readline=no --disable-gfanlib --without-debug --disable-debug --enable-optimizationflags`), "LD_LIBRARY_PATH"=>"$vdir/lib", "LDFLAGS"=>LDFLAGS, "CFLAGS"=>LDFLAGS)
-   run(`make -j4`)
+   withenv(()->run(`$srcs/configure --prefix=$vdir --disable-static --disable-p-procs-static --enable-p-procs-dynamic --enable-shared --with-gmp=$vdir --with-flint=$vdir --with-ntl=$vdir --without-python --with-readline=no --disable-gfanlib --without-debug --disable-debug --enable-optimizationflags`), "LD_LIBRARY_PATH"=>"$vdir/lib", "LDFLAGS"=>LDFLAGS, "CFLAGS"=>LDFLAGS)
+   run(`make -j`)
    run(`make install`)
    run(`rm -Rf $tmp`)
-end
 
-#const singdir = vdir
-#const singbinpath = joinpath( singdir, "bin", "Singular" )
-#ENV["SINGULAR_EXECUTABLE"] = singbinpath
-#const libSingular = dlopen(joinpath(singdir, "lib", "libSingular.so"), RTLD_GLOBAL)
+   ### add debugbreak.h into local/include/
+    run(`ln -sf $pkgdir/src/singular/debugbreak.h $vdir/include/debugbreak.h`)
+end
 
 cd(oldwdir);
 
