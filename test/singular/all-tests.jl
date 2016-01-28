@@ -52,9 +52,8 @@ include("generic/PowerSeries-test.jl")
 include("ZZ-test.jl")
 include("QQ-test.jl")
 
-
 include("ZZ_poly-test.jl")
-## include("QQ_poly-test.jl") # NOTE: not yet... maybe almost...?
+include("QQ_poly-test.jl") # NOTE: not yet... maybe almost...?
 
 include("Benchmark-test.jl")
 
@@ -450,8 +449,6 @@ function test_singular()
 
    println(); gc(); test_singular_wrappers()
 
-   println(); gc(); test_benchmarks_singular()
-
    println(); gc(); test_singular_polynomial_rings()
 
    println(); gc(); test_singular_lowlevel_coeffs()
@@ -461,9 +458,6 @@ function test_singular()
    println(); gc(); test_QQ_singular() 
 
    println(); gc(); test_ZZ_poly_singular(); # TODO: FIXME: many things are missing at the moment :(
-
-##   println(); gc(); test_QQ_poly_singular() # Not yet :( TODO!!!
-#= =#
 
    println(); gc(); test_poly_singular() # TODO: FIXME: rSum!?
 
@@ -475,6 +469,10 @@ function test_singular()
 
    println(); gc(); test_matrix_singular()
 
+   println(); gc(); test_benchmarks_singular()
+
+   println(); gc(); test_QQ_poly_singular() # Not yet :( TODO!!!
+#= =#
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
 
    println()
