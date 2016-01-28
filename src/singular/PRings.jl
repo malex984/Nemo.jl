@@ -33,7 +33,7 @@ type PRing <: SingularPolynomialRing
       catch
       end
 
-      ord_size :: Cint = 2;
+      ord_size :: Cint = 3;
 
       ord  = pointer_to_array( 
       	   Ptr{libSingular.rRingOrder_t}(libSingular.omAlloc0(Csize_t(ord_size * sizeof(libSingular.rRingOrder_t)))), 
@@ -43,8 +43,10 @@ type PRing <: SingularPolynomialRing
 
       ord[1] = ordering; blk0[1] = 1; blk1[1] = length(vvv); # 1st block spanns all variables...
 
+      ord[2] = libSingular.ringorder_C(); ## Singular Default module ordering block (last one)
+
       ## the last block: everything is 0 
-#      ord[ord_size] = libSingular.ringorder_no();
+      ord[ord_size] = libSingular.ringorder_no();
 #      blk0[ord_size] = blk1[ord_size] = 0; 
       
 
@@ -112,9 +114,9 @@ type PRingElem <: SingularPolynomialElem
 
     function PRingElem(c :: SingularPolynomialRing, p :: libSingular.poly)
     	const r = get_raw_ptr(c);
-	pp = libSingular.poly_ref(p)
-	libSingular.p_Normalize(pp, r)
-	z = new(pp[], c); 
+#	pp = libSingular.poly_ref(p)
+#	libSingular.p_Normalize(pp, r)
+	z = new(p, c); # pp[]
 	finalizer(z, _SingularPolyRingElem_clear_fn); 
 	return z
     end
@@ -127,12 +129,15 @@ end
 
     function PRingElem(c :: SingularPolynomialRing)
     	const r = get_raw_ptr(c);
-	const p = libSingular.p_Init(r); ### NOTE: Allocation without initialization!
+	const p = libSingular.poly(C_NULL); # p_Init(r); ### NOTE: Allocation without initialization!
     	return PRingElem(c, p)
     end
 
 
     function PRingElem(c :: SingularPolynomialRing, x::Int64)
+        if x == 0
+       	    return PRingElem(c)
+	end
     	const r = get_raw_ptr(c);
         const p :: libSingular.poly = libSingular.p_ISet(x, r)
     	return PRingElem(c, p)
@@ -141,11 +146,20 @@ end
     # NOTE: overtakes input n
     function PRingElem(c :: SingularPolynomialRing, n::number) 
     	const r = get_raw_ptr(c);
+
+        if libSingular.n_IsZero(n, libSingular.rGetCoeffs(r))
+       	    return PRingElem(c)
+	end
+
     	const p :: libSingular.poly = libSingular.p_NSet(n, r)
 	return PRingElem(c, p)
     end 
 
     function PRingElem(c :: SingularPolynomialRing, b::BigInt) 
+        if b == 0
+       	    return PRingElem(c)
+	end
+
         cf = get_raw_ptr(base_ring(c))
         n = libSingular.n_InitMPZ(b, cf) # NOTE: will be overtaken!
 	return PRingElem(c, n)
@@ -163,6 +177,10 @@ end
 
 
     function PRingElem(c :: SingularPolynomialRing, x::SingularCoeffsElems)
+        if iszero(x)
+       	    return PRingElem(c)
+	end
+
         const CF = parent(x);
     	( base_ring(c) != CF ) && error("Number from Incompatible Coeffs [$CF] and given Polynomial Ring [$c]")
     	const n :: libSingular.number = libSingular.n_Copy(get_raw_ptr(x), get_raw_ptr(CF));
@@ -184,16 +202,16 @@ function get_raw_ptr(n :: SingularPolynomialElem)
 end
 
 function set_raw_ptr!(n :: SingularPolynomialElem, p :: libSingular.poly)
-   pp = libSingular.poly_ref(p);
-   libSingular.p_Normalize(pp, get_raw_ptr(parent(n)));
-   n.ptr = pp[];
+#   pp = libSingular.poly_ref(p);
+#   libSingular.p_Normalize(pp, get_raw_ptr(parent(n)));
+   n.ptr = p; # pp[];
    @assert (p == get_raw_ptr(n)); # Test...
 end
 
 function set_raw_ptr!(n :: SingularPolynomialElem, p :: libSingular.poly, C :: SingularPolynomialRing)
-   pp = libSingular.poly_ref(p);
-   libSingular.p_Normalize(pp, get_raw_ptr(C));
-   n.ptr = pp[];
+#   pp = libSingular.poly_ref(p);
+#   libSingular.p_Normalize(pp, get_raw_ptr(C));
+   n.ptr = p; # pp[];
    n.ctx = C;
    @assert (p == get_raw_ptr(n)); # Test...
 end

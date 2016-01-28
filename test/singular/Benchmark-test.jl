@@ -306,12 +306,7 @@ end
 
 function test_benchmarks_singular()
 
-
-   test_singular_det_poly_benchmark_flint_vs_singular()
-
-
-   CF_F = Nemo.FlintZZ;
-   CF_S = Nemo.SingularZZ();
+#====================================================================#
 
    p = 32003;
    CF_F = ResidueRing(Nemo.FlintZZ, p);
@@ -330,6 +325,7 @@ function test_benchmarks_singular()
    Nemo.libSingular.omPrintInfoStats()
    println("")
 
+#====================================================================#
 
    CF_F = Nemo.FlintQQ;
    CF_S = Nemo.SingularQQ();
@@ -347,8 +343,10 @@ function test_benchmarks_singular()
    Nemo.libSingular.omPrintInfoStats()
    println("")
 
+#====================================================================#
 
-
+   CF_F = Nemo.FlintZZ;
+   CF_S = Nemo.SingularZZ();
 
 
    println("Testing Rings over Integers: ");
@@ -361,13 +359,16 @@ function test_benchmarks_singular()
    println("")
 
    test_benchmark_fateman_singular(CF_F, CF_S)
+
    Nemo.libSingular.omPrintInfoStats()
    println("")
 
+#====================================================================#
+   test_singular_det_poly_benchmark_flint_vs_singular()
+
+   Nemo.libSingular.omPrintInfoStats(); println("")
 
 
 ###   test_benchmark_resultant_singular() # ERROR: `start` has no method matching start(::Nemo.CoeffsField) ???
    println("")
 end
-
-#   test_benchmark_poly_nf_elem_singular() # No Singular analog for CyclotomicField???!
