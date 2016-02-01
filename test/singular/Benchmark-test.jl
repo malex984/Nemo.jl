@@ -62,7 +62,7 @@ function test_benchmark_fateman_singular(CF_F, CF_S)
 #   @test length(q) == 21
 
    println()
-   @time p = (x + y + z + t + 1)^20
+   @time p = (x + y + z + t + 1)^13 # 20
 
    println(length(p))
 
@@ -151,8 +151,8 @@ function test_benchmark_pearce_singular(CF_F, CF_S)
 
    println()
 
-   f *= f # (x + y + 2z^2 + 3t^3 + 5u^5 + 1)^7
-   g *= g # (u + t + 2z^2 + 3y^3 + 5x^5 + 1)^7 
+   f = (x + y + 2z^2 + 3t^3 + 5u^5 + 1)^6 # *= f
+   g = (u + t + 2z^2 + 3y^3 + 5x^5 + 1)^6 # *= g
 
    println(length(f))
    println(length(g))
@@ -160,69 +160,17 @@ function test_benchmark_pearce_singular(CF_F, CF_S)
    @time q = f*g
 #   @test length(q) == 61
 
-### Real thing ^ 16 - tooo long with Singular :( 
+### Real thing ^ 16 :( ^10 is already tooo long with SingularPolys :( 
 
    gc()
    println("..........................................'PASS'")
 
 end
 
-function test_benchmark_resultant_singular()
-   println("Benchmark.resultant / Flint...")
- 
-   # FiniteField(7, 11, "x") # ???
-   R, x = FiniteField(7, 3, "x") # // ** Sorry: illegal size: 7 ^ 11
-   S, y = PolynomialRing(R, "y")
-   T = ResidueRing(S, y^3 + 3x*y + 1)
-   U, z = PolynomialRing(T, "z")
-
-   f = (3y^2 + y + x)*z^2 + ((x + 2)*y^2 + x + 1)*z + 4x*y + 3
-   g = (7y^2 - y + 2x + 7)*z^2 + (3y^2 + 4x + 1)*z + (2x + 1)*y + 1
-
-   @time r = resultant(f^2, (s+g)^2)
-   @time r = resultant(f^2, (s+g)^2)
-   println(length(r))
-
-   s = f^10
-   t = (s + g)^10
-   
-   @time r = resultant(s, t)
-   println(length(r))
-
-#    @test r == (x^10+4*x^8+6*x^7+3*x^6+4*x^5+x^4+6*x^3+5*x^2+x)*y^2+(5*x^10+x^8+4*x^7+3*x^5+5*x^4+3*x^3+x^2+x+6)*y+(2*x^10+6*x^9+5*x^8+5*x^7+x^6+6*x^5+5*x^4+4*x^3+x+3)
-
-### Real thing: 7->17:
-
-   R, x = Nemo.FiniteField(17, 3, "x"); # FiniteField(7, 11, "x")
-   S, y = PolynomialRing(R, "y")
-   T = ResidueRing(S, y^3 + 3x*y + 1)
-   U, z = PolynomialRing(T, "z")
-
-#   Nemo.libSingular.omPrintInfoStats() #   println("")
-
-   f = (3y^2 + y + x)*z^2 + ((x + 2)*y^2 + x + 1)*z + 4x*y + 3
-   g = (7y^2 - y + 2x + 7)*z^2 + (3y^2 + 4x + 1)*z + (2x + 1)*y + 1
-
-   s = f^2
-   t = (s + g)^2
-
-   @time r = resultant(s, t)
-   @time r = resultant(s, t)
-   println(length(r))
-
-#   s = f^12
-#   t = (s + g)^12
-#  
-#   @time r = resultant(s, t)
-
-   println("PASS")
-end
-
-
 function test_singular_det_poly_benchmark_flint_vs_singular()
    print("Matrix.clow_determinant of poly rings: Singular vs Flint...")
 
-   const maxD = 9;
+   const maxD = 8;
    const maxK = div(maxD * maxD + 1, 2);
 
    # Flint & Singular both work over Z/2Z:
@@ -237,7 +185,7 @@ function test_singular_det_poly_benchmark_flint_vs_singular()
    s = "x($k)";
    FF, VV[1] = PolynomialRing(CF_F, s);
 
-   for dim = 1:2:maxD   
+   for dim = 2:3:maxD   
       const K = div(dim*dim + 1, 2);
 
       println(); println("dim: $dim, k: $k, K: $K");
@@ -258,7 +206,7 @@ function test_singular_det_poly_benchmark_flint_vs_singular()
       MMS = MatrixSpace(SS, dim, dim)();
       MMF = MatrixSpace(FF, dim, dim)();
 
-      for j = 1:dim
+      for j = 1:3 # dim
       	  println("Try $j / $dim @ [$dim x $dim]: ")
 	  
 	  for r = 1:dim; for c = 1:dim; MMF[r,c] = zero(FF); MMS[r,c] = zero(SS); end; end;
@@ -305,6 +253,8 @@ end
 
 
 function test_benchmarks_singular()
+
+   test_singular_det_poly_benchmark_flint_vs_singular()
 
 #====================================================================#
 
@@ -364,7 +314,6 @@ function test_benchmarks_singular()
    println("")
 
 #====================================================================#
-   test_singular_det_poly_benchmark_flint_vs_singular()
 
    Nemo.libSingular.omPrintInfoStats(); println("")
 

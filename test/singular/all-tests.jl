@@ -457,9 +457,10 @@ function test_singular()
 
    println(); gc(); test_QQ_singular() 
 
-   println(); gc(); test_ZZ_poly_singular(); # TODO: FIXME: many things are missing at the moment :(
-
    println(); gc(); test_poly_singular() # TODO: FIXME: rSum!?
+
+   println(); gc(); test_ZZ_poly_singular(); # TODO: FIXME: many things are missing at the moment :(
+   println(); gc(); test_QQ_poly_singular(); # TODO: as for ZZ_poly!
 
    println(); gc(); test_fraction_singular()
 
@@ -470,8 +471,6 @@ function test_singular()
    println(); gc(); test_matrix_singular()
 
    println(); gc(); test_benchmarks_singular()
-
-   println(); gc(); test_QQ_poly_singular() # Not yet :( TODO!!!
 #= =#
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
 

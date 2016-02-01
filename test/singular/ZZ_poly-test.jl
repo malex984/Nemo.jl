@@ -9,7 +9,7 @@ function test_ZZ_poly_constructors_singular()
 
 #   println(R, "  @@@@  ", typeof(R), ".... ", typeof(x) )
 
-#   @test typeof(R) <: Nemo.SingularPolynomialRing
+##   @test typeof(R) <: Nemo.SingularPolynomialRing
 #   @test isa(R, Nemo.SingularPolynomialRing)
 
    @test isa(x, Nemo.SingularPolynomialElem)
@@ -492,7 +492,7 @@ function test_ZZ_poly_Polynomials_singular()
 
    f = (3x^2 + 2x + 1)*y^3 + (2x^2 + 4)*y^2 + 4x*y + (2x^2 - x + 1);
 
-   ff = f^30;
+   @time ff = f^30;
 
    @test f^10*f^20 == ff
    @test f^15*f^15 == ff
