@@ -400,6 +400,30 @@ function test_singular_polynomial_ring(C, s)
 
    println("sum(10*i*gen(i)): ", p, " @@ ", typeof(p))
 
+
+   r = Nemo.get_raw_ptr(R);
+
+   I = Nemo.libSingular.id_MaxIdeal(Cint(2), r);
+   Nemo.libSingular.id_Print(I, r);
+   J = Nemo.libSingular.kStd(I, r);
+   S = Nemo.libSingular._id_Syzygies(J, r);
+   Nemo.libSingular._id_Delete(I, r);
+   Nemo.libSingular.id_Print(J, r);
+   Nemo.libSingular._id_Delete(J, r);
+   Nemo.libSingular.id_Print(S, r);
+   Nemo.libSingular._id_Delete(S, r);
+
+
+   I = Nemo.libSingular.id_FreeModule(Cint(3), r);
+   Nemo.libSingular.id_Print(I, r);
+   J = Nemo.libSingular.kStd(I, r);
+   S = Nemo.libSingular._id_Syzygies(J, r);
+   Nemo.libSingular._id_Delete(I, r);
+   Nemo.libSingular.id_Print(J, r);
+   Nemo.libSingular._id_Delete(J, r);
+   Nemo.libSingular.id_Print(S, r);
+   Nemo.libSingular._id_Delete(S, r);
+
    println("...PASS")
 end
 
@@ -420,22 +444,6 @@ ring test_construct_ring()
 """
    r = @cxx test_construct_ring()
    println(r, string(r))
-
-   I = Nemo.libSingular.id_MaxIdeal(Cint(2), r);
-   Nemo.libSingular.id_Print(I, r);
-   J = Nemo.libSingular.kStd(I, r);
-   Nemo.libSingular._id_Delete(I, r);
-   Nemo.libSingular.id_Print(J, r);
-   Nemo.libSingular._id_Delete(J, r);
-
-
-   I = Nemo.libSingular.id_FreeModule(Cint(3), r);
-   Nemo.libSingular.id_Print(I, r);
-   J = Nemo.libSingular.kStd(I, r);
-   Nemo.libSingular._id_Delete(I, r);
-   Nemo.libSingular.id_Print(J, r);
-   Nemo.libSingular._id_Delete(J, r);
-
    @cxx rDelete(r)
    println("PASS")
 

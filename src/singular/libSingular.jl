@@ -9,17 +9,23 @@ function __libSingular_init__()
    cxxinclude(joinpath("omalloc", "omalloc.h"), isAngled=false)
    cxxinclude(joinpath("gmp.h"), isAngled=false)
    cxxinclude(joinpath("debugbreak.h"), isAngled=false)
+   cxxinclude(joinpath("misc", "intvec.h"), isAngled=false);
    cxxinclude(joinpath("reporter", "reporter.h"), isAngled=false)
    cxxinclude(joinpath("coeffs", "coeffs.h"), isAngled=false); cxxinclude(joinpath("polys", "clapsing.h"), isAngled=false);
    cxxinclude(joinpath("polys", "monomials", "ring.h"), isAngled=false)
    cxxinclude(joinpath("polys", "monomials", "p_polys.h"), isAngled=false)
    cxxinclude(joinpath("polys", "simpleideals.h"), isAngled=false)
    cxxinclude(joinpath("kernel", "GBEngine", "kstd1.h"), isAngled=false)
+   cxxinclude(joinpath("kernel", "ideals.h"), isAngled=false)
+
+
+
 ## NOTE: make sure the line number is correct in case of any changes above here!!!!
-cxx"""#line 20 "libSingular.jl"
+cxx"""#line 25 "libSingular.jl"
     #include "Singular/libsingular.h"
     #include "omalloc/omalloc.h"
     #include "gmp.h"
+    #include "misc/intvec.h"
     #include "reporter/reporter.h"
     #include "coeffs/coeffs.h"
 
@@ -29,6 +35,8 @@ cxx"""#line 20 "libSingular.jl"
     #include "polys/simpleideals.h"
 
     #include "kernel/GBEngine/kstd1.h"
+    #include "kernel/ideals.h"
+
     #include "debugbreak.h"
     #include <cassert>
 
@@ -165,14 +173,16 @@ cxx"""#line 20 "libSingular.jl"
      ideal id = I;
      if(id != NULL) 
      {
-       tHomog h=testHomog; ring origin = currRing; intvec* nullVector = NULL; 
+       const tHomog h=testHomog; 
+       const ring origin = currRing; 
+       intvec* nullVector = NULL; 
 
        if (origin != R)
        	  rChangeCurrRing(R);
 
        id = kStd(id, R->qideal, h, &nullVector); 
        
-       if (origin != currRing)
+       if (origin != currRing && origin != NULL)
        	  rChangeCurrRing(origin);
 
        if(nullVector != NULL) 
@@ -180,6 +190,37 @@ cxx"""#line 20 "libSingular.jl"
      }
      return (id); 
    }
+
+
+   ideal _id_Syzygies(ideal I, const ring R)
+   {
+     ideal id = I;
+     if(id != NULL) 
+     {
+       const tHomog h=testHomog; 
+       const ring origin = currRing; 
+       intvec* nullVector = NULL; 
+
+       if (origin != R)
+       	  rChangeCurrRing(R);
+
+       // compute the syzygies of h1 in R/quot,
+       // weights of components are in w
+       // if setRegularity, return the regularity in deg
+       // do not change h1,  w 
+       // ideal   idSyzygies (ideal h1, tHomog h,intvec **w, BOOLEAN setSyzComp=TRUE, BOOLEAN setRegularity=FALSE, int *deg = NULL);
+
+       id = idSyzygies(id, h, &nullVector); 
+       
+       if (origin != currRing && origin != NULL)
+       	  rChangeCurrRing(origin);
+
+       if(nullVector != NULL) 
+          delete nullVector;
+     }
+     return (id); 
+   }
+
 """
 
    local const binSingular = joinpath(prefix, "bin", "Singular")
@@ -784,6 +825,7 @@ typealias poly Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:spolyrec},(false,fals
 ###pcpp"poly" #Ptr{Void} ### TODO!!!
 typealias poly_ref Ref{poly} ###   rcpp"poly" #  ??
 
+## NOTE & TODO?: ideal is easy to wrapp a-la Nemo (or GMP) structs!
 typealias ideal Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:sip_sideal},(false,false,false)},(false,false,false)}
 
 function rGetCoeffs(r :: ring) 
@@ -1278,7 +1320,49 @@ function kStd(I :: ideal, R :: ring)
    return id_Test((@cxx _kStd( id_Test(I,R), R)), R);
 end
 
-## TODO: Add Syzygy
+function _id_Syzygies(I :: ideal, R :: ring)
+   return id_Test((@cxx _id_Syzygies( id_Test(I,R), R)), R);
+end
+
+function idHead(I :: ideal)
+   # ideal   idHead(ideal h);
+   return (@cxx idHead(I));
+end
+
+
+## BOOLEAN idTestHomModule(ideal m, ideal Q, intvec *w);
+## id_HomModule, id_IsZeroDim
+# ideal idMinBase (ideal h1);
+# ideal   idModulo (ideal h1,ideal h2, tHomog h=testHomog, intvec ** w=NULL);
+# matrix  idDiff(matrix i, int k);
+# matrix  idDiffOp(ideal I, ideal J,BOOLEAN multiply=TRUE);
+
+
+# ideal   idSect (ideal h1,ideal h2);
+# ideal   idMultSect(resolvente arg, int length);
+
+## ideal   idSyzygies (ideal h1, tHomog h,intvec **w, BOOLEAN setSyzComp=TRUE, BOOLEAN setRegularity=FALSE, int *deg = NULL);
+## ideal   idLiftStd  (ideal h1, matrix *m, tHomog h=testHomog, ideal *syz=NULL);
+
+# ideal   idElimination (ideal h1, poly delVar, intvec *hilb=NULL);
+# ideal   idQuot (ideal h1,ideal h2, BOOLEAN h1IsStb=FALSE, BOOLEAN resultIsIdeal=FALSE);
+# ideal   idLift (ideal mod, ideal sumod,ideal * rest=NULL, BOOLEAN goodShape=FALSE, BOOLEAN isSB=TRUE,BOOLEAN divide=FALSE, matrix *unit=NULL);
+# void idLiftW(ideal P,ideal Q,int n,matrix &T, ideal &R, short *w= NULL );
+# intvec * idMWLift(ideal mod,intvec * weights);
+# ideal   idMinors(matrix a, int ar, ideal R = NULL);
+# ideal idMinEmbedding(ideal arg,BOOLEAN inPlace=FALSE, intvec **w=NULL);
+# BOOLEAN idIsSubModule(ideal id1,ideal id2);
+# ideal   idSeries(int n,ideal M,matrix U=NULL,intvec *w=NULL);
+
+# poly id_GCD(poly f, poly g, const ring r);
+# ideal id_Farey(ideal x, number N, const ring r);
+
+
+## ideal kNF(ideal F, ideal Q, ideal p,int syzComp=0, int lazyReduce=0);
+## poly k_NF (ideal F, ideal Q, poly p,int syzComp, int lazyReduce, const ring _currRing);
+
+## ideal kMin_std(ideal F, ideal Q, tHomog h,intvec ** w, ideal &M, intvec *hilb=NULL, int syzComp=0,int reduced=0);
+## ideal stdred(ideal F, ideal Q, tHomog h,intvec ** w);
 
 
 end # libSingular module
