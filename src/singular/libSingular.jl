@@ -2,11 +2,9 @@ module libSingular
 export n_coeffType, number, coeffs, n_Test, p_Test, r_Test
 using Cxx
 function __libSingular_init__()
-   const local prefix = joinpath(Pkg.dir("Nemo"), "local")
-
+   const local prefix = joinpath(Pkg.dir("Nemo"), "local");
    addHeaderDir(joinpath(prefix, "include"), kind = C_System)
    addHeaderDir(joinpath(prefix, "include", "singular"), kind = C_System)
-
    cxxinclude(joinpath("Singular", "libsingular.h"), isAngled=false)
    cxxinclude(joinpath("omalloc", "omalloc.h"), isAngled=false)
    cxxinclude(joinpath("gmp.h"), isAngled=false)
@@ -15,6 +13,8 @@ function __libSingular_init__()
    cxxinclude(joinpath("coeffs", "coeffs.h"), isAngled=false); cxxinclude(joinpath("polys", "clapsing.h"), isAngled=false);
    cxxinclude(joinpath("polys", "monomials", "ring.h"), isAngled=false)
    cxxinclude(joinpath("polys", "monomials", "p_polys.h"), isAngled=false)
+   cxxinclude(joinpath("polys", "simpleideals.h"), isAngled=false)
+   cxxinclude(joinpath("kernel", "GBEngine", "kstd1.h"), isAngled=false)
 ## NOTE: make sure the line number is correct in case of any changes above here!!!!
 cxx"""#line 20 "libSingular.jl"
     #include "Singular/libsingular.h"
@@ -26,7 +26,9 @@ cxx"""#line 20 "libSingular.jl"
     #include "polys/monomials/ring.h"
     #include "polys/monomials/p_polys.h"
     #include "polys/clapsing.h"
+    #include "polys/simpleideals.h"
 
+    #include "kernel/GBEngine/kstd1.h"
     #include "debugbreak.h"
     #include <cassert>
 
@@ -110,7 +112,6 @@ cxx"""#line 20 "libSingular.jl"
 #endif
     }
 
-
     static bool _r_Test(const ring r)
     { 
 #ifdef RDEBUG
@@ -122,7 +123,6 @@ cxx"""#line 20 "libSingular.jl"
 
     static void _p_Delete(poly a,const ring r)
     { poly t = a; if(t != NULL) p_Delete(&t,r); /*return (t);*/ }
-
 
     static coeffs rGetCoeffs(const ring r)
     { return r->cf; }
@@ -159,6 +159,27 @@ cxx"""#line 20 "libSingular.jl"
 
     static void _break(){ assume(false); assert(false); debug_break(); }
 
+
+   ideal _kStd(ideal I, const ring R)
+   {
+     ideal id = I;
+     if(id != NULL) 
+     {
+       tHomog h=testHomog; ring origin = currRing; intvec* nullVector = NULL; 
+
+       if (origin != R)
+       	  rChangeCurrRing(R);
+
+       id = kStd(id, R->qideal, h, &nullVector); 
+       
+       if (origin != currRing)
+       	  rChangeCurrRing(origin);
+
+       if(nullVector != NULL) 
+          delete nullVector;
+     }
+     return (id); 
+   }
 """
 
    local const binSingular = joinpath(prefix, "bin", "Singular")
@@ -763,6 +784,7 @@ typealias poly Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:spolyrec},(false,fals
 ###pcpp"poly" #Ptr{Void} ### TODO!!!
 typealias poly_ref Ref{poly} ###   rcpp"poly" #  ??
 
+typealias ideal Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:sip_sideal},(false,false,false)},(false,false,false)}
 
 function rGetCoeffs(r :: ring) 
    #   static coeffs rGetCoeffs(const ring r)
@@ -1137,5 +1159,126 @@ end
 
 # void singclap_divide_content ( poly f, const ring r);
 # poly singclap_resultant ( poly f, poly g , poly x, const ring r);
+
+
+function ncols(I::ideal) 
+  return icxx""" return IDELEMS($I); """ # # MATCOLS
+end
+
+function nrows(I::ideal) 
+  return icxx""" return MATROWS($I); """
+end
+
+function id_Print(I::ideal, R::ring)
+   icxx""" id_Print($I, $R, $R); """
+end
+
+function getindex(I::ideal, i::Cint, j::Cint) 
+  return icxx""" return  MATELEM($I,$i,$j); """
+end
+
+function setindex!(I::ideal, x::poly, i::Cint, j::Cint) 
+  icxx"""MATELEM($I,$i,$j) = $x; """
+end
+
+function _id_Test(I :: ideal, R :: ring) 
+   ##    static void _id_Test(ideal I, const ring R) { id_Test(I, R); }
+   icxx""" id_Test($I, $R); """
+end
+
+function id_Test(I :: ideal, R :: ring)
+   _id_Test(I, R);
+   return (I);
+end
+
+function _id_Delete(I :: ideal, R :: ring)
+   if I != ideal(C_NULL)
+     I = id_Test(I, R);
+     ###    id_Delete(&a, r);
+     icxx""" ideal I = $I; id_Delete(&I, $R); """
+   end
+end
+
+function id_Copy(I :: ideal, R :: ring)
+   ## ideal id_Copy (ideal h1,const ring r);
+   return (@cxx id_Copy(I, R));
+end
+
+
+function idInit(size::Cint, rank::Cint = 1)
+   ## ideal idInit (int size, int rank=1); /// creates an ideal / module
+   return (@cxx idInit(size, rank));
+end
+
+function idIs0(I :: ideal)
+   ## BOOLEAN idIs0 (ideal h);
+   const ret = ( @cxx idIs0(I) );
+   return (ret > 0)
+end
+
+function id_RankFreeModule(I :: ideal, R :: ring)
+   ## static inline long id_RankFreeModule(ideal m, ring r)
+   return @cxx id_RankFreeModule(id_Test(I, R), R)
+end
+
+function idElem(I :: ideal)
+   ## int     idElem(const ideal F); /// number of non-zero polys in F
+   return (@cxx idElem(I));
+end
+
+function id_Normalize(I :: ideal, R :: ring)
+   ## void    id_Normalize(ideal id, const ring r); /// normialize all polys in id
+   @cxx id_Normalize(id_Test(I, R), R)
+   I = id_Test(I, R); # Just self test
+end
+
+function idSkipZeroes(I :: ideal)
+   ## void idSkipZeroes (ideal ide); /// gives an ideal the minimal possible size
+   @cxx idSkipZeroes(I);
+end
+
+function id_FreeModule(k:: Cint, R :: ring)
+   ## ideal id_FreeModule (int i, const ring r);
+   return id_Test( (@cxx id_FreeModule(k, R)), R ); 
+end
+
+function id_MaxIdeal(k:: Cint, R :: ring)
+   ## ideal id_MaxIdeal(int deg, const ring r);
+   return id_Test( (@cxx id_MaxIdeal(k, R)), R );
+end
+
+function id_Transp(I :: ideal, R :: ring)
+   ## ideal id_Transp(ideal a, const ring rRing); /// transpose a module
+   return id_Test( (@cxx id_Transp(id_Test(I, R), R)), R);
+end
+
+function id_SimpleAdd(I :: ideal, J :: ideal, R :: ring)
+   ## ideal id_SimpleAdd (ideal h1,ideal h2, const ring r);   /*adds two ideals without simplifying the result*/
+   return id_Test( (@cxx id_SimpleAdd(id_Test(I,R), id_Test(J,R), R)), R );
+end
+
+function id_Add(I :: ideal, J :: ideal, R :: ring)
+   ## ideal id_Add (ideal h1,ideal h2,const ring r);   /*adds the quotient ideal*/  /* h1 + h2 */
+   return id_Test( (@cxx id_Add(id_Test(I,R), id_Test(J,R), R)), R );
+end
+
+function id_Mult(I :: ideal, J :: ideal, R :: ring)
+   ## ideal id_Mult (ideal h1,ideal  h2, const ring r);
+   return id_Test( (@cxx id_Mult(id_Test(I,R), id_Test(J,R), R)), R );
+end
+
+
+function id_Power(I :: ideal, e :: Cint, R :: ring)
+   ## ideal id_Power(ideal given,int exp, const ring r);
+   return id_Test( (@cxx id_Power(id_Test(I,R), e, R)), R );
+end
+
+
+function kStd(I :: ideal, R :: ring)
+   return id_Test((@cxx _kStd( id_Test(I,R), R)), R);
+end
+
+## TODO: Add Syzygy
+
 
 end # libSingular module

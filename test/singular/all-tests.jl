@@ -420,6 +420,22 @@ ring test_construct_ring()
 """
    r = @cxx test_construct_ring()
    println(r, string(r))
+
+   I = Nemo.libSingular.id_MaxIdeal(Cint(2), r);
+   Nemo.libSingular.id_Print(I, r);
+   J = Nemo.libSingular.kStd(I, r);
+   Nemo.libSingular._id_Delete(I, r);
+   Nemo.libSingular.id_Print(J, r);
+   Nemo.libSingular._id_Delete(J, r);
+
+
+   I = Nemo.libSingular.id_FreeModule(Cint(3), r);
+   Nemo.libSingular.id_Print(I, r);
+   J = Nemo.libSingular.kStd(I, r);
+   Nemo.libSingular._id_Delete(I, r);
+   Nemo.libSingular.id_Print(J, r);
+   Nemo.libSingular._id_Delete(J, r);
+
    @cxx rDelete(r)
    println("PASS")
 
