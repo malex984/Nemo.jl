@@ -4,7 +4,7 @@ function randelem(R::Nemo.SingularCoeffs, n :: Int)
    const p = Nemo.ngens(R)
    if p > 0
       for i = 1:p
-         x = Nemo.geni(i, R)
+         x = gen(R, i)
       	 for j = 1:2
              s += R(rand(-n:n)) * (x^j)
       	 end  

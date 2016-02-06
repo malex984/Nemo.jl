@@ -260,7 +260,7 @@ characteristic(r::SingularPolynomialRing) = @cxx rChar( r_Test(get_raw_ptr(r)) )
 ngens(r::SingularPolynomialRing) = Int(@cxx rVar( r_Test(get_raw_ptr(r)) ))
 npars(r::SingularPolynomialRing) = Int(@cxx rPar( r_Test(get_raw_ptr(r)) ))
 
-function geni(i::Integer, R::SingularPolynomialRing)
+function geni(R::SingularPolynomialRing, i::Integer)
     const N = ngens(R);
     @assert ((i >= 1) && (i <= N))
     ((i < 1) || (i > N)) && error("Wrong generator/variable index");
@@ -272,8 +272,8 @@ function geni(i::Integer, R::SingularPolynomialRing)
     return elem_type(R)(R, p) ## PRingElem?
 end
 
-gen(i::Integer, r::SingularPolynomialRing) = geni(i, r)
-gen(r::SingularPolynomialRing) = geni(ngens(r), r)
+gen(r::SingularPolynomialRing, i::Integer) = geni(r, i)
+gen(r::SingularPolynomialRing) = geni(r, ngens(r))  ### TODO: FIX: usage in tests...
 
 function gens(R::SingularPolynomialRing)
     const N = ngens(R);
@@ -291,7 +291,7 @@ function gens(R::SingularPolynomialRing)
 #    println(vars);
 
     for i = 1:N
-    	vars[i] = geni(i, R);	
+    	vars[i] = geni(R, i);	
 #	println("i: $i, var(i): ", vars[i])
     end
 

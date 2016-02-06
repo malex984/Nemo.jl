@@ -488,7 +488,7 @@ function test_ZZ_poly_Polynomials_singular()
 
 ##   R, x = SingularPolynomialRing(ZZ, "x", :lex)
    S, y = SingularPolynomialRing(ZZ, "x, y", :degrevlex)
-   x = Nemo.gen(1, S)
+   x = gen(S, 1)
 
    f = (3x^2 + 2x + 1)*y^3 + (2x^2 + 4)*y^2 + 4x*y + (2x^2 - x + 1);
 

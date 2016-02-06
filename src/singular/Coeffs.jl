@@ -137,7 +137,7 @@ characteristic(c::SingularCoeffs) = libSingular.n_GetChar( get_raw_ptr(c) )
 
 ngens(c::SingularCoeffs) = libSingular.n_NumberOfParameters( get_raw_ptr(c) )
 
-function geni(i::Int, c::SingularCoeffs) 
+function geni(c::SingularCoeffs, i::Int) 
     ((i >= 1) && (i <= ngens(c))) && return c(libSingular.n_Param(i, get_raw_ptr(c)))
     error("Wrong parameter index")
 end 
@@ -147,12 +147,12 @@ function gen(c::SingularCoeffs)
     const n = ngens(c)
     @assert (n >= 0)
     (n == 0) && return one(c)
-    g = geni(1, c)
-    if n > 1 
-        for i in 2:n 
-	    g += geni(i, c)
-	end
-    end
+    g = geni(c, n)
+#    if n > 1 
+#        for i in 2:n 
+#	    g += geni(c, i)
+#	end
+#    end
     return g
 end 
 
