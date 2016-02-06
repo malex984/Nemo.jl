@@ -40,7 +40,7 @@ function test_benchmark_fateman_singular(CF_F, CF_S)
 
 
    U, t = SingularPolynomialRing(CF_S, "x, y, z, t", :lex);
-   x = Nemo.gen(1, U);   y = Nemo.gen(2, U);   z = Nemo.gen(3, U);
+   x = gen(U, 1);   y = gen(U, 2);   z = gen(U, 3);
 #   S, y = PolynomialRing(R, "y")
 #   T, z = PolynomialRing(S, "z")
 #   U, t = PolynomialRing(T, "t")
@@ -123,7 +123,7 @@ function test_benchmark_pearce_singular(CF_F, CF_S)
    println("Benchmark.pearce / Singular Coeffs...")
 
    V, u = SingularPolynomialRing(CF_S, "x, y, z, t, u", :lex);
-   x = Nemo.geni(1, V);   y = Nemo.geni(2, V);   z = Nemo.geni(3, V); t = Nemo.geni(4, V);
+   x = gen(V, 1);   y = gen(V, 2);   z = gen(V, 3); t = gen(V, 4);
 
 #   R, x = PolynomialRing(CF_S, "x")
 #   S, y = PolynomialRing(R, "y")
@@ -219,7 +219,7 @@ function test_singular_det_poly_benchmark_flint_vs_singular()
                   @assert iszero(MMF[r,c])
 
              	  MMF[r,c] = VV[i];
-             	  MMS[r,c] = Nemo.geni(i, SS);
+             	  MMS[r,c] = gen(SS, i);
 
              	  i += 1;
               end

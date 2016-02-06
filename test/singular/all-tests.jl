@@ -10,7 +10,7 @@ using Cxx
 function SingularPolynomialRing(R::Nemo.SingularCoeffs, varstr::AbstractString{}, ordering::Symbol = :degrevlex) 
    try
        parent_obj = Nemo.PRing(R, varstr, Nemo.libSingular.dictOrdSymbols[ordering]);
-       return parent_obj, Nemo.gen(parent_obj)
+       return parent_obj, gen(parent_obj)
    catch
        error("Could not create a singular polynomial ring $R [$varstr] ordered via '$ordering'") 
    end
@@ -21,7 +21,7 @@ end
 function PolynomialRing(R::Nemo.SingularCoeffs, s::AbstractString{}, ordering::Symbol = :lex)
    try
        parent_obj = Nemo.PRing(R, s, Nemo.libSingular.dictOrdSymbols[ordering]);
-       return parent_obj, Nemo.gen(parent_obj)
+       return parent_obj, gen(parent_obj)
    catch
        error("Could not create a singular polynomial ring '$R' [$s] ordered via '$ordering'") 
    end
@@ -34,7 +34,7 @@ function PolynomialRing(P::Nemo.SingularPolynomialRing, s::AbstractString{}, ord
 
       parent_obj = P + R; # TODO: FIXME: does NOT work yet! :(( 
 
-      return parent_obj, Nemo.gen(parent_obj)
+      return parent_obj, gen(parent_obj)
    catch
        error("Could not create a singular polynomial ring '$P' [$s] ordered via '$ordering'") 
    end
@@ -156,7 +156,7 @@ function test_generic_polys(C::Nemo.SingularCoeffs)
 #        T, z = PolynomialRing(S, "z"); 
 #	U, t = PolynomialRing(T, "t");
 
-   x = Nemo.gen(1, U); y = Nemo.gen(2, U); z = Nemo.gen(3, U);
+   x = gen(U, 1); y = gen(U, 2); z = gen(U, 3);
 
 	println(U);
 
@@ -308,7 +308,7 @@ number test_coeffs(const coeffs C, long v)
 #	   muleq!(p, k)
 
 	   print("k: "); 
-	   k = Nemo.gen(i, C) * k 
+	   k = gen(C, i) * k 
  	   println(k);
 
 	   print("z: "); 
@@ -393,7 +393,7 @@ function test_singular_polynomial_ring(C, s)
    p = 0
 
    for i in 1:Nemo.ngens(R)
-       p += (10 * Int(i)) * Nemo.gen(i, R)
+       p += (10 * Int(i)) * gen(R, i)
    end
 
 ## TODO: FIXME: add automatic mapping K -> K[x,y,z...]!?

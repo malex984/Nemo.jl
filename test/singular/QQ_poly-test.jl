@@ -11,7 +11,7 @@ function test_QQ_poly_constructors_singular()
 
    @test isa(y, Nemo.SingularPolynomialElem)
 
-   T, z = SingularPolynomialRing(QQ, "y, z", :lex); y = Nemo.gen(1, T);
+   T, z = SingularPolynomialRing(QQ, "y, z", :lex); y = gen(T, 1);
 
 #   @test typeof(T) <: Nemo.SingularPolynomialRing
 #   @test T <: Nemo.SingularPolynomialRing
@@ -438,7 +438,7 @@ function test_QQ_poly_Polynomials_singular()
 
 #   R, x = SingularPolynomialRing(QQ, "x", :lex)
    S, y = SingularPolynomialRing(QQ, "x, y", :degrevlex)
-   x = Nemo.gen(1, S)
+   x = gen(S, 1)
 
    f = (3x^2 + 2x + 1)*y^3 + (2x^2 + 4)*y^2 + 4x*y + (2x^2 - x + 1);
 
