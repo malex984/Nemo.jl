@@ -401,28 +401,59 @@ function test_singular_polynomial_ring(C, s)
    println("sum(10*i*gen(i)): ", p, " @@ ", typeof(p))
 
 
+   println("Singular Maximal ideals: ");
    r = Nemo.get_raw_ptr(R);
 
    I = Nemo.libSingular.id_MaxIdeal(Cint(2), r);
+   II = Nemo.maxideal(R, 2);
+
+   println("MAX IDEAL[2]: ", II);
    Nemo.libSingular.id_Print(I, r);
+
    J = Nemo.libSingular.kStd(I, r);
-   S = Nemo.libSingular._id_Syzygies(J, r);
+   II = Nemo.std(II);
+
    Nemo.libSingular._id_Delete(I, r);
+
+   println("STD: ", II);
    Nemo.libSingular.id_Print(J, r);
+
+   S = Nemo.libSingular._id_Syzygies(J, r);
+   II = Nemo.syz(II)
+
    Nemo.libSingular._id_Delete(J, r);
+
+   println("SYZ: ", II);
    Nemo.libSingular.id_Print(S, r);
+
    Nemo.libSingular._id_Delete(S, r);
 
+   println("Singular Free Modules: ");
 
-   I = Nemo.libSingular.id_FreeModule(Cint(3), r);
+   I = Nemo.libSingular.id_FreeModule(Cint(2), r);
+   II = Nemo.freemodule(R, 2)
+
+   println("FREE MODULE[2]: ", II);
    Nemo.libSingular.id_Print(I, r);
+
    J = Nemo.libSingular.kStd(I, r);
-   S = Nemo.libSingular._id_Syzygies(J, r);
+   II = Nemo.std(II);
+
    Nemo.libSingular._id_Delete(I, r);
+
+   println("STD: ", II);
    Nemo.libSingular.id_Print(J, r);
+
+   S = Nemo.libSingular._id_Syzygies(J, r);
+   II = Nemo.syz(II)
+
    Nemo.libSingular._id_Delete(J, r);
+
+   println("SYZ: ", II);
    Nemo.libSingular.id_Print(S, r);
+
    Nemo.libSingular._id_Delete(S, r);
+
 
    println("...PASS")
 end

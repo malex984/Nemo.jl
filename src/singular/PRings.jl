@@ -1,8 +1,6 @@
-# PRingElem <: SingularPolynomialElem 
+##### Singular Polynomial Rings and Free modules over them + sparse polynomials and vectors
 
 const SRingID = ObjectIdDict()
-
-# typealias PRing SingPolyRing
 
 type PRing <: SingularPolynomialRing
    ptr :: libSingular.ring
@@ -87,6 +85,33 @@ type PRing <: SingularPolynomialRing
    end
 end
 
+const SModuleID = ObjectIdDict()
+
+type PModules  <: SingularPolynomialRing
+   ptr :: libSingular.ring
+   base_ring :: SingularPolynomialRing
+
+   function PModules(r :: SingularPolynomialRing)
+      try
+         F = SModuleID[r];
+	 return F
+      catch
+      end
+
+      ### ASSERT r has module-component block! 
+      z = new(get_raw_ptr(r), r);
+      SModuleID[r] = z;
+      return z
+   end
+end
+
+
+isequal{CF<:SingularPolynomialRing}(A::CF, B::CF) = (get_raw_ptr(A) == get_raw_ptr(B))
+=={CF<:SingularPolynomialRing}(A::CF, B::CF)= isequal(A, B)
+
+function hash(A::SingularPolynomialRing)
+   return hash(get_raw_ptr(A))
+end
 
 get_raw_ptr(R :: SingularPolynomialRing) = r_Test(R.ptr)
 
@@ -97,7 +122,7 @@ end
 #### parent(R :: SingularPolynomialRing) = base_ring(R) # TODO: ??????!
 base_ring(R :: SingularPolynomialRing) = R.base_ring # TODO: ? verify complience! ???
 
-function +(A::SingularPolynomialRing, B::SingularPolynomialRing)
+function +(A::PRing, B::PRing)
    base_ring(A) != base_ring(B) && error("Operations on Polynomial Rings with different base-rings are not supported")
    sum = libSingular.rSum(get_raw_ptr(A), get_raw_ptr(B))
    return PRing(base_ring(A), sum) 
@@ -106,7 +131,7 @@ end
 
 
 #==============================================================================#
-
+ 
 ## Generic with context
 type PRingElem <: SingularPolynomialElem
     ptr :: libSingular.poly
@@ -123,9 +148,35 @@ type PRingElem <: SingularPolynomialElem
 
 end
 
+# PRingElem <: SingularPolynomialElem 
+# PVectorElem , parent: PRingFreeModule (of any rank) -> gen(, i) ->>> [....1....]
+
+type PModuleElem <: SingularPolynomialElem
+    ptr :: libSingular.poly
+    ctx :: PModules
+
+    function PModuleElem(c :: PModules, p :: libSingular.poly)
+	z = new(p, c); # pp[]
+	finalizer(z, _SingularPolyRingElem_clear_fn); 
+	return z
+    end
+end
+
     function PRingElem()
     	error("Type PRingElem requires context reference")
     end
+
+    function PModuleElem()
+    	error("Type PModuleElem requires context reference")
+    end
+
+    function PModuleElem(c :: SingularPolynomialRing, p :: libSingular.poly)
+#    	const r = get_raw_ptr(c);
+#	pp = libSingular.poly_ref(p)
+#	libSingular.p_Normalize(pp, r)
+	return PModuleElem( PModules(c), p)
+    end
+
 
     function PRingElem(c :: SingularPolynomialRing)
     	const r = get_raw_ptr(c);
@@ -133,6 +184,11 @@ end
     	return PRingElem(c, p)
     end
 
+    function PModuleElem(c :: SingularPolynomialRing)
+    	const r = get_raw_ptr(c);
+	const p = libSingular.poly(C_NULL); # p_Init(r); ### NOTE: Allocation without initialization!
+    	return PModuleElem(c, p)
+    end
 
     function PRingElem(c :: SingularPolynomialRing, x::Int64)
         if x == 0
@@ -188,8 +244,65 @@ end
     	return PRingElem(c, p)
     end
 
+
+
+    function PModuleElem(c :: SingularPolynomialRing, x::Int64)
+        if x == 0
+       	    return PModuleElem(c)
+	end
+    	const r = get_raw_ptr(c);
+        const p :: libSingular.poly = libSingular.p_ISet(x, r)
+    	return PModuleElem(c, p)
+    end
+
+    # NOTE: overtakes input n
+    function PModuleElem(c :: SingularPolynomialRing, n::number) 
+    	const r = get_raw_ptr(c);
+
+        if libSingular.n_IsZero(n, libSingular.rGetCoeffs(r))
+       	    return PModuleElem(c)
+	end
+
+    	const p :: libSingular.poly = libSingular.p_NSet(n, r)
+	return PModuleElem(c, p)
+    end 
+
+    function PModuleElem(c :: SingularPolynomialRing, b::BigInt) 
+        if b == 0
+       	    return PModuleElem(c)
+	end
+
+        cf = get_raw_ptr(base_ring(c))
+        n = libSingular.n_InitMPZ(b, cf) # NOTE: will be overtaken!
+	return PModuleElem(c, n)
+    end
+
+    function PModuleElem(x::PModuleElem)
+        const c = parent(x); 
+    	const r = get_raw_ptr(c);
+	const p :: libSingular.poly = libSingular.p_Copy(get_raw_ptr(x), r); 
+    	return PModuleElem(c, p)
+    end
+
+    PModuleElem(c :: SingularPolynomialRing, z::Integer) = PModuleElem(c, BigInt(z))
+#    PModuleElem(c :: SingularPolynomialRing, s::AbstractString) = parsePModuleElem(c, s) # TODO: FIXME: go via Singular?!!
+
+
+    function PModuleElem(c :: SingularPolynomialRing, x::SingularCoeffsElems)
+        if iszero(x)
+       	    return PModuleElem(c)
+	end
+
+        const CF = parent(x);
+    	( base_ring(c) != CF ) && error("Number from Incompatible Coeffs [$CF] and given Polynomial Ring [$c]")
+    	const n :: libSingular.number = libSingular.n_Copy(get_raw_ptr(x), get_raw_ptr(CF));
+	const p :: libSingular.poly   = libSingular.p_NSet(n, get_raw_ptr(c));  # NOTE: overtakes n!
+    	return PModuleElem(c, p)
+    end
+
 # For now - only one element type for any Singular Polynomial Ring...
-elem_type{CF<:SingularPolynomialRing}(C::CF) = PRingElem
+elem_type{CF<:PRing}(C::CF) = PRingElem
+elem_type{CF<:PModules}(C::CF) = PModuleElem
 
 parent(p :: SingularPolynomialElem) = p.ctx
 
@@ -260,7 +373,7 @@ characteristic(r::SingularPolynomialRing) = @cxx rChar( r_Test(get_raw_ptr(r)) )
 ngens(r::SingularPolynomialRing) = Int(@cxx rVar( r_Test(get_raw_ptr(r)) ))
 npars(r::SingularPolynomialRing) = Int(@cxx rPar( r_Test(get_raw_ptr(r)) ))
 
-function geni(R::SingularPolynomialRing, i::Integer)
+function geni(R::PRing, i::Integer)
     const N = ngens(R);
     @assert ((i >= 1) && (i <= N))
     ((i < 1) || (i > N)) && error("Wrong generator/variable index");
@@ -272,10 +385,23 @@ function geni(R::SingularPolynomialRing, i::Integer)
     return elem_type(R)(R, p) ## PRingElem?
 end
 
-gen(r::SingularPolynomialRing, i::Integer) = geni(r, i)
-gen(r::SingularPolynomialRing) = geni(r, ngens(r))  ### TODO: FIX: usage in tests...
+function geni(R::PModules, i::Integer)
+    @assert (i >= 1)
+    (i < 1) && error("Wrong generator/variable index (<1?)");
 
-function gens(R::SingularPolynomialRing)
+    const r = get_raw_ptr(R);
+    const p :: libSingular.poly = libSingular.p_One(r);
+
+    libSingular.p_SetComp!(p, Culong(i), r);
+    libSingular.p_SetmComp!(p, r);
+
+    return elem_type(R)(R, p) ## PRingElem?
+end
+
+gen(r::SingularPolynomialRing, i::Integer) = geni(r, i)
+gen(r::PRing) = geni(r, ngens(r))  ### TODO: FIX: usage in tests...
+
+function gens(R::PRing)
     const N = ngens(R);
 
     @assert (N > 0)
@@ -305,13 +431,17 @@ end
 #
 ###############################################################################
 
-function string(r::SingularPolynomialRing)
+function string(r::PRing)
    ptr = get_raw_ptr(r)
    m = @cxx rString(ptr)
    s = "SingularPolynomialRing (" * bytestring(m)  * ")" # * ", over " * string(parent(r)) ???
    libSingular.omFree(Ptr{Void}(m))
 
    return s
+end
+
+function string(F::PModules)
+   return "Singular Free Module over " * string(base_ring(F)) 
 end
 
 show(io::IO, r::SingularPolynomialRing) = print(io, string(r))
@@ -324,13 +454,13 @@ show(io::IO, r::SingularPolynomialRing) = print(io, string(r))
 
 function hash(a::SingularPolynomialRing)
 #   h = 0x8a30b0d963237dd5 # TODO: change this const to something uniqe!
-   return hash(string(a))  ## TODO: string may be a bit too inefficient wherever hash is used...?
+   return hash(get_raw_ptr(a))  ## TODO: string may be a bit too inefficient wherever hash is used...?
 end
 
 ## TODO: FIXME: avoid explicite constructor calls (PRingElem()) in the following: use elem_type?!
-zero(R::SingularPolynomialRing) = elem_type(R)(R, libSingular.poly(C_NULL))
-one(R::SingularPolynomialRing)  =  elem_type(R)(R, libSingular.p_One(get_raw_ptr(R)))
-# mone(R::SingularPolynomialRing) =  elem_type(R)(R, -1)
+zero(R::PRing) = elem_type(R)(R, libSingular.poly(C_NULL))
+one(R::PRing)  =  elem_type(R)(R, libSingular.p_One(get_raw_ptr(R)))
+# mone(R::PRing) =  elem_type(R)(R, -1)
 
 function string(p::SingularPolynomialElem)
    const R = parent(p);   
@@ -341,31 +471,32 @@ function string(p::SingularPolynomialElem)
    return s # "[" *
 end
 
+show(io::IO, p::SingularPolynomialElem) = print(io, string(p))
+
 function length(p::SingularPolynomialElem)
     return libSingular.pLength(get_raw_ptr(p));
 end
 
-show(io::IO, p::SingularPolynomialElem) = print(io, string(p))
-
-        function +(x::SingularPolynomialElem, y::SingularPolynomialElem)
+        function +{R<:SingularPolynomialElem}(x::R, y::R)
             check_parent(x, y)
             c = parent(x)
             p = libSingular.pp_Add_qq(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c));
             return c(p)
         end
         
-        +(x::SingularPolynomialElem, i::Integer) = +(x, parent(x)(i)) 
-        +(i::Integer, x::SingularPolynomialElem) = +(parent(x)(i), x)
++(x::PRingElem, i::Union{SingularCoeffsElems,Integer}) = +(x, parent(x)(i)) 
++(i::Union{SingularCoeffsElems,Integer}, x::PRingElem) = +(parent(x)(i), x)
 
-        function -(x::SingularPolynomialElem, y::SingularPolynomialElem)
+
+        function -{R<:SingularPolynomialElem}(x::R, y::R)
             check_parent(x, y)
             c = parent(x)
             p = libSingular.pp_Sub_qq(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c));
             return c(p)
         end
         
-        -(x::SingularPolynomialElem, i::Integer) = -(x, parent(x)(i)) 
-        -(i::Integer, x::SingularPolynomialElem) = -(parent(x)(i), x)
+-(x::PRingElem, i::Union{SingularCoeffsElems,Integer}) = -(x, parent(x)(i)) 
+-(i::Union{SingularCoeffsElems,Integer}, x::PRingElem) = -(parent(x)(i), x)
 
 
 function -(x::SingularPolynomialElem) 
@@ -394,16 +525,31 @@ function degree(x::SingularPolynomialElem)
     return libSingular.p_Deg(p, r);
 end
 
+function *(x::PRingElem, y::PRingElem)
+            check_parent(x, y);
 
-        function *(x::SingularPolynomialElem, y::SingularPolynomialElem)
-            check_parent(x, y)
-            c = parent(x)
-            p = libSingular.pp_Mult_qq(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c));
-            return c(p)
-        end
-        
-        *(x::SingularPolynomialElem, i::Integer) = *(x, parent(x)(i)) 
-        *(i::Integer, x::SingularPolynomialElem) = *(parent(x)(i), x)
+            c = parent(x);
+            const p = libSingular.pp_Mult_qq(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(c));
+            return c(p);
+end
+
+*(x::PRingElem, i::Union{SingularCoeffsElems,Integer}) = *(x, parent(x)(i)) 
+*(i::Union{SingularCoeffsElems,Integer}, x::PRingElem) = *(parent(x)(i), x)
+
+function *(x::PRingElem, y::PModuleElem)
+            const c = parent(y);
+	    const r = get_raw_ptr(c);
+
+	    (r != get_raw_ptr(parent(x))) && error("Operations on elements over different rings are not supported")
+
+            const p = libSingular.pp_Mult_qq(get_raw_ptr(x), get_raw_ptr(y), r);
+            return c(p);
+end
+       
+
+*(x::PModuleElem, i::Union{SingularCoeffsElems,Integer}) = *(base_ring(parent(x))(i), x) 
+*(i::Union{SingularCoeffsElems,Integer}, x::PModuleElem) = *(base_ring(parent(x))(i), x)
+
 
 
 
@@ -414,7 +560,7 @@ end
 #
 ###############################################################################
 
-function ^(x::SingularPolynomialElem, y::Cint)
+function ^(x::PRingElem, y::Cint)
     if y < 0;  throw(ErrorException("DivideError(): Negative power: " * string(y) * "!")); end
     if isone(x); return x; end
     if ismone(x); return isodd(y) ? x : -x; end
@@ -430,7 +576,7 @@ function iszero(p :: SingularPolynomialElem)
     return (get_raw_ptr(p) == libSingular.poly(C_NULL))
 end
 
-function isone(x :: SingularPolynomialElem)
+function isone(x :: PRingElem)
     const p = get_raw_ptr(x);
     const r = get_raw_ptr(parent(x));
     return libSingular.pp_IsOne(p, r);
@@ -469,7 +615,6 @@ function ismone(x :: SingularPolynomialElem)
     return libSingular.pp_IsMOne(p, r);
 end
 
-
 function ==(x::SingularPolynomialElem, y::SingularPolynomialElem)
     check_parent(x, y);
     return libSingular.pp_EqualPolys(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(parent(x)))
@@ -477,21 +622,23 @@ end
 
 isequal(x::SingularPolynomialElem, y::SingularPolynomialElem) = (x == y)
 
-# <(x,y) = isless(x,y)
-function isless(x::SingularPolynomialElem, y::SingularPolynomialElem)
-    check_parent(x, y)
-    throw(ErrorException("Sorry: cannot compare singular polynomials...?!" )); # TODO: FIXME: generic poly?
-##    return libSingular.???(get_raw_ptr(y), get_raw_ptr(x), get_raw_ptr(parent(x)))
-end
-
 ==(x::SingularPolynomialElem, y::Integer) = (x == parent(x)(y))
 ==(x::Integer, y::SingularPolynomialElem) = (parent(y)(x) == y)
 
 isequal(x::SingularPolynomialElem, y::Integer) = (x == parent(x)(y))
 isequal(x::Integer, y::SingularPolynomialElem) = (parent(y)(x) == y)
 
-isless(x::SingularPolynomialElem, y::Integer) = isless(x, parent(x)(y));
-isless(x::Integer, y::SingularPolynomialElem) = isless(parent(y)(x), y);
+#=
+# <(x,y) = isless(x,y)
+function isless(x::SingularPolynomialElem, y::SingularPolynomialElem)
+    check_parent(x, y)
+    throw(ErrorException("Sorry: cannot compare singular polynomials...?!" )); # TODO: FIXME: generic poly?
+##    return libSingular.???(get_raw_ptr(y), get_raw_ptr(x), get_raw_ptr(parent(x)))
+end
+=#
+
+#isless(x::SingularPolynomialElem, y::Integer) = isless(x, parent(x)(y));
+#isless(x::Integer, y::SingularPolynomialElem) = isless(parent(y)(x), y);
 
 function gcd(x::SingularPolynomialElem, y::SingularPolynomialElem)
    check_parent(x, y)
@@ -511,7 +658,7 @@ gcd(i::Integer, x::SingularPolynomialElem) = gcd(parent(x)(i), x)
 gcd(x::SingularPolynomialElem, i::SingularCoeffsElems) = gcd(x, parent(x)(i)) 
 gcd(i::SingularCoeffsElems, x::SingularPolynomialElem) = gcd(parent(x)(i), x)
 
-canonical_unit(x::SingularPolynomialElem) = canonical_unit( leadcoeff(x) )
+canonical_unit(x::SingularPolynomialElem) = canonical_unit( leadcoeff(x) ) ## TODO: FIX: check the definition!?
 
 function divexact(x::SingularPolynomialElem, y::SingularPolynomialElem)
     iszero(y) && throw(ErrorException("DivideError() in divexact"));
@@ -677,3 +824,327 @@ function mul!(c::SingularPolynomialElem, x::SingularPolynomialElem, y::SingularP
     
     set_raw_ptr!(c, ptr, R)
 end
+
+
+## TODO!!!: Ideal, Module, parent: highlevel space of all ideals/free modules over ring
+
+## TODO!!: wrap Nemo ring as Singular Coeffs (cfunction register struct..) ??
+
+## TODO!!: more Singular Fq = GF(p,d) / Zn /Fp _polys
+
+abstract SingularElememntArray
+
+type SingularIdeal <: SingularElememntArray
+   ptr :: libSingular.ideal
+   ctx :: PRing   
+   
+   function SingularIdeal(P::PRing, I::libSingular.ideal)
+      z = new(I, P);
+      finalizer(z, _SingularElememntArray_clear_fn)
+      return z
+   end
+
+   function SingularIdeal( FF :: Array{PRingElem, 1} )
+      const n = length(FF);
+
+      (n == 0) && error("Cannot create a Singular Ideal without generators (no context is given)!")
+
+      const R = parent(FF[1]);
+      const r = get_raw_ptr(R);
+
+      for i = 1:n
+      	  @assert (parent(FF[i]) == R)
+	  
+	  if libSingular.rRing_has_Comp(r)
+	     @assert (libSingular.p_MaxComp(get_raw_ptr(FF[i]), r) == 0);
+          end
+      end
+
+      J = libSingular.idInit(n);
+      I = SingularIdeal(R, J);
+
+      for i = 1:n
+         setindex!(I, FF[i], i); # copy!
+      end
+      
+      libSingular.id_Test(J, r);
+
+      return I;
+   end
+
+
+   function SingularIdeal( v :: PRingElem, w... )
+      const R = parent(v);
+      const r = get_raw_ptr(R);
+
+      if libSingular.rRing_has_Comp(r)
+         @assert (libSingular.p_MaxComp(get_raw_ptr(v), r) == 0);
+      end
+
+      const n = length(w);
+
+      for i = 1:n
+#      	  @assert (typeof(w[i]) == typeof(v)) # ?
+      	  @assert (parent(w[i]) == R)
+          if libSingular.rRing_has_Comp(r)
+             @assert (libSingular.p_MaxComp(get_raw_ptr(w[i]), r) == 0);
+          end
+      end
+      
+      J = libSingular.idInit(1 + n);
+      I = SingularModule(R, J); # No Copy!
+
+      setindex!(I, v, 1); # Copy!
+
+      for i = 1:n
+         setindex!(I, w[i], 1 + i); # Copy!
+      end
+
+      libSingular.id_Test(J, r);
+
+      return I;
+   end   
+end
+
+type SingularModule  <: SingularElememntArray
+   ptr :: libSingular.ideal
+   ctx :: PModules
+
+   function SingularModule( R :: PModules, I :: libSingular.ideal )
+      @assert libSingular.rRing_has_Comp(get_raw_ptr(R));
+      z = new(I, R);
+      finalizer(z, _SingularElememntArray_clear_fn)
+      return z
+   end
+
+   function SingularModule( FF :: Array{PModuleElem, 1} )
+      const n = length(FF);
+
+      (n == 0) && error("Cannot create a Singular Module without generators (no context is given)!")
+
+      const R = parent(FF[1]);
+      const r = get_raw_ptr(R);
+
+      @assert libSingular.rRing_has_Comp(r);
+
+      rank = Clong( libSingular.p_MaxComp(get_raw_ptr(FF[1]), r) );
+
+      for i = 2:n
+      	  @assert (parent(FF[i]) == R)
+          rank = max(rank, libSingular.p_MaxComp(get_raw_ptr(FF[i]), r));
+      end
+      
+      J = libSingular.idInit(n, rank);
+      I = SingularModule(R, J); # No Copy!
+
+      for i = 1:n
+         setindex!(I, FF[i], i); # Copy!
+      end
+
+      @assert (rank == libSingular.id_RankFreeModule(libSingular.id_Test(J, r), r));
+
+      return I;
+   end
+
+   function SingularModule( v :: PModuleElem, w... )
+      const R = parent(v);
+      const r = get_raw_ptr(R);
+
+      @assert libSingular.rRing_has_Comp(r);
+
+      rank = Clong( libSingular.p_MaxComp(get_raw_ptr(v), r) );
+
+      const n = length(w);
+
+      for i = 1:n
+#      	  @assert (typeof(w[i]) == typeof(v)) # ?
+      	  @assert (parent(w[i]) == R)
+          rank = max(rank, libSingular.p_MaxComp(get_raw_ptr(w[i]), r));
+      end
+      
+      J = libSingular.idInit(1 + n, rank);
+      I = SingularModule(R, J); # No Copy!
+
+      setindex!(I, v, 1); # Copy!
+
+      for i = 1:n
+         setindex!(I, w[i], 1 + i); # Copy!
+      end
+
+      @assert (rank == libSingular.id_RankFreeModule(libSingular.id_Test(J, r), r));
+
+      return I;
+   end
+end
+
+function _SingularElememntArray_clear_fn(ID::SingularElememntArray)
+   libSingular._id_Delete(get_raw_ptr(ID), get_raw_ptr(parent(ID)))
+end
+
+   function SingularModule( R :: PRing, I :: libSingular.ideal )
+      return SingularModule( PModules(R), I)
+   end
+
+
+parent(I :: SingularElememntArray) = I.ctx
+
+function get_raw_ptr(I :: SingularElememntArray)
+   return libSingular.id_Test(I.ptr, get_raw_ptr(parent(I)))
+end
+
+ncols(I:: SingularElememntArray) = libSingular.ncols(get_raw_ptr(I))
+nrows(I:: SingularElememntArray) = libSingular.nrows(get_raw_ptr(I))
+
+rank(I::SingularElememntArray) = libSingular.getrank(get_raw_ptr(I))
+setrank!(I::SingularElememntArray, r :: Integer) = libSingular.setrank!(get_raw_ptr(I), Culong(r))
+
+length(I:: SingularElememntArray) = ncols(I)
+
+
+function getindex(I::SingularElememntArray, i::Integer)
+  @assert (i > 0) && (i <= length(I))
+  const P = parent(I);
+  const r = get_raw_ptr(P)
+  const ptr = getindex(get_raw_ptr(I), Cint(i));
+  
+  return elem_type(P)(P, libSingular.p_Copy( p_Test(ptr,r), r) );
+end
+
+function setindex!(I::SingularElememntArray, x::libSingular.poly, i::Integer)
+  @assert (i > 0) && (i <= length(I))
+  setindex!(get_raw_ptr(I), x, Cint(i));
+end
+
+
+function setindex!(I::SingularIdeal, x::PRingElem, i::Cint)
+  @assert (i > 0) && (i <= length(I))
+
+  const R = parent(I);
+  (R != parent(x)) && error("Operations on elements over different rings are not supported")
+
+  xx = libSingular.p_Copy( get_raw_ptr(x), get_raw_ptr(R) );
+  
+  setindex!(I, xx, i);
+end
+
+function setindex!(I::SingularModule, x::PModuleElem, i::Cint)
+  @assert (i > 0) && (i <= length(I))
+
+  const R = parent(I);
+  (R != parent(x)) && error("Operations on elements over different rings are not supported")
+
+  xx = libSingular.p_Copy( get_raw_ptr(x), get_raw_ptr(R) );
+  
+  setindex!(I, xx, i);
+end
+
+function deepcopy{T <: SingularElememntArray}(a::T) 
+   const P = parent(a);
+   return T(P,  libSingular.id_Copy( get_raw_ptr(a), get_raw_ptr(P) ) )
+end
+
+
+function iszero(p :: SingularElememntArray) # generated by zeroes or no gens?
+    return libSingular.idIs0(get_raw_ptr(p)) # , get_raw_ptr(parent(p))
+end
+
+
+function string(I::SingularIdeal) # Module)
+   const R = parent(I);
+   const rr = get_raw_ptr(R);
+   const n = length(I);
+
+   s = "Singular Ideal over " * string(R)
+
+   (n == 0) && return ("Empty/Zero " * s);
+   
+   s *= (" with " * string(n));
+
+   iszero(I) && return (s * " zero generators");
+
+   const J = get_raw_ptr(I);
+
+   a = Array(AbstractString, n);
+
+   libSingular.id_Print(J, rr);
+
+   for i = 1:n 
+
+      p = libSingular.p_Test( libSingular.getindex(J, Cint(i)), rr);
+      if p == libSingular.poly(C_NULL) 
+         a[i] = "0";
+      else
+         a[i] = string(p)
+#        a[i] = string(getindex(I, i)) # Copy! :(
+         continue;
+
+         m = libSingular.p_String(p, rr); # NOTE: changes/normalizes coefss of p !
+         a[i]= bytestring(m);
+         libSingular.omFree(Ptr{Void}(m));
+      end
+   end
+
+   
+   return s * " generators < " * join(a, " , ") * " >";
+end
+
+
+
+function string(I::SingularModule)
+   const M = parent(I);
+   const R = base_ring(M);
+   const rr = get_raw_ptr(R);
+
+   const rk = rank(I)
+   const n = length(I);
+   
+   s = "Singular " * string(rk) * "-Module over " * string(R)
+
+   (n == 0) && return "Empty/Zero " * s
+   
+   s *= " with " * string(n);
+
+   iszero(I) && return s * " zero generators"
+
+   const J = get_raw_ptr(I);
+
+   libSingular.id_Print(J, rr);
+
+   a = Array(AbstractString, n)
+   for i = 1:n 
+
+      p = libSingular.p_Test( libSingular.getindex(J, Cint(i)), rr);
+#     p = libSingular.getindex(J, Cint(i)); # J[i];
+
+      if p == libSingular.poly(C_NULL) 
+         a[i] = "0";
+      else
+         a[i] = string(p) # Copy: getindex(I, i) :(
+#        a[i] = string(getindex(I, i)) # Copy! :(
+         continue;
+
+         m = libSingular.p_String(p, rr);
+         a[i] = bytestring(m);
+         libSingular.omFree(Ptr{Void}(m));
+      end
+   end
+  
+   return (s * " generators < " * join(a, " , ") * " >");
+end
+
+show(io::IO, p::SingularElememntArray) = print(io, string(p))
+
+
+function std{T <: SingularElememntArray}(a::T) 
+   const P = parent(a);
+   return T(P,  libSingular.kStd( get_raw_ptr(a), get_raw_ptr(P) ) )
+end 
+
+function syz{T <: SingularElememntArray}(a::T) 
+   const P = parent(a);
+   return SingularModule(P,  libSingular._id_Syzygies( get_raw_ptr(a), get_raw_ptr(P) ) )
+end 
+
+maxideal(R::SingularPolynomialRing, d::Integer) = SingularIdeal(R, libSingular.id_MaxIdeal(Cint(d), get_raw_ptr(R)));
+
+freemodule(R::SingularPolynomialRing, r::Integer) = SingularModule(PModules(R), libSingular.id_FreeModule(Cint(r), get_raw_ptr(R)));
