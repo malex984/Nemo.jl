@@ -170,33 +170,38 @@ cxx"""#line 25 "libSingular.jl"
 
    ideal _kStd(ideal I, const ring R)
    {
-     ideal id = I;
-     if(id != NULL) 
+     ideal id = NULL;
+
+     assume(I != NULL);
+
+     if(!idIs0(I)) 
      {
-       const tHomog h=testHomog; 
        const ring origin = currRing; 
        intvec* nullVector = NULL; 
+       tHomog h = testHomog; 
 
        if (origin != R)
        	  rChangeCurrRing(R);
 
-       id = kStd(id, R->qideal, h, &nullVector); 
+       id = kStd(I, R->qideal, h, &nullVector);
        
        if (origin != currRing && origin != NULL)
        	  rChangeCurrRing(origin);
 
        if(nullVector != NULL) 
           delete nullVector;
-     }
+
+     } else id = idInit(0, I->rank);
+
      return (id); 
    }
 
-
    ideal _id_Syzygies(ideal I, const ring R)
    {
-     ideal id = I;
-     if(id != NULL) 
-     {
+     ideal id = NULL;
+
+     assume(I != NULL);
+
        const tHomog h=testHomog; 
        const ring origin = currRing; 
        intvec* nullVector = NULL; 
@@ -210,15 +215,15 @@ cxx"""#line 25 "libSingular.jl"
        // do not change h1,  w 
        // ideal   idSyzygies (ideal h1, tHomog h,intvec **w, BOOLEAN setSyzComp=TRUE, BOOLEAN setRegularity=FALSE, int *deg = NULL);
 
-       id = idSyzygies(id, h, &nullVector); 
+       id = idSyzygies(I, h, &nullVector); 
        
        if (origin != currRing && origin != NULL)
        	  rChangeCurrRing(origin);
 
        if(nullVector != NULL) 
           delete nullVector;
-     }
-     return (id); 
+
+       return (id); 
    }
 
 """
@@ -937,6 +942,12 @@ function r_TestDebug(r :: ring)
    return r
 end
 
+function rRing_has_Comp(r :: ring)
+   ## #define rRing_has_Comp(r)   (r->pCompIndex >= 0)
+   const ret = icxx""" return rRing_has_Comp($r); """
+   return Bool(ret)
+end
+
 
 function _p_Test(p :: poly, r :: ring)
    return (@cxx __p_Test(p, r)) # NOTE: returns bool!
@@ -1012,12 +1023,12 @@ end
 
 function pSetCoeff!(p :: poly, n :: number) 
    ##define pSetCoeff0(p,n)     (p)->coef=(n) # NOTE: no cleanup!
-   icxx""" return pSetCoeff0($p, $n); """
+   icxx""" pSetCoeff0($p, $n); """
 end
 
-function pNext!(p :: poly)
+function pNext(p :: poly)
    # #define pNext(p)            ((p)->next)
-   return icxx""" return pNext($p); """ # NOTE: supposed to return the next to leading term!
+   return icxx""" return (poly)pNext($p); """ # NOTE: supposed to return the next to leading term!
 end
 
 
@@ -1031,6 +1042,19 @@ function p_SetExp!(p :: poly, v :: Int, e :: Int64, r :: ring)
    # /// set v^th exponent for a monomial
    #static inline long p_SetExp(poly p, const int v, const long e, const ring r)
    return @cxx p_SetExp(p, v, e, r)
+end
+
+
+function p_SetCompP!(p :: poly, c :: Cint, r :: ring)
+   ## // sets component of poly p to i
+   ## static inline   void p_SetCompP(poly p, int i, ring r)
+   @cxx p_SetCompP(p_Test(p, r), c, r);
+   @assert p == p_Test(p, r)
+end
+
+function p_SetComp!(p :: poly, c :: Culong, r :: ring)
+   #static inline  unsigned long p_SetComp(poly p, unsigned long c, ring r)
+   return (@cxx p_SetComp(p, c, r)); # returns c!
 end
 
 function p_Mult_nn(p :: poly, n :: number, r :: ring)
@@ -1089,10 +1113,17 @@ function p_String(p :: poly, r :: ring)
    return (@cxx p_String(p_Test(p,r), r))
 end
 
-function p_Setm(p :: poly, r :: ring)
+function p_Setm!(p :: poly, r :: ring)
    #static inline void p_Setm(poly p, const ring r) 
    # NOTE: changes input term p!
    @cxx p_Setm(p, r)
+   return p_Test(p, r)
+end
+
+function p_SetmComp!(p :: poly, r :: ring)
+   # == p_Setm?
+   # NOTE: changes input term p!
+   icxx""" p_SetmComp($p, $r); """
    return p_Test(p, r)
 end
 
@@ -1152,7 +1183,7 @@ function singclap_gcd(p :: poly_ref, q :: poly_ref, r :: ring)
    p_Test(q[], r)
    # returns gcd(p, q), destroys p and q
    # poly singclap_gcd ( poly f, poly g, const ring r );
-   return p_Test( (icxx""" return singclap_gcd($p, $q, $r); """), r)
+   return p_Test( (icxx""" return (poly)singclap_gcd($p, $q, $r); """), r)
 end
 
 
@@ -1203,24 +1234,59 @@ end
 # poly singclap_resultant ( poly f, poly g , poly x, const ring r);
 
 
-function ncols(I::ideal) 
-  return icxx""" return IDELEMS($I); """ # # MATCOLS
+function p_MaxComp( a :: poly, r :: ring)
+   # // returns maximal column number in the modul element a (or 0)
+   # static inline long p_MaxComp(poly a, ring r[, ring tailRing])
+   return (@cxx p_MaxComp(p_Test(a, r), r));
 end
 
+
+function ncols(I::ideal) 
+  @assert I != ideal(C_NULL)
+  return icxx""" return (int)IDELEMS($I); """ # # MATCOLS
+end
+
+function getrank(I::ideal)
+  @assert I != ideal(C_NULL)
+  return icxx""" return (long)($I)->rank; """
+end
+
+function setrank!(I::ideal, r :: Clong)
+  @assert I != ideal(C_NULL)
+  icxx""" ($I)->rank = r; """
+end
+
+
+## length(I::ideal) = ncols(I)
+
 function nrows(I::ideal) 
-  return icxx""" return MATROWS($I); """
+  @assert I != ideal(C_NULL)
+  return icxx""" return (int)MATROWS($I); """
 end
 
 function id_Print(I::ideal, R::ring)
+   @assert I != ideal(C_NULL)
    icxx""" id_Print($I, $R, $R); """
 end
 
 function getindex(I::ideal, i::Cint, j::Cint) 
-  return icxx""" return  MATELEM($I,$i,$j); """
+  @assert I != ideal(C_NULL)
+  return icxx""" return (poly)MATELEM($I,$i,$j); """
+end
+
+function getindex(I::ideal, j::Cint) 
+  @assert I != ideal(C_NULL)
+  return icxx""" return (poly)($I->m[$j]); """
+end
+
+function setindex!(I::ideal, x::poly, j::Cint) 
+  @assert I != ideal(C_NULL)
+  icxx""" $I->m[$j] = $x; """
 end
 
 function setindex!(I::ideal, x::poly, i::Cint, j::Cint) 
-  icxx"""MATELEM($I,$i,$j) = $x; """
+  @assert I != ideal(C_NULL)
+  icxx""" MATELEM($I,$i,$j) = $x; """
 end
 
 function _id_Test(I :: ideal, R :: ring) 
@@ -1229,19 +1295,22 @@ function _id_Test(I :: ideal, R :: ring)
 end
 
 function id_Test(I :: ideal, R :: ring)
+   @assert I != ideal(C_NULL)
    _id_Test(I, R);
    return (I);
 end
 
 function _id_Delete(I :: ideal, R :: ring)
-   if I != ideal(C_NULL)
+  @assert I != ideal(C_NULL)
+#   if I != ideal(C_NULL)
      I = id_Test(I, R);
      ###    id_Delete(&a, r);
      icxx""" ideal I = $I; id_Delete(&I, $R); """
-   end
+#   end
 end
 
 function id_Copy(I :: ideal, R :: ring)
+  @assert I != ideal(C_NULL)
    ## ideal id_Copy (ideal h1,const ring r);
    return (@cxx id_Copy(I, R));
 end
@@ -1253,33 +1322,41 @@ function idInit(size::Cint, rank::Cint = 1)
 end
 
 function idIs0(I :: ideal)
+   @assert I != ideal(C_NULL)
    ## BOOLEAN idIs0 (ideal h);
    const ret = ( @cxx idIs0(I) );
    return (ret > 0)
 end
 
 function id_RankFreeModule(I :: ideal, R :: ring)
+   @assert I != ideal(C_NULL)
    ## static inline long id_RankFreeModule(ideal m, ring r)
    return @cxx id_RankFreeModule(id_Test(I, R), R)
 end
 
 function idElem(I :: ideal)
+   @assert I != ideal(C_NULL)
    ## int     idElem(const ideal F); /// number of non-zero polys in F
    return (@cxx idElem(I));
 end
 
 function id_Normalize(I :: ideal, R :: ring)
+   @assert I != ideal(C_NULL)
    ## void    id_Normalize(ideal id, const ring r); /// normialize all polys in id
    @cxx id_Normalize(id_Test(I, R), R)
    I = id_Test(I, R); # Just self test
 end
 
 function idSkipZeroes(I :: ideal)
+   @assert I != ideal(C_NULL)
    ## void idSkipZeroes (ideal ide); /// gives an ideal the minimal possible size
    @cxx idSkipZeroes(I);
 end
 
+
+
 function id_FreeModule(k:: Cint, R :: ring)
+   @assert I != ideal(C_NULL)
    ## ideal id_FreeModule (int i, const ring r);
    return id_Test( (@cxx id_FreeModule(k, R)), R ); 
 end
@@ -1290,43 +1367,56 @@ function id_MaxIdeal(k:: Cint, R :: ring)
 end
 
 function id_Transp(I :: ideal, R :: ring)
+   @assert I != ideal(C_NULL)
    ## ideal id_Transp(ideal a, const ring rRing); /// transpose a module
    return id_Test( (@cxx id_Transp(id_Test(I, R), R)), R);
 end
 
 function id_SimpleAdd(I :: ideal, J :: ideal, R :: ring)
+   @assert I != ideal(C_NULL)
+   @assert J != ideal(C_NULL)
    ## ideal id_SimpleAdd (ideal h1,ideal h2, const ring r);   /*adds two ideals without simplifying the result*/
    return id_Test( (@cxx id_SimpleAdd(id_Test(I,R), id_Test(J,R), R)), R );
 end
 
 function id_Add(I :: ideal, J :: ideal, R :: ring)
+   @assert I != ideal(C_NULL)
+   @assert J != ideal(C_NULL)
    ## ideal id_Add (ideal h1,ideal h2,const ring r);   /*adds the quotient ideal*/  /* h1 + h2 */
    return id_Test( (@cxx id_Add(id_Test(I,R), id_Test(J,R), R)), R );
 end
 
 function id_Mult(I :: ideal, J :: ideal, R :: ring)
+   @assert I != ideal(C_NULL)
+   @assert J != ideal(C_NULL)
    ## ideal id_Mult (ideal h1,ideal  h2, const ring r);
    return id_Test( (@cxx id_Mult(id_Test(I,R), id_Test(J,R), R)), R );
 end
 
 
 function id_Power(I :: ideal, e :: Cint, R :: ring)
+   @assert I != ideal(C_NULL)
    ## ideal id_Power(ideal given,int exp, const ring r);
    return id_Test( (@cxx id_Power(id_Test(I,R), e, R)), R );
 end
 
 
 function kStd(I :: ideal, R :: ring)
+   @assert I != ideal(C_NULL)
    return id_Test((@cxx _kStd( id_Test(I,R), R)), R);
 end
 
 function _id_Syzygies(I :: ideal, R :: ring)
+   @assert I != ideal(C_NULL)
    return id_Test((@cxx _id_Syzygies( id_Test(I,R), R)), R);
 end
 
-function idHead(I :: ideal)
-   # ideal   idHead(ideal h);
-   return (@cxx idHead(I));
+function id_Head(I :: ideal, R :: ring)
+   @assert I != ideal(C_NULL)
+   # /// returns the ideals of initial terms
+   # ideal id_Head(ideal h,const ring r)
+
+   return id_Test((@cxx id_Head(id_Test(I,R), R)), R);
 end
 
 
@@ -1358,11 +1448,12 @@ end
 # ideal id_Farey(ideal x, number N, const ring r);
 
 
-## ideal kNF(ideal F, ideal Q, ideal p,int syzComp=0, int lazyReduce=0);
-## poly k_NF (ideal F, ideal Q, poly p,int syzComp, int lazyReduce, const ring _currRing);
-
 ## ideal kMin_std(ideal F, ideal Q, tHomog h,intvec ** w, ideal &M, intvec *hilb=NULL, int syzComp=0,int reduced=0);
 ## ideal stdred(ideal F, ideal Q, tHomog h,intvec ** w);
+
+
+## ideal kNF(ideal F, ideal Q, ideal p,int syzComp=0, int lazyReduce=0);
+## poly k_NF (ideal F, ideal Q, poly p,int syzComp, int lazyReduce, const ring _currRing);
 
 
 end # libSingular module

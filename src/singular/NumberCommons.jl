@@ -18,6 +18,14 @@ end
 # Type and parent object methods
 #=====================================================#
 
+isequal{CF<:SingularCoeffs}(A::CF, B::CF) = (get_raw_ptr(A) == get_raw_ptr(B))
+=={CF<:SingularCoeffs}(A::CF, B::CF)= isequal(A, B)
+
+function hash(A::SingularCoeffs)
+   return hash(get_raw_ptr(A))
+end
+
+
 base_ring(a::SingularCoeffs) = Union{}
 base_ring(a::SingularCoeffsElems) = Union{} ## ???
 
@@ -458,6 +466,7 @@ function ==(x::SingularCoeffsElems, y::SingularCoeffsElems)
     check_parent(x, y)
     return libSingular.n_Equal(get_raw_ptr(x), get_raw_ptr(y), get_raw_ptr(parent(x)))
 end
+
 
 isequal(x::SingularCoeffsElems, y::SingularCoeffsElems) = (x == y)
 
