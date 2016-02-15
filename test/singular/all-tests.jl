@@ -371,6 +371,29 @@ function test_singular_lowlevel_coeffs()
    test_generic_polys(Z11)
 
 ###   test_generic_polys(GF)
+
+   println("Testing NemoCoeffs(ZZ/QQ).................");
+
+   NZ = Nemo.NemoCoeffs(ZZ);
+   println("Nemo.NemoCoeffs(ZZ): ", NZ);
+
+   print("NZ(6)");
+   v = NZ(6);
+   print("   :::   ");
+   println(v);
+   
+
+   NQ = Nemo.NemoCoeffs(QQ);
+   println("Nemo.NemoCoeffs(QQ): ", NQ);
+   print("NQ(66)");
+   vv = NQ(66);
+   print("   :::   ");
+   println(vv);
+   
+
+
+   println("\n...................PASS")
+
 end
 
 
@@ -504,9 +527,9 @@ function test_singular()
 
    println(); gc(); test_singular_wrappers()
 
-   println(); gc(); test_singular_polynomial_rings()
-
    println(); gc(); test_singular_lowlevel_coeffs()
+
+   println(); gc(); test_singular_polynomial_rings()
 
    println(); gc(); test_ZZ_singular()
 
@@ -515,7 +538,12 @@ function test_singular()
    println(); gc(); test_poly_singular() # TODO: FIXME: rSum!?
 
    println(); gc(); test_ZZ_poly_singular(); # TODO: FIXME: many things are missing at the moment :(
+
    println(); gc(); test_QQ_poly_singular(); # TODO: as for ZZ_poly!
+
+#= 
+   include("???.jl"); #test_????()
+=#
 
    println(); gc(); test_fraction_singular()
 
@@ -526,58 +554,9 @@ function test_singular()
    println(); gc(); test_matrix_singular()
 
    println(); gc(); test_benchmarks_singular()
-#= =#
+
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
 
    println()
 end
 
-
-#######################################################
-#function dummy(cf::Ptr{Void})
-#  println("new coeffs: $cf"); return
-#end
-#const dummy_c = cfunction(dummy, Void, (Ptr{Void},))
-#cxx"""
-#BOOLEAN myInitChar(coeffs n, void*){
-#n->cfCoeffWrite  = (???)$dummy_c; return FALSE; } 
-#"""
-                
-#function jlInit(cf::Ptr{Void}, ::Ptr{Void})
-#  println("jlInit: new coeffs: $cf"); return convert( Cint, 1);
-#end
-#const cjlInit = cfunction(jlInit, Cint, (Ptr{Void},Ptr{Void}))
-#newTyp = icxx" return nRegister( n_unknown, (cfInitCharProc)$cjlInit); " 
-#newCoeff = icxx" return nInitChar( $newTyp, 0 ); "
-
-
-
-#include("flint/fmpz_poly-test.jl")
-#include("flint/fmpz_mod_poly-test.jl")
-#include("flint/nmod_poly-test.jl")
-#include("flint/fmpq_poly-test.jl")
-#include("flint/fq_poly-test.jl")
-#include("flint/fq_nmod_poly-test.jl")
-#include("flint/fmpz_series-test.jl")
-#include("flint/fmpq_series-test.jl")
-#include("flint/fmpz_mod_series-test.jl")
-#include("flint/fq_series-test.jl")
-#include("flint/fq_nmod_series-test.jl")
-#include("flint/nmod_mat-test.jl")
-#include("flint/fmpz_mat-test.jl")
-
-#### TODO: remove those without analogs on Singular side!
-
-#   test_fmpz_poly()
-#   test_fmpz_mod_poly()
-#   test_nmod_poly()
-#   test_fmpq_poly()
-#   test_fq_poly()
-#   test_fq_nmod_poly()
-#   test_fmpz_series()
-#   test_fmpq_series()
-#   test_fmpz_mod_series()
-#   test_fq_series()
-#   test_fq_nmod_series()
-#   test_nmod_mat()
-#   test_fmpz_mat()
