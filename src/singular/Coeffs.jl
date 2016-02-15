@@ -288,6 +288,14 @@ function SingularGF(ch::Int, d::Int, s::AbstractString)
 end
 
 
+function NemoCoeffs(r::Ring) 
+   return Coeffs(libSingular.n_NemoCoeffs, pointer_from_objref(r));
+end
+
+function NemoCoeffs(r::Field) 
+   return CoeffsField(libSingular.n_NemoCoeffs, pointer_from_objref(r));
+end
+
 ###############################################################################
 #
 #   Uniqueness for basic singular coeffs
@@ -315,12 +323,12 @@ end
 #n_long_C() => true  /**< complex floating point (GMP) numbers */
 #n_Z() => true 
 
-#isparameterlessdomain(t::libSingular.n_coeffType) = 
-#     (t in (libSingular.n_Z(), libSingular.n_Q(), libSingular.n_R(), libSingular.n_long_R(), libSingular.n_long_C())) 
-
-# isunique(cf::SingularCoeffs) = isparameterlessdomain(libSingular.getCoeffType(get_raw_ptr(cf)))
+##isparameterlessdomain(t::libSingular.n_coeffType) = 
+##     (t in (libSingular.n_Z(), libSingular.n_Q(), libSingular.n_R(), libSingular.n_long_R(), libSingular.n_long_C())) 
 
 
-isunique(::SingularUniqueRing) = true
-isunique(::SingularUniqueField) = true
-isunique(cf::SingularCoeffs) = false
+
+### isunique(cf::SingularCoeffs) = isparameterlessdomain(libSingular.getCoeffType(get_raw_ptr(cf)))
+#isunique(::SingularUniqueRing) = true
+#isunique(::SingularUniqueField) = true
+#isunique(cf::SingularCoeffs) = false

@@ -1079,7 +1079,8 @@ function string(I::SingularIdeal) # Module)
          continue;
 
          m = libSingular.p_String(p, rr); # NOTE: changes/normalizes coefss of p !
-         a[i]= bytestring(m);
+         a[i] *= bytestring(m);
+#         a[i]= bytestring(m);
          libSingular.omFree(Ptr{Void}(m));
       end
    end
@@ -1124,7 +1125,7 @@ function string(I::SingularModule)
          continue;
 
          m = libSingular.p_String(p, rr);
-         a[i] = bytestring(m);
+         a[i] *= bytestring(m);
          libSingular.omFree(Ptr{Void}(m));
       end
    end

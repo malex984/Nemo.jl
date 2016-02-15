@@ -1,5 +1,5 @@
 module libSingular
-export n_coeffType, number, coeffs, n_Test, p_Test, r_Test
+export n_coeffType, number, coeffs, n_Test, p_Test, r_Test, id_Test
 using Cxx
 function __libSingular_init__()
    const local prefix = joinpath(Pkg.dir("Nemo"), "local");
@@ -10,7 +10,8 @@ function __libSingular_init__()
    cxxinclude(joinpath("gmp.h"), isAngled=false)
    cxxinclude(joinpath("debugbreak.h"), isAngled=false)
    cxxinclude(joinpath("misc", "intvec.h"), isAngled=false);
-   cxxinclude(joinpath("reporter", "reporter.h"), isAngled=false)
+   cxxinclude(joinpath("misc", "auxiliary.h"), isAngled=false);
+   cxxinclude(joinpath("reporter", "reporter.h"), isAngled=false);
    cxxinclude(joinpath("coeffs", "coeffs.h"), isAngled=false); cxxinclude(joinpath("polys", "clapsing.h"), isAngled=false);
    cxxinclude(joinpath("polys", "monomials", "ring.h"), isAngled=false)
    cxxinclude(joinpath("polys", "monomials", "p_polys.h"), isAngled=false)
@@ -19,13 +20,13 @@ function __libSingular_init__()
    cxxinclude(joinpath("kernel", "ideals.h"), isAngled=false)
 
 
-
 ## NOTE: make sure the line number is correct in case of any changes above here!!!!
 cxx"""#line 25 "libSingular.jl"
     #include "Singular/libsingular.h"
     #include "omalloc/omalloc.h"
     #include "gmp.h"
     #include "misc/intvec.h"
+    #include "misc/auxiliary.h"
     #include "reporter/reporter.h"
     #include "coeffs/coeffs.h"
 
@@ -226,6 +227,10 @@ cxx"""#line 25 "libSingular.jl"
        return (id); 
    }
 
+   template<typename T> 
+   void setPtr( T& f, void* p)
+   { f = (T)(p); };
+
 """
 
    local const binSingular = joinpath(prefix, "bin", "Singular")
@@ -266,7 +271,22 @@ cxx"""#line 25 "libSingular.jl"
 	  :degrevlex => ringorder_dp(), :deglex => ringorder_Dp(),
 	  :negdegrevlex => ringorder_ds(), :negdeglex => ringorder_Ds(),
 	  :comp1max => ringorder_c(), :comp1min => ringorder_C() );
+
+#   global const TRUE = TRUE();
+#   global const FALSE = (@cxx FALSE);
+   global const n_NemoCoeffs = registerNemoCoeffs();
 end
+
+
+function TRUE()
+   return convert(Cint, 1) # (icxx""" return (BOOLEAN)1;  """);
+end
+
+function FALSE()
+   return convert(Cint, 0) # (icxx""" return (BOOLEAN)0; """);
+end
+
+
 
 typealias nMapFunc Cxx.CppFptr{Cxx.CppFunc{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Tuple{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}}}}
 
@@ -380,6 +400,9 @@ global setMap_QQ2ZZ = C_NULL
 global setMap_ZZ2QQ = C_NULL
 
 
+
+
+
 typealias const_coeffs coeffs # pcpp"const coeffs"
 # NOTE: no need in coeffs_ptr, right?
 
@@ -392,9 +415,379 @@ typealias number_ptr Ptr{number}
 #pcpp"number*" # Ptr{number} ### ?: Cxx should auto-support Ptr & Ref... 
 typealias number_ref Ref{number} ###   rcpp"number" # 
 
+typealias cfInitCharProc    Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:cfInitCharProc},(false,false,false)},(false,false,false)}
+
+#  pcpp"cfInitCharProc" ## typedef BOOLEAN (*cfInitCharProc)(coeffs, void *);
+
+function n_unknown() 
+   return (@cxx n_unknown); # n_coeffType
+end
+
+function nRegister(t :: n_coeffType, f)
+   ## n_coeffType nRegister(n_coeffType n, cfInitCharProc f);
+   const tt :: n_coeffType = (icxx""" return nRegister($t, (cfInitCharProc)$f); """);
+   @assert (tt != n_unknown());
+   return tt;
+end
+
+
+#===================================================================================#
+
+function nemoContext( cf :: coeffs )
+
+   @assert (cf != coeffs(C_NULL));
+   @assert (n_NemoCoeffs == getCoeffType(cf));
+
+   const data = (@cxx cf -> data);
+   const r = unsafe_pointer_to_objref(data);
+
+   return r
+end
+
+const nemoNumberID = ObjectIdDict(); # All nemo ringelems are to be kept alive via this Dict!
+
+function nemoNumber2Elem( p :: number, cf :: coeffs ) 
+##   const j = unsafe_pointer_to_objref(n);
+   const j = unsafe_pointer_to_objref( icxx""" return (void*)$p; """);
+   @assert (nemoNumberID[cf, p] == j);
+   return j;
+end
+
+function nemoElem2Number{T}( j :: T, cf :: coeffs ) 
+   const n = number( icxx"""return (void*)($(jpcpp"jl_value_t"( j )));""" ); # pointer_from_objref ???
+   nemoNumberID[cf, n] = j; # keeps j alive!!!
+   @assert (nemoNumber2Elem(n, cf) == j);
+   return n #  icxx""" return (void*)$n; """ );
+end
+
+
+#===================================================================================#
+
+function nemoCoeffWrite( cf:: coeffs, details :: Cint )
+   const r = nemoContext(cf);
+   PrintS(string(r) * ( (details > 0) ? " % [" * typeof(r)*"]" : "" )); 
+   return Void() # Nothing
+end
+
+function nemoCoeffString( cf:: coeffs )
+   const r = nemoContext(cf);
+   StringSetS(string(r));  m = StringEndS();
+   return Ptr{Cuchar}(m);
+end
+
+function nemoCoeffName( cf:: coeffs )
+   const r = nemoContext(cf);
+   StringSetS(string(r));  ### No way to get Nemo name for that Ring/Field :(
+   m = StringEndS();
+   return Ptr{Cuchar}(m);
+end
+
+# static BOOLEAN CoeffIsEqual(const coeffs r, n_coeffType n, void *)
+function nemoCoeffIsEqual( cf:: coeffs, t :: n_coeffType, p :: Ptr{Void} )
+   (t != n_NemoCoeffs) && return FALSE();  
+   (p == C_NULL) && return FALSE();
+   const rr = nemoContext(cf);
+   const r = unsafe_pointer_to_objref(p);
+   (r != rr) && return FALSE();
+   return TRUE();
+end
+
+function nemoInit( i::Clong, cf::coeffs )
+   const r = nemoContext(cf); # Unique!  
+   return nemoElem2Number(r(i), cf); 
+end
+
+function nemoWriteNumber( n::number, cf::coeffs )
+    const r = nemoContext(cf); # Unique!
+    const j = nemoNumber2Elem(n, cf);
+    PrintS(pointer(string(j)));
+    return Void()
+end
+
+function nemoDelete( pp :: Ptr{number}, cf::coeffs )
+   const p = unsafe_load(pp);
+##   println("nemoDelete($pp --> $p).");
+   delete!(nemoNumberID, (cf, p));
+   icxx""" *(number*)($pp) = NULL; """; #   unsafe_store!(pp, number(C_NULL));
+   return Void()
+end
+
+### @cxxm "void nemoKillChar(coeffs cf)" begin  
+function nemoKillChar( cf:: coeffs )
+   @assert (cf != coeffs(C_NULL));
+   @assert (n_NemoCoeffs == getCoeffType(cf));
+   icxx""" ((coeffs)$cf) -> data = NULL; """ # ??
+   return Void()
+end
+
+function nemoMult(a:: number, b::number, cf::coeffs)
+    const r = nemoContext(cf); # Unique!
+    return nemoElem2Number( nemoNumber2Elem(a, cf) * nemoNumber2Elem(b, cf), cf); 
+end
+
+function nemoAdd(a:: number, b::number, cf::coeffs)
+    const r = nemoContext(cf); # Unique!
+    return nemoElem2Number( nemoNumber2Elem(a, cf) + nemoNumber2Elem(b, cf), cf); 
+end
+
+function nemoSub(a:: number, b::number, cf::coeffs)
+    const r = nemoContext(cf); # Unique!
+    return nemoElem2Number( nemoNumber2Elem(a, cf) - nemoNumber2Elem(b, cf), cf); 
+end
+
+function nemoDiv(a:: number, b::number, cf::coeffs)
+    const r = nemoContext(cf); # Unique!
+    return nemoElem2Number( nemoNumber2Elem(a, cf) // nemoNumber2Elem(b, cf), cf); 
+end
+
+function nemoExactDiv(a:: number, b::number, cf::coeffs)
+    const r = nemoContext(cf); # Unique!
+    return nemoElem2Number( divexact(nemoNumber2Elem(a, cf), nemoNumber2Elem(b, cf)), cf); 
+end
+
+function nemoIntMod(a:: number, b::number, cf::coeffs)
+    const r = nemoContext(cf); # Unique!
+    return nemoElem2Number( mod(nemoNumber2Elem(a, cf), nemoNumber2Elem(b, cf)), cf); 
+end
+
+
+#===================================================================================#
+
+# BOOLEAN ...InitChar(coeffs n, void*) -> FALSE!
+function nemoInitCharProc( cf :: coeffs, p :: Ptr{Void} ) #  @cxxm "BOOLEAN nemoInitCharProc(coeffs cf, void* p)" begin  
+#   println("nemoInitCharProc(cf: $cf, p: $p)... ");
+   @assert (cf != coeffs(C_NULL));
+   (p == C_NULL) && throw(ErrorException("nemoInitCharProc: Wrong parameter: nemo-ring-context-pointer cannot be NULL!"));
+
+   r = unsafe_pointer_to_objref(p);
+   @assert (pointer_from_objref(r) == p);
+
+#   println("typeof(r): ", typeof(r)); 
+#   println("value(r) : ", r        ); 
+
+   @assert (n_NemoCoeffs == getCoeffType(cf));
+   
+   # properties(mandatory):
+   icxx""" 
+      coeffs cf = (coeffs)($cf);
+
+      cf -> has_simple_Alloc = FALSE;  // (i.e. number is not a pointer): TRUE, if nNew/nDelete/nCopy are dummies
+      cf -> has_simple_Inverse= FALSE; // TRUE, if std should make polynomials monic (if nInvers is cheap)
+                                       // if FALSE, then a gcd routine is used for a content computation
+
+      cf -> is_field  = FALSE; // TRUE, if cf is a field // TODO: FIXME: Only Rings for now: if r <: Field => set TRUE above!
+      cf -> is_domain = TRUE; // TRUE, if cf is a domain // HAS ZERO DIVISORS? # as above!
+
+   """
+
+
+   const ch = Cint(0); ## characteristic(r); # ??
+   # NOTE: p is not a Julia object reference! Make sure that corresponding Julia object is safe from being GC!
+   icxx""" coeffs cf = (coeffs)($cf);
+      cf->ch   = $ch;
+      cf->data = $p; 
+      cf->iNumberOfParameters = 0;
+      cf->pParameterNames = NULL;
+   """
+
+   const _nemoWriteNumber = cfunction(nemoWriteNumber, Void, (number, coeffs));
+   icxx""" coeffs cf = (coeffs)($cf);
+      // void    (*cfWriteLong)(number a, const coeffs r); // void    (*cfWriteShort)(number a, const coeffs r);
+      setPtr( cf -> cfWriteLong, $_nemoWriteNumber ); setPtr( cf -> cfWriteShort, $_nemoWriteNumber ); 
+   """
+
+   icxx"""
+      // number  (*cfInit)(long i,const coeffs r);
+      setPtr( $cf -> cfInit,$(cfunction(nemoInit, number, (Clong, coeffs))) ); 
+   """
+
+   icxx"""
+      // void    (*cfDelete)(number * a, const coeffs r);
+      setPtr( $cf -> cfDelete, $(cfunction(nemoDelete, Void, (Ptr{number}, coeffs));) ); 
+   """
+
+   icxx"""
+      // BOOLEAN (*nCoeffIsEqual)(const coeffs r, n_coeffType n, void * parameter);
+      setPtr( $cf -> nCoeffIsEqual, $(cfunction(nemoCoeffIsEqual, Cint, (coeffs,n_coeffType,Ptr{Void}))) ); 
+   """
+
+   icxx"""
+      // char* (*cfCoeffString)(const coeffs r);
+      setPtr( $cf -> cfCoeffString, $(cfunction(nemoCoeffString, Ptr{Cuchar}, (coeffs,))) ); 
+   """ 
+
+   icxx"""
+      // char* (*cfCoeffName)(const coeffs r);
+      setPtr( $cf -> cfCoeffName, $(cfunction(nemoCoeffName, Ptr{Cuchar}, (coeffs,))) );
+   """ 
+
+   icxx"""
+      // void (*cfKillChar)(coeffs r);
+      setPtr( $cf -> cfKillChar, $(cfunction(nemoKillChar, Void, (coeffs,))) ); 
+   """ 
+   icxx"""
+      // void (*cfCoeffWrite)(const coeffs r, BOOLEAN details);
+      setPtr( $cf -> cfCoeffWrite, $(cfunction(nemoCoeffWrite, Void, (coeffs,Cint))) );
+   """
+
+
+   ###   // number nemoMult(number a, number b, const coeffs r);
+   icxx"""
+      setPtr( $cf -> cfMult, $(cfunction(nemoMult, number, (number, number, coeffs))) ); 
+   """ 
+   icxx"""
+      setPtr( $cf -> cfAdd, $(cfunction(nemoAdd, number, (number, number, coeffs))) ); 
+   """ 
+   icxx"""
+      setPtr( $cf -> cfSub, $(cfunction(nemoSub, number, (number, number, coeffs))) ); 
+   """ 
+   icxx"""
+      setPtr( $cf -> cfDiv, $(cfunction(nemoDiv, number, (number, number, coeffs))) ); 
+   """ 
+   icxx"""
+      setPtr( $cf -> cfIntMod, $(cfunction(nemoIntMod, number, (number, number, coeffs))) ); 
+   """ 
+   icxx"""
+      setPtr( $cf -> cfExactDiv, $(cfunction(nemoExactDiv, number, (number, number, coeffs))) ); 
+   """
+
+#= ====
+   icxx"""
+      // void nemoSetChar(const coeffs r);    
+      setPtr( $cf -> cfSetChar, $(cfunction(nemoSetChar, Void, (coeffs,))) ); 
+   """
+
+   icxx"""
+/*
+	// number  InitMPZ(mpz_t i,  coeffs r);
+//      setPtr( $cf -> cfInitMPZ, $(cfunction( nemoInitMPZ, number, (mpz_t, coeffs) )) ); 
+
+      // int     Size(number n,  coeffs r);
+//      setPtr( $cf -> cfSize, $(cfunction( nemoSize, Cint, (number, coeffs) )) ); 
+
+      // long    Int(number &n,  coeffs r);
+      setPtr( $cf -> cfInt, $(cfunction( nemoInt, long    ,(number &n,  coeffs r) )) ); 
+      // void    MPZ(mpz_t result, number &n,  coeffs r);
+      setPtr( $cf -> cfMPZ, $(cfunction( nemoMPZ, void    ,(mpz_t result, number &n,  coeffs r) )) ); 
+      // number  InpNeg(number a,  coeffs r);
+      setPtr( $cf -> cfInpNeg, $(cfunction( nemoInpNeg, number  ,(number a,  coeffs r) )) ); 
+      // number  Invers(number a,  coeffs r);
+      setPtr( $cf -> cfInvers, $(cfunction( nemoInvers, number  ,(number a,  coeffs r) )) ); 
+      // number  Copy(number a,  coeffs r);
+      setPtr( $cf -> cfCopy, $(cfunction( nemoCopy, number  ,(number a,  coeffs r) )) ); 
+      // number  RePart(number a,  coeffs r);
+      setPtr( $cf -> cfRePart, $(cfunction( nemoRePart, number  ,(number a,  coeffs r) )) ); 
+      // number  ImPart(number a,  coeffs r);
+      setPtr( $cf -> cfImPart, $(cfunction( nemoImPart, number  ,(number a,  coeffs r) )) ); 
+      // void    Normalize(number &a,  coeffs r);
+      setPtr( $cf -> cfNormalize, $(cfunction( nemoNormalize, void    ,(number &a,  coeffs r) )) ); 
+      // BOOLEAN Greater(number a,number b,  coeffs r);
+      setPtr( $cf -> cfGreater, $(cfunction( nemoGreater, Cint ,(number a,number b,  coeffs r) )) ); 
+      // BOOLEAN Equal(number a,number b,  coeffs r);
+      setPtr( $cf -> cfEqual, $(cfunction( nemoEqual, Cint ,(number a,number b,  coeffs r) )) ); 
+      // BOOLEAN IsZero(number a,  coeffs r);
+      setPtr( $cf -> cfIsZero, $(cfunction( nemoIsZero, Cint ,(number a,  coeffs r) )) ); 
+      // BOOLEAN IsOne(number a,  coeffs r);
+      setPtr( $cf -> cfIsOne, $(cfunction( nemoIsOne, Cint ,(number a,  coeffs r) )) ); 
+      // BOOLEAN IsMOne(number a,  coeffs r);
+      setPtr( $cf -> cfIsMOne, $(cfunction( nemoIsMOne, Cint ,(number a,  coeffs r) )) ); 
+      // BOOLEAN GreaterZero(number a,  coeffs r);
+      setPtr( $cf -> cfGreaterZero, $(cfunction( nemoGreaterZero, Cint ,(number a,  coeffs r) )) ); 
+      // void    Power(number a, int i, number * result,  coeffs r);
+      setPtr( $cf -> cfPower, $(cfunction( nemoPower, void    ,(number a, int i, number * result,  coeffs r) )) ); 
+      // number  GetDenom(number &n,  coeffs r);
+      setPtr( $cf -> cfGetDenom, $(cfunction( nemoGetDenom, number  ,(number &n,  coeffs r) )) ); 
+      // number  GetNumerator(number &n,  coeffs r);
+      setPtr( $cf -> cfGetNumerator, $(cfunction( nemoGetNumerator, number  ,(number &n,  coeffs r) )) ); 
+      // number  Gcd(number a, number b,  coeffs r);
+      setPtr( $cf -> cfGcd, $(cfunction( nemoGcd, number  ,(number a, number b,  coeffs r) )) ); 
+      // number  SubringGcd(number a, number b,  coeffs r);
+      setPtr( $cf -> cfSubringGcd, $(cfunction( nemoSubringGcd, number  ,(number a, number b,  coeffs r) )) ); 
+      // number  ExtGcd(number a, number b, number *s, number *t, coeffs r);
+      setPtr( $cf -> cfExtGcd, $(cfunction( nemoExtGcd, number  ,(number a, number b, number *s, number *t, coeffs r) )) ); 
+      // number  XExtGcd(number a, number b, number *s, number *t, number *u, number *v,  coeffs r);
+      setPtr( $cf -> cfXExtGcd, $(cfunction( nemoXExtGcd, number  ,(number a, number b, number *s, number *t, number *u, number *v,  coeffs r) )) ); 
+      // number  EucNorm(number a,  coeffs r);
+      setPtr( $cf -> cfEucNorm, $(cfunction( nemoEucNorm, number  ,(number a,  coeffs r) )) ); 
+      // number  Ann(number a,  coeffs r);
+      setPtr( $cf -> cfAnn, $(cfunction( nemoAnn, number  ,(number a,  coeffs r) )) ); 
+      // number  QuotRem(number a, number b, number *rem,  coeffs r);
+      setPtr( $cf -> cfQuotRem, $(cfunction( nemoQuotRem, number  ,(number a, number b, number *rem,  coeffs r) )) ); 
+      // number  Lcm(number a, number b,  coeffs r);
+      setPtr( $cf -> cfLcm, $(cfunction( nemoLcm, number  ,(number a, number b,  coeffs r) )) ); 
+      // number  NormalizeHelper(number a, number b,  coeffs r);
+      setPtr( $cf -> cfNormalizeHelper, $(cfunction( nemoNormalizeHelper, number  ,(number a, number b,  coeffs r) )) ); 
+      //  char *  Read( char * s, number * a,  coeffs r);
+      setPtr( $cf -> cfRead, $(cfunction( nemoRead,  char *  ,( char * s, number * a,  coeffs r) )) ); 
+      // nMapFunc SetMap( coeffs src,  coeffs dst);
+      setPtr( $cf -> cfSetMap, $(cfunction( nemoSetMap, nMapFunc ,( coeffs src,  coeffs dst) )) ); 
+      // void    WriteFd(number a, FILE *f,  coeffs r);
+      setPtr( $cf -> cfWriteFd, $(cfunction( nemoWriteFd, void    ,(number a, FILE *f,  coeffs r) )) ); 
+      // number  ReadFd( s_buff f,  coeffs r);
+      setPtr( $cf -> cfReadFd, $(cfunction( nemoReadFd, number  ,( s_buff f,  coeffs r) )) );  
+      // void    InpMult(number &a, number b,  coeffs r);
+      setPtr( $cf -> cfInpMult, $(cfunction( nemoInpMult, void    ,(number &a, number b,  coeffs r) )) ); 
+      // void    InpAdd(number &a, number b,  coeffs r);
+      setPtr( $cf -> cfInpAdd, $(cfunction( nemoInpAdd, void    ,(number &a, number b,  coeffs r) )) ); 
+
+      // number  Farey(number p, number n,  coeffs);
+//      setPtr( $cf -> cfFarey, $(cfunction( nemoFarey, number, (number, number, coeffs) )) ); 
+
+      //  number  ChineseRemainder(number *x, number *q,int rl, BOOLEAN sym,CFArray &inv_cache, coeffs);
+//      setPtr( $cf -> cfChineseRemainder, $(cfunction( nemoChineseRemainder,  number,(Ptr{number}, Ptr{number}, Cint, Cint sym, Ref{CFArray}, coeffs) )) ); 
+*/
+
+      // int ParDeg(number x, coeffs r);
+//      setPtr( $cf -> cfParDeg, $(cfunction( nemoParDeg, Cint, (number, coeffs) )) ); 
+
+      // number  Parameter( int i,  coeffs r);
+//      setPtr( $cf -> cfParameter, $(cfunction( nemoParameter, number, ( Cint, coeffs) )) );  
+
+      // number Random(siRandProc p, number p1, number p2,  coeffs cf);
+//      setPtr( $cf -> cfRandom, $(cfunction( nemoRandom, number, (siRandProc, number, number, coeffs) )) );
+
+      // int     DivComp(number a,number b, coeffs r);
+//      setPtr( $cf -> cfDivComp, $(cfunction( nemoDivComp, Cint, (number, number, coeffs) )) ); 
+
+      // BOOLEAN IsUnit(number a, coeffs r);
+//      setPtr( $cf -> cfIsUnit, $(cfunction( nemoIsUnit, Cint ,(number, coeffs) )) );  
+
+      // number  GetUnit(number a, coeffs r);   
+//      setPtr( $cf -> cfGetUnit, $(cfunction( nemoGetUnit, number, (number, coeffs) )) ); 
+
+      // BOOLEAN DivBy(number a, number b,  coeffs r); //CF: test if b divides a
+//      setPtr( $cf -> cfDivBy, $(cfunction( nemoDivBy, Cint ,(number, number,  coeffs) )) );   
+
+      // coeffs Quot1(number c,  coeffs r);
+//      setPtr( $cf -> cfQuot1, $(cfunction( nemoQuot1, coeffs ,(number, coeffs) )) ); 
+#ifdef LDEBUG
+       // BOOLEAN DBTest(number a,  char *f,  int l,  coeffs r);
+//      setPtr( $cf -> cfDBTest, $(cfunction( nemoDBTest, Cint, (number,  char *f,  Cint,  coeffs) )) ); 
+#endif
+
+//      cf -> cfClearContent = NULL; // nCoeffsEnumeratorFunc cfClearContent; // function pointer behind n_ClearContent   
+//      cf -> cfClearDenominators = NULL;// nCoeffsEnumeratorFunc cfClearDenominators; // function pointer behind n_ClearDenominators
+
+  """
+==== =#
+
+
+   return FALSE(); #? TRUE();
+end
+
+#===================================================================================#
+
+function registerNemoCoeffs()
+   const c = cfunction(nemoInitCharProc, Cint, (coeffs, Ptr{Void}));
+   const t = nRegister(n_unknown(), c);
+   @assert (t != n_unknown());
+   return t;
+end
+
+#===================================================================================#
 
 function nInitChar(n :: n_coeffType, p :: Ptr{Void})
-   return @cxx nInitChar( n, p )
+   return (@cxx nInitChar( n, p ));
 end
 
 function nKillChar(cf::coeffs)
@@ -1454,6 +1847,9 @@ end
 
 ## ideal kNF(ideal F, ideal Q, ideal p,int syzComp=0, int lazyReduce=0);
 ## poly k_NF (ideal F, ideal Q, poly p,int syzComp, int lazyReduce, const ring _currRing);
+
+
+
 
 
 end # libSingular module
