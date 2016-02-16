@@ -1,4 +1,5 @@
 module libSingular
+import Base.==, Base.getindex, Base.setindex!, Base.*, Base.^, Base.+, Base.sign, Base.length, Base.show, Base.inv, Base.reverse
 export n_coeffType, number, coeffs, n_Test, p_Test, r_Test, id_Test
 using Cxx
 function __libSingular_init__()
