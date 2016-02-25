@@ -21,8 +21,8 @@ end
 isequal{CF<:SingularCoeffs}(A::CF, B::CF) = (get_raw_ptr(A) == get_raw_ptr(B))
 =={CF<:SingularCoeffs}(A::CF, B::CF)= isequal(A, B)
 
-function hash(A::SingularCoeffs)
-   return hash(get_raw_ptr(A))
+function hash(A::SingularCoeffs, h::Uint64)
+   return hash(get_raw_ptr(A)) $ h
 end
 
 
@@ -145,8 +145,8 @@ show(io::IO, n::SingularCoeffsElems) = print(io, string(n))
 ###############################################################################
 
 
-function hash(a::SingularCoeffsElems)
-   return hash(parent(a)) $ hash(string(a))  ## TODO: string may be a bit too inefficient wherever hash is used...?
+function hash(a::SingularCoeffsElems, h::Uint64)
+   return hash(parent(a)) $ hash(string(a)) $ h ## TODO: string may be a bit too inefficient wherever hash is used...?
 end
 
 deepcopy(a::SingularCoeffsElems) = elem_type(parent(a))(a)

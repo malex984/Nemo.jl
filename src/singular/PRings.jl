@@ -109,8 +109,8 @@ end
 isequal{CF<:SingularPolynomialRing}(A::CF, B::CF) = (get_raw_ptr(A) == get_raw_ptr(B))
 =={CF<:SingularPolynomialRing}(A::CF, B::CF)= isequal(A, B)
 
-function hash(A::SingularPolynomialRing)
-   return hash(get_raw_ptr(A))
+function hash(A::SingularPolynomialRing, h::Uint64)
+   return hash(get_raw_ptr(A)) $ h
 end
 
 get_raw_ptr(R :: SingularPolynomialRing) = r_Test(R.ptr)
@@ -337,8 +337,8 @@ function _SingularPolyRingElem_clear_fn(p :: SingularPolynomialElem)
    p.ptr = libSingular.poly(C_NULL); # no tests...
 end
 
-function hash(a::SingularPolynomialElem)
-   return hash(parent(a)) $ hash(string(a))  ## TODO: string may be a bit too inefficient wherever hash is used...?
+function hash(a::SingularPolynomialElem, h::Uint64)
+   return hash(parent(a)) $ hash(string(a)) $ h ## TODO: string may be a bit too inefficient wherever hash is used...?
 end
 
 deepcopy(a::SingularPolynomialElem) = elem_type(parent(a))(a)
@@ -455,9 +455,9 @@ show(io::IO, r::SingularPolynomialRing) = print(io, string(r))
 #
 ###############################################################################
 
-function hash(a::SingularPolynomialRing)
+function hash(a::SingularPolynomialRing, h::Uint64)
 #   h = 0x8a30b0d963237dd5 # TODO: change this const to something uniqe!
-   return hash(get_raw_ptr(a))  ## TODO: string may be a bit too inefficient wherever hash is used...?
+   return hash(get_raw_ptr(a)) $ h  ## TODO: string may be a bit too inefficient wherever hash is used...?
 end
 
 ## TODO: FIXME: avoid explicite constructor calls (PRingElem()) in the following: use elem_type?!

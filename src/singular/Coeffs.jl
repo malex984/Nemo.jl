@@ -203,9 +203,9 @@ show(io::IO, c::SingularCoeffs) = print(io, string(c))
 #
 ###############################################################################
 
-function hash(a::SingularCoeffs)
+function hash(a::SingularCoeffs, h::Uint64)
 #   h = 0x8a30b0d963237dd5 # TODO: change this const to something uniqe!
-   return hash(get_raw_ptr(a)) ## TODO: string may be a bit too inefficient wherever hash is used...?
+   return hash(get_raw_ptr(a)) $ h ## TODO: string may be a bit too inefficient wherever hash is used...?
 end
 
 zero(a::SingularCoeffs) = elem_type(a)(a,  0)
