@@ -8,13 +8,14 @@ using Cxx
 # Union{Type{Val{:lex}}, Type{Val{:degrevlex}}}
 
 function SingularPolynomialRing(R::Nemo.SingularCoeffs, varstr::AbstractString{}, ordering::Symbol = :degrevlex) 
-   try
+#   try
        parent_obj = Nemo.PRing(R, varstr, Nemo.libSingular.dictOrdSymbols[ordering]);
        return parent_obj, gen(parent_obj)
-   catch
-       error("Could not create a singular polynomial ring $R [$varstr] ordered via '$ordering'") 
-   end
-   error("Sorry: something went wrong... ")
+#   catch e
+#        @show e
+#       error("Could not create a singular polynomial ring $R [$varstr] ordered via '$ordering'") 
+#   end
+#   error("Sorry: something went wrong... ")
 end
 
 #=

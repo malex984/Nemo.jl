@@ -1,6 +1,6 @@
 module libSingular
 import Base.==, Base.getindex, Base.setindex!, Base.*, Base.^, Base.+, Base.sign, Base.length, Base.show, Base.inv, Base.reverse
-export n_coeffType, number, coeffs, n_Test, p_Test, r_Test, id_Test
+export n_coeffType, number, coeffs, n_Test, p_Test, r_Test, id_Test;
 using Cxx
 function __libSingular_init__()
    const local prefix = joinpath(Pkg.dir("Nemo"), "local");
@@ -344,16 +344,22 @@ end
 function PrintLn()
    @cxx _PrintLn()
 end 
-function omFree(m :: Ptr{Void})
-   icxx"""omFree($m); """ #  @cxx _omFree(m)
+function omFree{T}(m :: Ptr{T})
+   @cxx _omFree(m)
+#   icxx""" omFree((void*)$m); """ #  @cxx _omFree(m)
 end 
 function omAlloc(size :: Csize_t)
-   return icxx""" return (void*)omAlloc($size); """ 	 
+   return icxx""" return ((void*)omAlloc($size)); """ 	 
 end
-
 function omAlloc0(size :: Csize_t)
-   return icxx""" return (void*)omAlloc0($size); """ 	 
+   return icxx""" return ((void*)omAlloc0($size)); """ 	 
 end
+# omStrDup
+function omStrDup(m :: Ptr{Cuchar})
+   # // char* omStrDup(const char* s)
+   return Ptr{Cuchar}(icxx""" return (omStrDup($m)); """);
+end 
+
 function siRand()
    return Int(@cxx _siRand())
 end
@@ -431,6 +437,8 @@ end
 
 
 #===================================================================================#
+
+using ..Nemo: Ring, RingElem, deepcopy ### , characteristic
 
 function nemoContext( cf :: coeffs )
 
@@ -928,7 +936,7 @@ end
 # number n_InitMPZ(mpz_t n,     const coeffs r) # TODO: BigInt???
 function n_InitMPZ(b :: BigInt, cf :: coeffs)
     bb = __mpz_struct(pointer_from_objref(b))
-    r = @cxx n_InitMPZ(bb, cf)
+    r = (@cxx n_InitMPZ(bb, cf));
 #    println("n_InitMPZ($b, $cf), bb: $bb --> $r");
     return n_Test(r, cf)
 end
@@ -960,7 +968,7 @@ end
 n_Test(n :: number, cf :: coeffs) = n_TestDebug(n, cf)
 
 function BT()
-	 return ## TODO: FIXME: useless as it is now! :(
+#	 return ## TODO: FIXME: useless as it is now! :(
 
          bt = backtrace();#      	 println( bt )
 	 Base.show_backtrace(STDERR, bt); 
@@ -979,6 +987,10 @@ function BT()
 
 	     println( "#", i, ": ", frame, " : ",  file, " : ", line, " : ",  func, " : ", fromC )
          end
+
+######	 @cxx _break()
+#         @assert (_n_Test(n, cf) == true)
+#         throw(ErrorException("n_Test: Wrong Singular number"))
 end
 
 function n_TestDebug(n :: number, cf :: coeffs) 

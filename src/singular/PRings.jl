@@ -1,7 +1,6 @@
 ##### Singular Polynomial Rings and Free modules over them + sparse polynomials and vectors
 
 const SRingID = ObjectIdDict()
-
 type PRing <: SingularPolynomialRing
    ptr :: libSingular.ring
    base_ring :: SingularCoeffs
@@ -21,7 +20,7 @@ type PRing <: SingularPolynomialRing
 	  end
 	  vars[i] = v * "\0";
 
-	  vvv[i] = pointer(vars[i]);
+	  vvv[i] = libSingular.omStrDup(pointer(vars[i]));
       end
 
 ##      println(vars)
@@ -105,6 +104,7 @@ type PModules  <: SingularPolynomialRing
    end
 end
 
+characteristic(R::SingularPolynomialRing) = characteristic( base_ring(R) );
 
 isequal{CF<:SingularPolynomialRing}(A::CF, B::CF) = (get_raw_ptr(A) == get_raw_ptr(B))
 =={CF<:SingularPolynomialRing}(A::CF, B::CF)= isequal(A, B)

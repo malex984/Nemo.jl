@@ -6,8 +6,8 @@
 
 # export SingularField, SingularFieldElem, Coeffs, NumberElem, \
 # SingularQQ, SingularZZ
-# export elem_type, base_ring, check_parent, show
-# export characteristic
+export elem_type, parent_type, base_ring, check_parent, show
+export characteristic
 export mullow, den, num
 export mul!, addeq!
 
@@ -233,3 +233,7 @@ include("PRings.jl")
 #type SingularPolynomial <: PolyElem
 
 #end
+
+
+characteristic(::Field) = 0
+characteristic(::Ring) = 0
