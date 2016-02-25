@@ -373,28 +373,6 @@ function test_singular_lowlevel_coeffs()
 
 ###   test_generic_polys(GF)
 
-   println("Testing NemoCoeffs(ZZ/QQ).................");
-
-   NZ = Nemo.NemoCoeffs(ZZ);
-   println("Nemo.NemoCoeffs(ZZ): ", NZ);
-
-   print("NZ(6)");
-   v = NZ(6);
-   print("   :::   ");
-   println(v);
-   
-
-   NQ = Nemo.NemoCoeffs(QQ);
-   println("Nemo.NemoCoeffs(QQ): ", NQ);
-   print("NQ(66)");
-   vv = NQ(66);
-   print("   :::   ");
-   println(vv);
-   
-
-
-   println("\n...................PASS")
-
 end
 
 
@@ -483,11 +461,219 @@ ring test_construct_ring()
 end
 
 
+typealias PVoice Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:Voice},(false,false,false)},(false,false,false)}
+typealias idhdl Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:idrec},(false,false,false)},(false,false,false)}
+
+#typealias leftv Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:sleftv},(false,false,false)},(false,false,false)}
+
+
+function nemoWerrorS(msg :: Ptr{Cuchar})
+     # // void WerrorS_dummy(const char *)
+     println("J: ERROR on the SINGULAR side: ", msg);
+
+     Nemo.libSingular.BT();
+     return Void()
+end
+
+function test_SINGULAR()
+
+   cV = (@cxx currentVoice); # PVoice?
+
+   const i = (icxx""" return (feInitStdin(NULL)); """);
+
+   println(typeof(i));
+   println(i);
+
+   icxx""" setPtr(currentVoice, $i); """
+
+   cV = (@cxx currentVoice); # PVoice?
+   @show cV
+
+   ## Cxx.CppFptr{Cxx.CppFunc{Void,Tuple{Ptr{UInt8}}}}
+   WerrorS_callback = (@cxx WerrorS_callback);
+   @show  WerrorS_callback
+
+   if (WerrorS_callback == typeof(WerrorS_callback)(C_NULL))
+      const _nemoWerrorS = cfunction(nemoWerrorS, Void, (Ptr{Cuchar},));
+     icxx""" setPtr(WerrorS_callback, $_nemoWerrorS); """
+   end
+
+   const n = "iSingularVersion";
+   s = "int $n = system(\"version\");RETURN();\n";
+   println("Evaluating singular code: ", s);
+
+   ### TODO: Ask Hans about myynest!
+   icxx""" myynest = 1; /* <=0: interactive at eof / >=1: non-interactive */ """;
+   error_code = Cint( icxx""" return ((int)iiAllStart(NULL, (char*)$(pointer(s)), BT_execute, 0)); """ )
+
+   println("Singular interpreter returns: $error_code, errorreported: ", (@cxx errorreported));
+
+   if (error_code > 0) 
+      icxx""" errorreported = 0; /* reset error handling */ """
+   end
+
+   ##idhdl ggetid(const char *n); idhdl ggetid(const char *n, BOOLEAN local, idhdl *packhdl);
+   h = (@cxx ggetid(pointer(n)))
+
+   println(h);
+   println(typeof(h));
+   @show h
+
+   if (h == typeof(h)(C_NULL))
+      println("Singular's name '$n' does not exist!");   
+   else
+      println("Singular Variable '$n' of type ", (@cxx h -> typ),", with value: ", (icxx""" return ((int)(long)IDDATA($h)); """))
+   end
+
+   h = (@cxx ggetid(pointer("datetime")));
+
+   println(h);
+   println(typeof(h));
+   @show h
+
+   if (h == typeof(h)(C_NULL))
+      println("Singular's name 'datetime' does not exist!");   
+   else
+      println("Singular's name 'datetime' of type ", (@cxx h -> typ));
+
+      ### BOOLEAN iiMake_proc(idhdl pn, package pack, sleftv* sl);
+      error_code = Cint(icxx""" return ((int)iiMake_proc($h, NULL, NULL)); """); 
+
+      println("Singular interpreter returns: $error_code, errorreported: ", (@cxx errorreported));
+
+      if (error_code > 0)
+         icxx""" errorreported = 0; /* reset error handling */ """
+      else
+         println("datetime returned type: ", (icxx""" return (iiRETURNEXPR.Typ()); """) );
+         print("datetime returned data: "); Nemo.libSingular.PrintS( Ptr{Cuchar}(icxx""" return ((char *)iiRETURNEXPR.Data()); """) );
+	 Nemo.libSingular.PrintLn();
+      end
+   end
+
+##  R=rDefault(32003,3,n);
+   const R,zz = SingularPolynomialRing(Nemo.SingularZp(32003), "x,y,z"); 
+   println("\nSingular RING: ", R, "... z: $zz");
+
+   #//idhdl enterid(const char * a, int lev, int t, idhdl* root, BOOLEAN init=TRUE, BOOLEAN serach=TRUE);
+   ringID = (icxx""" return (enterid( "R"/*ring name*/, 0,/*nesting level,0=global*/ RING_CMD, &IDROOT, FALSE ));""");
+
+   @show ringID
+
+   const r = Nemo.get_raw_ptr(R); icxx""" IDRING($ringID) = ring($r);"""
+   
+   # // make R the default ring (include rChangeCurrRing):
+   @cxx rSetHdl(ringID);
+
+   icxx""" myynest = 1; /* <=0: interactive at eof / >=1: non-interactive */ """;
+
+   s = "print(R);poly p=3*x^3-2*y^2+1*z;print(p);listvar();RETURN();\n";
+   error_code = Cint( icxx""" return ((int)iiAllStart(NULL, (char*)$(pointer(s)), BT_proc, 0)); """ )
+
+   println("Singular interpreter returns: $error_code, errorreported: ", (@cxx errorreported));
+
+   if (error_code > 0) 
+      icxx""" errorreported = 0; /* reset error handling */ """
+   end
+
+   h = (@cxx ggetid(pointer("p")));
+
+   println(h);
+   println(typeof(h));
+   @show h
+
+   if (h == typeof(h)(C_NULL))
+      println("Singular's name 'p' does not exist!");   
+   else
+      print("Singular Variable 'p' of type ", (@cxx h -> typ),", with value: "); 
+      p = (icxx""" return ((poly)IDPOLY($h)); """);
+
+      P = R(p, true); # TODO: FIXME: takes ownership!!! For later cleanup!
+      
+      println("p: $P from ", p);
+   end
+
+
+## class sleftv; typedef sleftv * leftv; #(leftv)omAllocBin(sleftv_bin);
+
+   r1 = (icxx""" return ((leftv)omAllocBin(sleftv_bin)); """);
+
+   @show r1
+
+   @cxx r1 -> Init(); 
+
+   arg = (icxx""" return ((leftv)omAllocBin(sleftv_bin)); """);
+
+   @cxx arg -> Init(); 
+
+   @show arg
+
+   icxx""" $arg -> rtyp = STRING_CMD; $arg -> data = omStrDup("huhu"); """
+
+   @cxx arg -> Print()
+ 
+   error_code = Cint( icxx""" return ((int)iiExprArith1($r1, $arg, TYPEOF_CMD)); """ )
+   println("Singular interpreter returns: $error_code, errorreported: ", (@cxx errorreported));
+
+   if (error_code > 0) 
+      (icxx""" errorreported = 0; /* reset error handling */ """);
+   else
+      print("Singular CMD returned type: ");
+      println(@cxx r1 -> Typ());
+
+      print("Returned data: "); 
+      Nemo.libSingular.PrintS( Ptr{Cuchar}(@cxx r1 -> Data()) );
+      println();
+
+      @cxx r1 -> Print()
+
+   end
+
+   @cxx r1 -> CleanUp(r);
+   icxx""" omFreeBin((ADDRESS)$r1, sleftv_bin); """
+
+   @cxx arg -> CleanUp(r);
+   icxx""" omFreeBin((ADDRESS)$arg, sleftv_bin); """
+
+end
+
+
+function test_NemoCoeffs()
+   println("Testing NemoCoeffs(FlintQQ/ZZ).................");
+
+   NZ = Nemo.NemoCoeffs(FlintZZ);
+   println("Nemo.NemoCoeffs(FlintZZ): ", NZ);
+
+   print("NZ(6)");
+   v = NZ(6);
+   print("   :::   ");
+   println(v);
+   
+
+   NQ = Nemo.NemoCoeffs(FlintQQ);
+   println("Nemo.NemoCoeffs(FlintQQ): ", NQ);
+   print("NQ(66)");
+   vv = NQ(66);
+   print("   :::   ");
+   println(vv);
+   
+   jtest_coeffs(NQ, 2)
+
+   test_generic_polys(NQ)
+
+   test_singular_polynomial_ring(NQ, "_")
+
+   println("\n...................PASS")
+
+end
 
 function test_singular()
    println("Singular unique rings & fields will use context-less implementation, right?  ", Nemo.uq_default_choice)
 
    println(); gc(); test_singular_wrappers()
+
+   println(); gc(); test_SINGULAR();
+
+#= 
 
    println(); gc(); test_singular_lowlevel_coeffs()
 
@@ -503,9 +689,7 @@ function test_singular()
 
    println(); gc(); test_QQ_poly_singular(); # TODO: as for ZZ_poly!
 
-#= 
-   include("???.jl"); #test_????()
-=#
+##   include("???.jl"); #test_????()
 
    println(); gc(); test_fraction_singular()
 
@@ -516,6 +700,12 @@ function test_singular()
    println(); gc(); test_matrix_singular()
 
    println(); gc(); test_benchmarks_singular()
+
+   println(); gc(); Nemo.libSingular.omPrintInfoStats()
+
+=#
+
+   println(); gc(); test_NemoCoeffs();
 
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
 

@@ -351,6 +351,7 @@ Base.call(A::SingularPolynomialRing) = elem_type(A)(A)
 Base.call(A::SingularPolynomialRing, b::Int) = elem_type(A)(A, b)
 Base.call(A::SingularPolynomialRing, b::Integer) = elem_type(A)(A, BigInt(b))
 Base.call(A::SingularPolynomialRing, b::libSingular.poly) = elem_type(A)(A, b)
+Base.call(A::SingularPolynomialRing, b::libSingular.poly, f::Bool) = elem_type(A)(A, b, f)
 Base.call(A::SingularPolynomialRing, b::SingularCoeffsElems) = elem_type(A)(A, b)
 
 function Base.call(A::SingularPolynomialRing, b::SingularPolynomialElem)
@@ -844,7 +845,10 @@ type SingularIdeal <: SingularElememntArray
    ptr :: libSingular.ideal
    ctx :: PRing   
    
-   function SingularIdeal(P::PRing, I::libSingular.ideal)
+   function SingularIdeal(P::PRing, I::libSingular.ideal, bMakeCopy :: Bool = false)
+      if bMakeCopy
+          I = libSingular.id_Copy(I, get_raw_ptr(P));
+      end
       z = new(I, P);
       finalizer(z, _SingularElememntArray_clear_fn)
       return z
@@ -916,8 +920,11 @@ type SingularModule  <: SingularElememntArray
    ptr :: libSingular.ideal
    ctx :: PModules
 
-   function SingularModule( R :: PModules, I :: libSingular.ideal )
+   function SingularModule( R :: PModules, I :: libSingular.ideal, bMakeCopy :: Bool = false )
       @assert libSingular.rRing_has_Comp(get_raw_ptr(R));
+      if bMakeCopy
+          I = libSingular.id_Copy(I, get_raw_ptr(P));
+      end
       z = new(I, R);
       finalizer(z, _SingularElememntArray_clear_fn)
       return z
