@@ -301,8 +301,11 @@ end
     end
 
 # For now - only one element type for any Singular Polynomial Ring...
-elem_type{CF<:PRing}(C::CF) = PRingElem
-elem_type{CF<:PModules}(C::CF) = PModuleElem
+elem_type(::PRing) = PRingElem
+elem_type(::PModules) = PModuleElem
+
+parent_type(::Type{PRingElem}) =  PRing
+parent_type(::Type{PModuleElem}) = PModules
 
 parent(p :: SingularPolynomialElem) = p.ctx
 

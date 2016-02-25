@@ -347,22 +347,34 @@ end
 # Type and parent object methods
 #=====================================================#
 
-# Generics
-elem_type{CF<:SingularRing}(C::CF) = NumberElem{CF}
-elem_type{CF<:SingularField}(C::CF) = NumberFElem{CF}
-
 base_ring(a::Singular_QQElem) = Singular_ZZElem
+
 
 ## NOTE: the following would lead to:
 # ERROR: LoadError: MethodError: `elem_type` has no method matching elem_type(::Type{Nemo.Singular_ZZ})
 #base_ring(::Singular_ZZ) = Union{}                                                                                                   #base_ring(::Singular_QQ) = Singular_ZZ
 
+# Generics
+elem_type{CF<:SingularRing}(::CF) = NumberElem{CF}
+elem_type{CF<:SingularField}(::CF) = NumberFElem{CF}
+
+parent_type{CF<:SingularRing}(::Type{NumberElem{CF}}) = CF
+parent_type{CF<:SingularField}(::Type{NumberFElem{CF}}) = CF
+
 # Specials without context:
-elem_type{CF<:SingularUniqueRing}(C::CF) = Number_Elem{CF}
-elem_type{CF<:SingularUniqueField}(C::CF) = NumberF_Elem{CF}
+elem_type{CF<:SingularUniqueRing}(::CF) = Number_Elem{CF}
+elem_type{CF<:SingularUniqueField}(::CF) = NumberF_Elem{CF}
+
+parent_type{CF<:SingularUniqueRing}(::Type{Number_Elem{CF}}) = CF
+parent_type{CF<:SingularUniqueField}(::Type{NumberF_Elem{CF}}) = CF
+
 
 elem_type(::Singular_ZZ) = Singular_ZZElem
 elem_type(::Singular_QQ) = Singular_QQElem
+
+parent_type(::Type{Singular_ZZElem}) = Singular_ZZ
+parent_type(::Type{Singular_QQElem}) = Singular_QQ
+
 
 ## ? # elem_type(::Type{Singular_ZZ}) = Singular_ZZElem
 
