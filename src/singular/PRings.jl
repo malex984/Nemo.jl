@@ -137,10 +137,12 @@ type PRingElem <: SingularPolynomialElem
     ptr :: libSingular.poly
     ctx :: SingularPolynomialRing
 
-    function PRingElem(c :: SingularPolynomialRing, p :: libSingular.poly)
-    	const r = get_raw_ptr(c);
+    function PRingElem(c :: SingularPolynomialRing, p :: libSingular.poly, bMakeCopy :: Bool = false)
 #	pp = libSingular.poly_ref(p)
 #	libSingular.p_Normalize(pp, r)
+        if(bMakeCopy) 
+	   p = libSingular.p_Copy(p, get_raw_ptr(c));
+        end
 	z = new(p, c); # pp[]
 	finalizer(z, _SingularPolyRingElem_clear_fn); 
 	return z
@@ -155,7 +157,10 @@ type PModuleElem <: SingularPolynomialElem
     ptr :: libSingular.poly
     ctx :: PModules
 
-    function PModuleElem(c :: PModules, p :: libSingular.poly)
+    function PModuleElem(c :: PModules, p :: libSingular.poly, bMakeCopy :: Bool = false)
+        if(bMakeCopy) 
+	   p = libSingular.p_Copy(p, get_raw_ptr(c));
+        end
 	z = new(p, c); # pp[]
 	finalizer(z, _SingularPolyRingElem_clear_fn); 
 	return z
@@ -222,10 +227,7 @@ end
     end
 
     function PRingElem(x::PRingElem)
-        const c = parent(x); 
-    	const r = get_raw_ptr(c);
-	const p :: libSingular.poly = libSingular.p_Copy(get_raw_ptr(x), r); 
-    	return PRingElem(c, p)
+    	return PRingElem(parent(x), get_raw_ptr(x), true)
     end
 
     PRingElem(c :: SingularPolynomialRing, z::Integer) = PRingElem(c, BigInt(z))
@@ -278,10 +280,11 @@ end
     end
 
     function PModuleElem(x::PModuleElem)
-        const c = parent(x); 
-    	const r = get_raw_ptr(c);
-	const p :: libSingular.poly = libSingular.p_Copy(get_raw_ptr(x), r); 
-    	return PModuleElem(c, p)
+    	return PModuleElem(parent(x), get_raw_ptr(x), true)
+#       const c = parent(x); 
+#    	const r = get_raw_ptr(c);
+#	const p :: libSingular.poly = libSingular.p_Copy(get_raw_ptr(x), r); 
+#    	return PModuleElem(c, p)
     end
 
     PModuleElem(c :: SingularPolynomialRing, z::Integer) = PModuleElem(c, BigInt(z))
@@ -1010,7 +1013,7 @@ function getindex(I::SingularElememntArray, i::Integer)
   const r = get_raw_ptr(P)
   const ptr = getindex(get_raw_ptr(I), Cint(i-1));
   
-  return elem_type(P)(P, libSingular.p_Copy( p_Test(ptr,r), r) );
+  return elem_type(P)(P, p_Test(ptr,r), true);
 end
 
 function setindex!(I::SingularElememntArray, x::libSingular.poly, i::Integer)
