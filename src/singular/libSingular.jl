@@ -1,6 +1,11 @@
 module libSingular
-import Base.==, Base.getindex, Base.setindex!, Base.*, Base.^, Base.+, Base.sign, Base.length, Base.show, Base.inv, Base.reverse;
-export n_coeffType, number, coeffs, n_Test, p_Test, r_Test, id_Test, TRUE, FALSE;
+using Nemo: Ring, RingElem, divexact, characteristic ## , deepcopy #
+import Base: Array, call, checkbounds, convert, cmp, contains, deepcopy,
+             den, div, divrem, gcd, gcdx, getindex, hash, inv, invmod, isequal, 
+             isless, lcm, length, mod, ndigits, num, one, parent,
+             promote_rule, Rational, rem, setindex!, show, sign, size, string,  zero,
+             +, -, *, ==, ^, &, |, $, <<, >>, ~, <=, >=, <, >, //, /, !=
+export n_coeffType, number, coeffs, n_Test, p_Test, r_Test, id_Test, TRUE, FALSE
 using Cxx
 function __libSingular_init__()
    const local prefix = joinpath(Pkg.dir("Nemo"), "local");
@@ -21,7 +26,7 @@ function __libSingular_init__()
    cxxinclude(joinpath("Singular", "subexpr.h"), isAngled=false); cxxinclude(joinpath("Singular", "lists.h"), isAngled=false); 
    cxxinclude(joinpath("Singular", "idrec.h"), isAngled=false); cxxinclude(joinpath("Singular", "tok.h"), isAngled=false); 
 ## NOTE: make sure the line number is correct in case of any changes above here!!!!
-cxx"""#line 25 "libSingular.jl"
+cxx"""#line 30 "libSingular.jl"
     #include "omalloc/omalloc.h"
     #include "gmp.h"
     #include "misc/intvec.h"
@@ -446,9 +451,6 @@ end
 
 ####################################################################################
 ####################################################################################
-
-using ..Nemo: Ring, RingElem 
-## , deepcopy ### , characteristic
 
 const nemoNumberID = Base.Dict{Tuple{coeffs,number}, RingElem}(); # All nemo ringelems are to be kept alive via this Dict!
 const nemoNumberID2 = Base.Dict{Tuple{coeffs,number}, RingElem}(); # All nemo ringelems are to be kept alive via this Dict!

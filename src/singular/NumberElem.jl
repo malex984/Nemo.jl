@@ -385,6 +385,7 @@ show_minus_one{T <: RingElem}(::Type{SingularFractionElem{T}}) = false
 
 check_parent(::Singular_QQElem, ::Singular_QQElem) = true
 
+check_parent{T <: SingularFractionElem}(a::T, b::T) = true
 check_parent{T <: SingularUniqueCoeffsElems}(a::T, b::T) = true
 
 function check_parent(a::SingularFractionElem, b::SingularFractionElem)

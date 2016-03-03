@@ -211,9 +211,9 @@ include("arb/ArbTypes.jl")
 
 include("pari/PariTypes.jl")
 
-with_singular() && include("singular/SingularTypes.jl")
-
 include("Groups.jl")
+
+with_singular() && include("singular/SingularTypes.jl")
 
 ###########################################################
 #
@@ -303,6 +303,7 @@ MaximalRealSubfield = AnticMaximalRealSubfield
 
 MaximalOrder = PariMaximalOrder
 Ideal = PariIdeal
+
 
 ###############################################################################
 #

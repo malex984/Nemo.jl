@@ -161,9 +161,10 @@ function test_generic_polys(C::Nemo.SingularCoeffs)
 
 	println(U);
 
-        p = (1+x+y+z+t);
+        p = (t + z + y + x + 1);
         println("p: ", p)
-        @time pp = p^10
+
+        @time pp = p^4
 
         # println("pp: ", pp)
         @time ppp = pp*(pp+1);
@@ -745,7 +746,7 @@ function test_singular()
 
    println(); gc(); test_SINGULAR();
 
-#=
+
 
    println(); gc(); test_singular_lowlevel_coeffs()
 
@@ -774,8 +775,6 @@ function test_singular()
    println(); gc(); test_benchmarks_singular()
 
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
-
- =#
 
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
 

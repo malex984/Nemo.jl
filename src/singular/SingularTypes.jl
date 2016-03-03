@@ -113,7 +113,9 @@ include("NumberElem.jl")
 include("NumberCommons.jl") # Everything defined for any SingularCoeffsElems
 
 
-Base.promote_rule{T <: SingularCoeffsElems}(::Type{Nemo.Mat{T}}, ::Type{T}) = Mat{T}
+Base.promote_rule{T <: SingularCoeffsElems}(::Type{Mat{T}}, ::Type{T}) = Mat{T}
+
+#### ??????
 Base.promote_rule{T <: RingElem, S <: SingularCoeffsElems}(::Type{Mat{T}}, ::Type{S}) = Mat{T}
 
 ### TODO: the following will require retesting Fraction Field functionality as currently Singular_QQ 
