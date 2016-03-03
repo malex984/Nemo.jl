@@ -80,7 +80,7 @@ function test_generic_polys(C::Nemo.SingularCoeffs)
 
    print("R = C[x].... "); 
 
-   R, x = SingularPolynomialRing(C, "x");
+   R, x = PolynomialRing(C, "x"); # Singular
    println(R);
    
    println("x: $x"); 
@@ -469,6 +469,18 @@ typealias idhdl Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:idrec},(false,false,
 ## const char *Tok2Cmdname( int tok);                                                                                                  
 Tok2Cmdname( tok::Cint ) = bytestring( @cxx Tok2Cmdname(tok) ) 
 
+
+
+function IsCmd(n)
+    const p = pointer(n);
+    tok = Ref{Cint}(0);
+
+###   int IsCmd(const char *n, int & tok)      
+    ret = (icxx""" return IsCmd($p, $tok); """);
+
+    return ret, tok[]
+end  
+
 function nemoWerrorS(msg :: Ptr{Cuchar})
      # // void WerrorS_dummy(const char *)
      println("J: ERROR on the SINGULAR side: ", msg);
@@ -529,7 +541,7 @@ function test_SINGULAR()
 #      println("Singular Variable '$n' of type ", (@cxx h -> typ),", with value: ", (icxx""" return ((int)(long)IDDATA($h)); """))
    end
 
-   h = (@cxx ggetid(pointer("datetime")));
+   h = (@cxx ggetid(pointer("datetime"))); # Singular Proc from standard.lib
 
    println(h);
    println(typeof(h));
@@ -553,6 +565,7 @@ function test_SINGULAR()
       end
    end
 
+
 ##  R=rDefault(32003,3,n);
    const R,zz = SingularPolynomialRing(Nemo.SingularZp(32003), "x,y,z"); 
    println("\nSingular RING: ", R, "... z: $zz");
@@ -566,6 +579,8 @@ function test_SINGULAR()
    
    # // make R the default ring (include rChangeCurrRing):
    @cxx rSetHdl(ringID);
+
+   @assert r == (@cxx currRing);
 
    icxx""" myynest = 1; /* <=0: interactive at eof / >=1: non-interactive */ """;
 
@@ -596,12 +611,10 @@ function test_SINGULAR()
    end
 
 
+
 ## class sleftv; typedef sleftv * leftv; #(leftv)omAllocBin(sleftv_bin);
-
    r1 = (icxx""" return ((leftv)omAllocBin(sleftv_bin)); """);
-
    @show r1
-
    @cxx r1 -> Init(); 
 
    arg = (icxx""" return ((leftv)omAllocBin(sleftv_bin)); """);
@@ -626,10 +639,71 @@ function test_SINGULAR()
       (@cxx r1 -> Print());
    end
 
+
    @cxx r1 -> CleanUp(r);
-   icxx""" omFreeBin((ADDRESS)$r1, sleftv_bin); """
+   @cxx arg -> CleanUp(r);
+
+
+# Singular kernel procedure # { "maxideal",    0, MAXID_CMD ,         CMD_1},
+
+   @cxx arg -> Init(); icxx""" $arg -> rtyp = INT_CMD; $arg -> data = (void*)4; """
+
+   @cxx r1 -> Init(); 
+
+   c, mx = IsCmd("maxideal");
+
+   @assert c == (@cxx CMD_1);
+   @assert mx == (@cxx MAXID_CMD);
+
+# {D(jjidMaxIdeal), MAXID_CMD,       IDEAL_CMD,      INT_CMD       , ALLOW_PLURAL |ALLOW_RING}
+   error_code = Cint( icxx""" return ((int)iiExprArith1($r1, $arg, $mx)); """ )
+
+   println("Singular interpreter returns: $error_code, errorreported: ", (@cxx errorreported));
+
+   if (error_code > 0)
+         icxx""" errorreported = 0; /* reset error handling */ """
+   else
+         (@cxx r1 -> Print());
+
+         const t = (@cxx r1 -> Typ());
+
+         println("Singular '",Tok2Cmdname(mx),"' returned type: ", Tok2Cmdname(t));
+         println("Returned data: ") #  bytestring( Ptr{Cuchar}(@cxx r1 -> Data())));
+
+	 @assert t == (@cxx IDEAL_CMD);
+
+	 I = Nemo.SingularIdeal(R, Nemo.libSingular.ideal(@cxx r1 -> Data()), true);
+	 println("maxideal(): ", I);
+
+         @cxx arg -> CleanUp(r);
+
+	 _, std = IsCmd("std");
+	 @assert std == (@cxx STD_CMD);
+
+         error_code = Cint( icxx""" return ((int)iiExprArith1($arg, $r1, $std)); """ )
+
+         println("Singular interpreter returns: $error_code, errorreported: ", (@cxx errorreported));
+
+   	 if (error_code > 0)
+            icxx""" errorreported = 0; /* reset error handling */ """
+	 else
+	    (@cxx arg -> Print());
+	 end
+
+   end
+
+
+#   @cxx r1 -> Init(); 
+
+
 
    @cxx arg -> CleanUp(r);
+   @cxx r1 -> CleanUp(r);
+
+
+
+   icxx""" omFreeBin((ADDRESS)$r1, sleftv_bin); """
+
    icxx""" omFreeBin((ADDRESS)$arg, sleftv_bin); """
 
 end
@@ -701,7 +775,7 @@ function test_singular()
 
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
 
-=#
+ =#
 
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
 

@@ -1108,7 +1108,7 @@ function string(I::SingularModule)
    const rk = rank(I)
    const n = length(I);
    
-   s = "Singular " * string(rk) * "-Module over " * string(R)
+   s = "Singular Free Module of rank " * string(rk) * " over " * string(R)
 
    (n == 0) && return "Empty/Zero " * s
    
