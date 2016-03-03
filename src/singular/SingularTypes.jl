@@ -122,23 +122,6 @@ Base.promote_rule{T <: RingElem, S <: SingularCoeffsElems}(::Type{Mat{T}}, ::Typ
 FractionField(::Singular_ZZ) = Singular_QQ() ## TODO: TEST ME!!!!
 
 
-call(a::Singular_QQ) = Singular_QQElem(0)
-call(a::Singular_QQ, b::Integer) = Singular_QQElem(b)
-
-call(a::Singular_QQ, b::Int, c::Int) = Singular_QQElem(b, c)
-
-call(a::Singular_QQ, b::Integer, c::Integer) = Singular_QQElem(b, c)
-
-call(a::Singular_QQ, b::Singular_ZZElem, c::Integer) = Singular_QQElem(b, Singular_ZZElem(c))
-call(a::Singular_QQ, b::Integer, c::Singular_ZZElem) = Singular_QQElem(Singular_ZZElem(b), c)
-
-call(::Singular_QQ, b::Singular_ZZElem, c::Singular_ZZElem) = Singular_QQElem(b, c)
-call(::Singular_QQ, b::Singular_QQElem) = b
-
-# Base.call(C::Singular_QQ, a, b) =  Singular_QQElem(a, b)
-call(C::Singular_QQ, a::Singular_ZZElem) = C(a, Singular_ZZElem(1))
-call{T}(C::Singular_QQ, a::FractionElem{T}) = C(num(a), den(a))
-
 convert(::Type{Singular_QQElem}, a::Integer) = Singular_QQElem(a)
 convert(::Type{Singular_QQElem}, a::Singular_ZZElem) = Singular_QQElem(a)
 
@@ -147,15 +130,8 @@ Base.promote_rule{T <: Integer}(::Type{Singular_ZZElem}, ::Type{T}) = Singular_Z
 Base.promote_rule{T <: Integer}(::Type{Singular_QQElem}, ::Type{T}) = Singular_QQElem
 Base.promote_rule(::Type{Singular_QQElem}, ::Type{Singular_ZZElem}) = Singular_QQElem
 
-
-
-call{T<:Integer}(::Singular_QQ, b::Rational{T}) = Singular_QQElem(num(b), den(b)) 
 convert{T<:Integer}(C::Type{Rational{T}}, a::Singular_ZZElem) = C(T(a), T(1))
 convert{T<:Integer}(C::Type{Rational{T}}, a::Singular_QQElem) = C(T(num(a)), T(den(a)))
-
-##call{T<:Integer}(::Singular_QQ, b::Rational{T}) = Singular_QQElem(num(b), den(b)) 
-
-
 
 
 +(a::Singular_QQElem, z::Singular_ZZElem) = a + parent(a)(z)
@@ -226,14 +202,7 @@ abstract SingularPolynomialRing <: Ring{Singular}
 abstract SingularPolynomialElem <: RingElem
 
 # typealias SingularRing 
-
-include("PRings.jl")
-
-# include("PRingElem.jl?")
-#type SingularPolynomial <: PolyElem
-
-#end
-
+include("PRings.jl") # include("PRingElem.jl?")
 
 characteristic(::Field) = 0
 characteristic(::Ring) = 0

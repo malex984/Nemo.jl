@@ -104,14 +104,8 @@ type PModules  <: SingularPolynomialRing
    end
 end
 
-characteristic(R::SingularPolynomialRing) = characteristic( base_ring(R) );
-
 isequal{CF<:SingularPolynomialRing}(A::CF, B::CF) = (get_raw_ptr(A) == get_raw_ptr(B))
 =={CF<:SingularPolynomialRing}(A::CF, B::CF)= isequal(A, B)
-
-function hash(A::SingularPolynomialRing, h::Uint64)
-   return hash(get_raw_ptr(A)) $ h
-end
 
 get_raw_ptr(R :: SingularPolynomialRing) = r_Test(R.ptr)
 
@@ -340,7 +334,15 @@ function _SingularPolyRingElem_clear_fn(p :: SingularPolynomialElem)
    p.ptr = libSingular.poly(C_NULL); # no tests...
 end
 
-function hash(a::SingularPolynomialElem, h::Uint64)
+# hash(A::SingularPolynomialRing, h::UInt64) = hash(get_raw_ptr(A)) $ h
+
+function hash(a::SingularPolynomialRing, h::UInt64)
+#   h = 0x8a30b0d963237dd5 # TODO: change this const to something uniqe!
+   return hash(get_raw_ptr(a)) $ h  ## TODO: string may be a bit too inefficient wherever hash is used...?
+end
+
+
+function hash(a::SingularPolynomialElem, h::UInt64)
    return hash(parent(a)) $ hash(string(a)) $ h ## TODO: string may be a bit too inefficient wherever hash is used...?
 end
 
@@ -376,6 +378,7 @@ isring(c::SingularPolynomialRing) = true; ##libSingular.nCoeff_is_Ring(get_raw_p
 #isdomain(c::Singular?) = libSingular.nCoeff_is_Domain(get_raw_ptr(c))
 
 characteristic(r::SingularPolynomialRing) = @cxx rChar( r_Test(get_raw_ptr(r)) )
+# characteristic(R::SingularPolynomialRing) = characteristic( base_ring(R) );
 
 ngens(r::SingularPolynomialRing) = Int(@cxx rVar( r_Test(get_raw_ptr(r)) ))
 npars(r::SingularPolynomialRing) = Int(@cxx rPar( r_Test(get_raw_ptr(r)) ))
@@ -459,11 +462,6 @@ show(io::IO, r::SingularPolynomialRing) = print(io, string(r))
 #
 ###############################################################################
 
-function hash(a::SingularPolynomialRing, h::Uint64)
-#   h = 0x8a30b0d963237dd5 # TODO: change this const to something uniqe!
-   return hash(get_raw_ptr(a)) $ h  ## TODO: string may be a bit too inefficient wherever hash is used...?
-end
-
 ## TODO: FIXME: avoid explicite constructor calls (PRingElem()) in the following: use elem_type?!
 zero(R::PRing) = elem_type(R)(R, libSingular.poly(C_NULL))
 one(R::PRing)  =  elem_type(R)(R, libSingular.p_One(get_raw_ptr(R)))
@@ -491,9 +489,8 @@ end
             return c(p)
         end
         
-+(x::PRingElem, i::Union{SingularCoeffsElems,Integer}) = +(x, parent(x)(i)) 
-+(i::Union{SingularCoeffsElems,Integer}, x::PRingElem) = +(parent(x)(i), x)
-
++(x::PRingElem, i::SingularCoeffsElems) = +(x, parent(x)(i)) 
++(i::SingularCoeffsElems, x::PRingElem) = +(parent(x)(i), x)
 
         function -{R<:SingularPolynomialElem}(x::R, y::R)
             check_parent(x, y)
@@ -502,8 +499,8 @@ end
             return c(p)
         end
         
--(x::PRingElem, i::Union{SingularCoeffsElems,Integer}) = -(x, parent(x)(i)) 
--(i::Union{SingularCoeffsElems,Integer}, x::PRingElem) = -(parent(x)(i), x)
+-(x::PRingElem, i::SingularCoeffsElems) = -(x, parent(x)(i)) 
+-(i::SingularCoeffsElems, x::PRingElem) = -(parent(x)(i), x)
 
 
 function -(x::SingularPolynomialElem) 
@@ -540,8 +537,8 @@ function *(x::PRingElem, y::PRingElem)
             return c(p);
 end
 
-*(x::PRingElem, i::Union{SingularCoeffsElems,Integer}) = *(x, parent(x)(i)) 
-*(i::Union{SingularCoeffsElems,Integer}, x::PRingElem) = *(parent(x)(i), x)
+*(x::PRingElem, i::SingularCoeffsElems) = *(x, parent(x)(i)) 
+*(i::SingularCoeffsElems, x::PRingElem) = *(parent(x)(i), x)
 
 function *(x::PRingElem, y::PModuleElem)
             const c = parent(y);
@@ -553,9 +550,8 @@ function *(x::PRingElem, y::PModuleElem)
             return c(p);
 end
        
-
-*(x::PModuleElem, i::Union{SingularCoeffsElems,Integer}) = *(base_ring(parent(x))(i), x) 
-*(i::Union{SingularCoeffsElems,Integer}, x::PModuleElem) = *(base_ring(parent(x))(i), x)
+*(x::PModuleElem, i::SingularCoeffsElems) = *(base_ring(parent(x))(i), x) 
+*(i::SingularCoeffsElems, x::PModuleElem) = *(base_ring(parent(x))(i), x)
 
 
 

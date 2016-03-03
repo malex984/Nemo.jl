@@ -479,15 +479,41 @@ function Base.call{CF<:SingularUniqueField}(::CF, b::NumberF_Elem{CF})
 ##   return deepcopy(b) # NOTE: fine no need in deepcopy!?? TODO?????
 end
 
-Base.call(::Singular_QQ) = Singular_QQElem()
+
+Base.call(::Singular_QQ) = Singular_QQElem(0) # 125 
+## Base.call(::Singular_QQ) = Singular_QQElem() # 482
 Base.call(::Singular_QQ, b::Int) = Singular_QQElem(b)
-Base.call(::Singular_QQ, b::Integer) = Singular_QQElem(BigInt(b))
+Base.call(::Singular_QQ, b::Integer) = Singular_QQElem(BigInt(b)) # 484
+# Base.call(a::Singular_QQ, b::Integer) = Singular_QQElem(b) # 126
 Base.call(::Singular_QQ, b::libSingular.number) = Singular_QQElem(b)
 
-function Base.call(::Singular_QQ, b::Singular_QQElem) 
+
+function Base.call(::Singular_QQ, b::Singular_QQElem)  # 487
    return b 
 ##   return deepcopy(b) # NOTE: fine no need in deepcopy!?? TODO?????
 end
+
+# call(::Singular_QQ, b::Singular_QQElem) = b # 136
+
+
+Base.call(a::Singular_QQ, b::Int, c::Int) = Singular_QQElem(b, c)
+
+Base.call(a::Singular_QQ, b::Integer, c::Integer) = Singular_QQElem(b, c)
+
+Base.call(a::Singular_QQ, b::Singular_ZZElem, c::Integer) = Singular_QQElem(b, Singular_ZZElem(c))
+Base.call(a::Singular_QQ, b::Integer, c::Singular_ZZElem) = Singular_QQElem(Singular_ZZElem(b), c)
+
+Base.call(::Singular_QQ, b::Singular_ZZElem, c::Singular_ZZElem) = Singular_QQElem(b, c)
+
+# Base.call(C::Singular_QQ, a, b) =  Singular_QQElem(a, b)
+Base.call(C::Singular_QQ, a::Singular_ZZElem) = C(a, Singular_ZZElem(1))
+Base.call{T}(C::Singular_QQ, a::FractionElem{T}) = C(num(a), den(a))
+
+Base.call{T<:Integer}(::Singular_QQ, b::Rational{T}) = Singular_QQElem(num(b), den(b)) 
+##call{T<:Integer}(::Singular_QQ, b::Rational{T}) = Singular_QQElem(num(b), den(b)) 
+
+
+
 
 
 ###############################################################################

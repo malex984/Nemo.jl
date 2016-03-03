@@ -118,7 +118,7 @@ function _Coeffs_clear_fn(cf::SingularCoeffs)
    libSingular.nKillChar( get_raw_ptr(cf) )
 end
 
-get_raw_ptr(cf::SingularCoeffs) = cf.ptr
+## get_raw_ptr(cf::SingularCoeffs) = cf.ptr
 function get_raw_ptr(cf::SingularCoeffs)
    ptr = cf.ptr;
    @assert (ptr != libSingular.coeffs(0))
@@ -203,10 +203,12 @@ show(io::IO, c::SingularCoeffs) = print(io, string(c))
 #
 ###############################################################################
 
-function hash(a::SingularCoeffs, h::Uint64)
+function hash(a::SingularCoeffs, h::UInt64)
 #   h = 0x8a30b0d963237dd5 # TODO: change this const to something uniqe!
    return hash(get_raw_ptr(a)) $ h ## TODO: string may be a bit too inefficient wherever hash is used...?
 end
+
+## hash(A::SingularCoeffs, h::UInt64) = hash(get_raw_ptr(A)) $ h
 
 zero(a::SingularCoeffs) = elem_type(a)(a,  0)
 one(a::SingularCoeffs)  = elem_type(a)(a,  1)
@@ -287,6 +289,7 @@ function SingularGF(ch::Int, d::Int, s::AbstractString)
    return CoeffsField(ptr);
 end
 
+###############################################################################
 
 function NemoCoeffs(r::Ring) 
    return Coeffs(libSingular.n_NemoCoeffs, pointer_from_objref(r));

@@ -466,6 +466,8 @@ typealias idhdl Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:idrec},(false,false,
 
 #typealias leftv Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:sleftv},(false,false,false)},(false,false,false)}
 
+## const char *Tok2Cmdname( int tok);                                                                                                  
+Tok2Cmdname( tok::Cint ) = bytestring( @cxx Tok2Cmdname(tok) ) 
 
 function nemoWerrorS(msg :: Ptr{Cuchar})
      # // void WerrorS_dummy(const char *)
@@ -522,7 +524,9 @@ function test_SINGULAR()
    if (h == typeof(h)(C_NULL))
       println("Singular's name '$n' does not exist!");   
    else
-      println("Singular Variable '$n' of type ", (@cxx h -> typ),", with value: ", (icxx""" return ((int)(long)IDDATA($h)); """))
+      println("Singular Variable '$n' of type ", Tok2Cmdname(@cxx h -> typ), 
+              ", with value: ", (icxx""" return (IDINT($h)); """) );
+#      println("Singular Variable '$n' of type ", (@cxx h -> typ),", with value: ", (icxx""" return ((int)(long)IDDATA($h)); """))
    end
 
    h = (@cxx ggetid(pointer("datetime")));
@@ -534,7 +538,7 @@ function test_SINGULAR()
    if (h == typeof(h)(C_NULL))
       println("Singular's name 'datetime' does not exist!");   
    else
-      println("Singular's name 'datetime' of type ", (@cxx h -> typ));
+      println("Singular's name 'datetime' of type ", Tok2Cmdname(@cxx h -> typ)); 
 
       ### BOOLEAN iiMake_proc(idhdl pn, package pack, sleftv* sl);
       error_code = Cint(icxx""" return ((int)iiMake_proc($h, NULL, NULL)); """); 
@@ -544,9 +548,8 @@ function test_SINGULAR()
       if (error_code > 0)
          icxx""" errorreported = 0; /* reset error handling */ """
       else
-         println("datetime returned type: ", (icxx""" return (iiRETURNEXPR.Typ()); """) );
-         print("datetime returned data: "); Nemo.libSingular.PrintS( Ptr{Cuchar}(icxx""" return ((char *)iiRETURNEXPR.Data()); """) );
-	 Nemo.libSingular.PrintLn();
+         println("datetime returned type: ", Tok2Cmdname( (icxx""" return (iiRETURNEXPR.Typ()); """) ) );
+         println("datetime returned data: ",  bytestring( Ptr{Cuchar}(icxx""" return ((char *)iiRETURNEXPR.Data()); """)) );
       end
    end
 
@@ -584,10 +587,10 @@ function test_SINGULAR()
    if (h == typeof(h)(C_NULL))
       println("Singular's name 'p' does not exist!");   
    else
-      print("Singular Variable 'p' of type ", (@cxx h -> typ),", with value: "); 
-      p = (icxx""" return ((poly)IDPOLY($h)); """);
+      print("Singular Variable 'p' of type ", Tok2Cmdname(@cxx h -> typ),", with value: ");
+      p = (icxx""" return ((poly)IDPOLY($h)); """); 
 
-      P = R(p, true); # TODO: FIXME: takes ownership!!! For later cleanup!
+      const P = R(p, true); # TODO: FIXME: takes ownership!!! For later cleanup!
       
       println("p: $P from ", p);
    end
@@ -617,15 +620,10 @@ function test_SINGULAR()
    if (error_code > 0) 
       (icxx""" errorreported = 0; /* reset error handling */ """);
    else
-      print("Singular CMD returned type: ");
-      println(@cxx r1 -> Typ());
+      println("Singular '",Tok2Cmdname(@cxx TYPEOF_CMD),"' returned type: ", Tok2Cmdname(@cxx r1 -> Typ()));
+      println("Returned data: ", bytestring( Ptr{Cuchar}(@cxx r1 -> Data())));
 
-      print("Returned data: "); 
-      Nemo.libSingular.PrintS( Ptr{Cuchar}(@cxx r1 -> Data()) );
-      println();
-
-      @cxx r1 -> Print()
-
+      (@cxx r1 -> Print());
    end
 
    @cxx r1 -> CleanUp(r);
@@ -673,7 +671,7 @@ function test_singular()
 
    println(); gc(); test_SINGULAR();
 
-#= 
+#=
 
    println(); gc(); test_singular_lowlevel_coeffs()
 
@@ -705,9 +703,10 @@ function test_singular()
 
 =#
 
+   println(); gc(); Nemo.libSingular.omPrintInfoStats()
+
    println(); gc(); test_NemoCoeffs();
 
-   println(); gc(); Nemo.libSingular.omPrintInfoStats()
 
    println()
 end
