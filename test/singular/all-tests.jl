@@ -462,333 +462,8 @@ ring test_construct_ring()
 end
 
 
-typealias PVoice Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:Voice},(false,false,false)},(false,false,false)}
-typealias idhdl Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:idrec},(false,false,false)},(false,false,false)}
-
-### typedef sleftv *  leftv;
-### typedef idrec *   idhdl;
-
-typealias leftv Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:sleftv},(false,false,false)},(false,false,false)}
-
-# // const char *Tok2Cmdname( int tok);
-Tok2Cmdname( tok::Cint ) = bytestring( @cxx Tok2Cmdname(tok) ) 
-
-# // const char *  iiTwoOps(int t);
-iiTwoOps( tok::Cint ) = bytestring( @cxx iiTwoOps(tok) ) 
-
-# tokval -> toktype
-iiTokType( op :: Cint ) = Cint( @cxx iiTokType(op) )
-
-
-
-__Tok2Cmdname( tok::Cint ) = bytestring( @cxx __Tok2Cmdname(tok) ) 
-__iiTwoOps( tok::Cint ) = bytestring( @cxx __iiTwoOps(tok) ) 
-
-
-# // int iiArithFindCmd(const char *szName)
-iiArithFindCmd( szName :: Ptr{Cuchar} ) = Cint( @cxx iiArithFindCmd(szName) ) 
-
-# // char *iiArithGetCmd( int nPos )
-iiArithGetCmd( nPos :: Cint ) = @cxx iiArithGetCmd(nPos) 
-
-function MAX_TOK()
-    return Cint( icxx""" return (MAX_TOK); """ );
-end
-
-function NONE()
-    return ( icxx""" return (NONE); """ );
-end
-
-function ANY_TYPE()
-    return ( icxx""" return (ANY_TYPE); """ );
-end
-
-function IDHDL()
-    return ( icxx""" return (IDHDL); """ );
-end
-
-# // static inline sValCmd1* getArith1( int i )
-
-function getArith1( i :: Cint ) 
-    return (icxx""" return getArith1($i); """);
-end
-function getArith2( i :: Cint ) 
-    return (icxx""" return getArith2($i); """);
-end
-function getArith3( i :: Cint ) 
-    return (icxx""" return getArith3($i); """);
-end
-function getArithM( i :: Cint ) 
-    return (icxx""" return getArithM($i); """);
-end
-
-function IsCmd(n)
-    const p = pointer(n);
-    tok = Ref{Cint}(0);
-
-# // int IsCmd(const char *n, int & tok)      
-    ret = Cint( icxx""" return IsCmd($p, $tok); """ );
-
-    return ret, tok[]
-end  
-
-function nemoWerrorS(msg :: Ptr{Cuchar})
-     # // void WerrorS_dummy(const char *)
-     println("J: ERROR on the SINGULAR side: ", msg);
-
-     Nemo.libSingular.BT();
-     return Void()
-end
-
-
-function Toktype( tt :: Cint )
-
-    (tt == (@cxx CMD_1)) && return "CMD_1";
-    (tt == (@cxx CMD_2)) && return "CMD_2";
-    (tt == (@cxx CMD_3)) && return "CMD_3";
-    (tt == (@cxx CMD_12)) && return "CMD_12";
-    (tt == (@cxx CMD_123)) && return "CMD_123";
-    (tt == (@cxx CMD_23)) && return "CMD_23";
-    (tt == (@cxx CMD_M)) && return "CMD_M";
-    (tt == (@cxx SYSVAR)) && return "SYSVAR";
-    (tt == (@cxx ROOT_DECL)) && return "ROOT_DECL";
-    (tt == (@cxx ROOT_DECL_LIST)) && return "ROOT_DECL_LIST";
-    (tt == (@cxx RING_DECL)) && return "RING_DECL";
-    (tt == NONE()) && return "NONE";
-
-    if (tt > Cint(' ')) && (tt < Cint(127))
-       return "[" * string(Char(Int(tt))) * "]";
-    end
-
-   return "'" * iiTwoOps(tt) * "'";
-end 
-
-
-
-
-## using Cxx;import Base: call, +, -, *, ==, ^, &, |, $, <<, >>, ~, <=, >=, <, >, //, /, !=;
-
-##module SingularKernel 
-using Cxx;
-import Base: call, size, +, -, *, ==, ^, &, |, $, <<, >>, ~, <=, >=, <, >, //, /, !=;
-##typealias leftv Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:sleftv},(false,false,false)},(false,false,false)};
-import Nemo; 
-#import Nemo.Test;
-import Nemo: degree, gen, transpose
-## typealias leftv Nemo.Test.leftv;
-
-#=
-function NONE()
-    return ( icxx""" return (NONE); """ );
-end
-function ANY_TYPE()
-    return ( icxx""" return (ANY_TYPE); """ );
-end
-=#
-
-##end ## module
-typealias bigintmat pcpp"bigintmat"
-typealias intvec pcpp"intvec"
-typealias intmat pcpp"intvec"
-
-typealias map pcpp"sip_smap"
-typealias matrix pcpp"ip_smatrix"
-
-typealias lists pcpp"slists"
-typealias si_link pcpp"ip_link"
-typealias procinfov pcpp"procinfo"
-typealias syStrategy pcpp"ssyStrategy" 
-
-typealias ring pcpp"ip_sring"
-typealias qring pcpp"ip_sring"
-
-typealias poly pcpp"spolyrec"
-typealias vector pcpp"spolyrec"
-
-typealias number pcpp"snumber"
-typealias number2 pcpp"snumber2"
-
-typealias bigint pcpp"snumber"
-
-typealias ideal pcpp"sip_sideal"
-typealias modul pcpp"sip_sideal"
-
-typealias resolvente pcpp"ideal"
-
-
-type Leftv{id}
-  ptr :: leftv
-  
-  function Leftv(p::leftv)
-#     (Cint(id) != ANY_TYPE()) && @assert Cint(id) == Cint(@cxx p -> rtyp)
-     z = new(p); finalizer(z, _Leftv_clear_fn); return z;
-  end
-
-end  
-
-function get_raw_ptr{id}(l::Leftv{id})
-   const p = l.ptr;
-#   (Cint(id) != ANY_TYPE()) && @assert Cint(id) == Cint(@cxx p -> rtyp)
-   return p
-end
-
-function _Leftv_clear_fn{id}(l::Leftv{id})
-   const p = get_raw_ptr(l); l.ptr = leftv(C_NULL);
-### Ring?  Cleanup?
-   icxx""" omFreeBin((ADDRESS)$p, sleftv_bin); """
-end
-
-
-  function Leftv(id::Cint)
-     const p = (icxx""" return ((leftv)omAllocBin(sleftv_bin)); """);
-     @cxx p -> Init();
-     (icxx""" $p -> rtyp = (int)$id; """);
-     return Leftv{id}(p);
-  end
-
-  function Leftv(id::Cint, d::Ptr{Void})
-     z = Leftv(id)
-     p = get_raw_ptr(z)
-     (icxx""" $p -> data = $d; """);
-     return z; 
-  end
-
-
-
-function remove_raw_data{id}(l::Leftv{id})
-   const p = get_raw_ptr(l)
-   const data = Ptr{Void}(@cxx p -> data); 
-   (icxx""" $p -> data = NULL; """);
-   return data;
-end
-
-function get_raw_data{id}(l::Leftv{id})
-   const p = get_raw_ptr(l);
-   const data = Ptr{Void}(@cxx p -> data);
-   return data;
-end
-
-function get_raw_id{id}(l::Leftv{id}) 
-   const p = get_raw_ptr(l);
-   const t = Cint(@cxx p -> rtyp); 
-#   (Cint(id) != ANY_TYPE()) && @assert t == Cint(id);
-   return t
-   return Cint(id) ## TODO: for release version !
-end
-
-function get_data{id}(l::Leftv{id})
-   const p = get_raw_ptr(l)
-   return Ptr{Void}(@cxx p -> Data() );
-end
-
-function get_id{id}(l::Leftv{id}) 
-   const p = get_raw_ptr(l);
-   const t = Cint(@cxx p -> Typ() ); 
-   return t
-end
-
-function INT_CMD()
-   return Cint(@cxx INT_CMD); 
-end
-
-
-### TODO: id == INT_CMD() !?
-
-function ToLeftv{id}( a::Leftv{id} )
-   return (a);
-end
-
-function ToLeftv( a::Int )
-   const id = INT_CMD();
-   const data = Ptr{Void}(a);
-   return Leftv(id, data);
-end
-
-function ToLeftv( a::AbstractString )
-   const id = (@cxx STRING_CMD);
-   const data = Ptr{Void}( Nemo.libSingular.omStrDup( Ptr{Cuchar}(pointer(a)) ) );
-   return Leftv(id, data);
-end
-
-
-
-function FromLeftv( l::Leftv )
-   const data = get_raw_data(l);
-   const cmd  = get_raw_id(l);   
-
-   (cmd == INT_CMD()) && return Int( data );
-
-   (cmd == Cint(@cxx STRING_CMD)) && return bytestring( Ptr{Cuchar}(data) );
-
-   return l
-end
-
-
-
-
-function LEFTV(arg :: Cint)
-
-#    DEF_CMD,
-    (arg == ANY_TYPE()) && return :Any;
-
-    (arg == INT_CMD()) && return :Int ;
-    (arg == @cxx STRING_CMD) && return :AbstractString; # Ptr{Cuchar}; # symbol() ;
-
-    return :(Leftv{$arg})
-
-### Ring dependent:
-
-    (arg == @cxx IDEAL_CMD) && return :ideal ;
-    (arg == @cxx MODUL_CMD) && return :modul ;
-
-    (arg == @cxx NUMBER_CMD) && return :number ;
-
-    (arg == @cxx RING_CMD) && return :ring ;
-    (arg == @cxx QRING_CMD) && return :qring ;
-
-    (arg == @cxx POLY_CMD) && return :poly ;
-    (arg == @cxx VECTOR_CMD) && return :vector ;
-
-
-    (arg == @cxx BIGINT_CMD) && return :bigint ;
-    (arg == IDHDL()) && return :idhdl;
-    (arg == @cxx BIGINTMAT_CMD) && return :bigintmat ;
-    (arg == @cxx INTMAT_CMD) && return :intmat ;
-    (arg == @cxx INTVEC_CMD) && return :intvec ;
-    (arg == @cxx LIST_CMD) && return :lists ;
-    (arg == @cxx MAP_CMD) && return :map ;
-    (arg == @cxx MATRIX_CMD) && return :matrix ;
-
-    (arg == @cxx LINK_CMD) && return :si_link ;
-    (arg == @cxx PACKAGE_CMD) && return :idhdl ;
-    (arg == @cxx PROC_CMD) && return :procinfov ;
-    (arg == @cxx RESOLUTION_CMD) && return :syStrategy ;
-
-   return :leftv;
-end
 
 function test_SINGULAR()
-
-   cV = (@cxx currentVoice); # PVoice?
-
-   const i = (icxx""" return (feInitStdin(NULL)); """);
-
-   println(typeof(i));
-   println(i);
-
-   icxx""" setPtr(currentVoice, $i); """
-
-   cV = (@cxx currentVoice); # PVoice?
-   @show cV
-
-   ## Cxx.CppFptr{Cxx.CppFunc{Void,Tuple{Ptr{UInt8}}}}
-   WerrorS_callback = (@cxx WerrorS_callback);
-   @show  WerrorS_callback
-
-   if (WerrorS_callback == typeof(WerrorS_callback)(C_NULL))
-      const _nemoWerrorS = cfunction(nemoWerrorS, Void, (Ptr{Cuchar},));
-     icxx""" setPtr(WerrorS_callback, $_nemoWerrorS); """
-   end
 
    const n = "iSingularVersion";
    s = "int $n = system(\"version\");RETURN();\n";
@@ -814,7 +489,7 @@ function test_SINGULAR()
    if (h == typeof(h)(C_NULL))
       println("Singular's name '$n' does not exist!");   
    else
-      println("Singular Variable '$n' of type ", Tok2Cmdname(@cxx h -> typ), 
+      println("Singular Variable '$n' of type ", Nemo.libSingular.Tok2Cmdname(@cxx h -> typ), 
               ", with value: ", (icxx""" return (IDINT($h)); """) );
 #      println("Singular Variable '$n' of type ", (@cxx h -> typ),", with value: ", (icxx""" return ((int)(long)IDDATA($h)); """))
    end
@@ -828,7 +503,7 @@ function test_SINGULAR()
    if (h == typeof(h)(C_NULL))
       println("Singular's name 'datetime' does not exist!");   
    else
-      println("Singular's name 'datetime' of type ", Tok2Cmdname(@cxx h -> typ)); 
+      println("Singular's name 'datetime' of type ", Nemo.libSingular.Tok2Cmdname(@cxx h -> typ)); 
 
       ### BOOLEAN iiMake_proc(idhdl pn, package pack, sleftv* sl);
       error_code = Cint(icxx""" return ((int)iiMake_proc($h, NULL, NULL)); """); 
@@ -838,7 +513,7 @@ function test_SINGULAR()
       if (error_code > 0)
          icxx""" errorreported = 0; /* reset error handling */ """
       else
-         println("datetime returned type: ", Tok2Cmdname( (icxx""" return (iiRETURNEXPR.Typ()); """) ) );
+         println("datetime returned type: ", Nemo.libSingular.Tok2Cmdname( (icxx""" return (iiRETURNEXPR.Typ()); """) ) );
          println("datetime returned data: ",  bytestring( Ptr{Cuchar}(icxx""" return ((char *)iiRETURNEXPR.Data()); """)) );
       end
    end
@@ -880,7 +555,7 @@ function test_SINGULAR()
    if (h == typeof(h)(C_NULL))
       println("Singular's name 'p' does not exist!");   
    else
-      print("Singular Variable 'p' of type ", Tok2Cmdname(@cxx h -> typ),", with value: ");
+      print("Singular Variable 'p' of type ", Nemo.libSingular.Tok2Cmdname(@cxx h -> typ),", with value: ");
       p = (icxx""" return ((poly)IDPOLY($h)); """); 
 
       const P = R(p, true); # TODO: FIXME: takes ownership!!! For later cleanup!
@@ -910,7 +585,8 @@ function test_SINGULAR()
    if (error_code > 0) 
       (icxx""" errorreported = 0; /* reset error handling */ """);
    else
-      println("Singular '",Tok2Cmdname(@cxx TYPEOF_CMD),"' returned type: ", Tok2Cmdname(@cxx r1 -> Typ()));
+      println("Singular '", Nemo.libSingular.Tok2Cmdname(@cxx TYPEOF_CMD),
+       "' returned type: ", Nemo.libSingular.Tok2Cmdname(@cxx r1 -> Typ()));
       println("Returned data: ", bytestring( Ptr{Cuchar}(@cxx r1 -> Data())));
 
       (@cxx r1 -> Print());
@@ -927,7 +603,7 @@ function test_SINGULAR()
 
    @cxx r1 -> Init(); 
 
-   c, mx = IsCmd("maxideal");
+   c, mx = Nemo.libSingular.IsCmd("maxideal");
 
    @assert c == (@cxx CMD_1);
    @assert mx == (@cxx MAXID_CMD);
@@ -944,7 +620,7 @@ function test_SINGULAR()
 
          const t = (@cxx r1 -> Typ());
 
-         println("Singular '",Tok2Cmdname(mx),"' returned type: ", Tok2Cmdname(t));
+         println("Singular '", Nemo.libSingular.Tok2Cmdname(mx),"' returned type: ", Nemo.libSingular.Tok2Cmdname(t));
          println("Returned data: ") #  bytestring( Ptr{Cuchar}(@cxx r1 -> Data())));
 
 	 @assert t == (@cxx IDEAL_CMD);
@@ -954,7 +630,7 @@ function test_SINGULAR()
 
          @cxx arg -> CleanUp(r);
 
-	 _, std = IsCmd("std");
+	 _, std = Nemo.libSingular.IsCmd("std");
 	 @assert std == (@cxx STD_CMD);
 
          error_code = Cint( icxx""" return ((int)iiExprArith1($arg, $r1, $std)); """ )
@@ -969,110 +645,35 @@ function test_SINGULAR()
 
    end
 
-
-#   @cxx r1 -> Init(); 
-
-   @cxx arg -> CleanUp(r);
-   @cxx r1 -> CleanUp(r);
-
+   @cxx arg -> CleanUp(r);   @cxx r1 -> CleanUp(r);
    icxx""" omFreeBin((ADDRESS)$r1, sleftv_bin); """
    icxx""" omFreeBin((ADDRESS)$arg, sleftv_bin); """
 
+###############################################################
+
    nPos :: Cint = 0;
    while true
-      p = iiArithGetCmd( nPos );
+      p = Nemo.libSingular.iiArithGetCmd( nPos );
 
       (p == C_NULL) && break;
 
       s = bytestring(p);
 
-      t, op = IsCmd(s);
-      println("$nPos: cmd: $op ('$s') / '", iiTwoOps(op), "', type[$t]: ", Toktype(t));
+      t, op = Nemo.libSingular.IsCmd(s);
+      println("$nPos: cmd: $op ('$s') / '", Nemo.libSingular.iiTwoOps(op), "', type[$t]: ", Nemo.libSingular.Toktype(t));
 
       nPos = nPos + Cint(1);
    end
 
+##############################################################
 
-
-   nPos = Cint(0);
-   while true
-
-      const p = getArith1( nPos );
-
-      (p == C_NULL) && break;
-
-      const cmd  = Cint(@cxx p -> cmd);
-
-      (cmd == Cint(0)) && break;
-
-      const pp   = Cint(@cxx p -> p);
-
-      const res  = Cint(@cxx p -> res);
-      const arg  = Cint(@cxx p -> arg);
-      const opt  = Cint(@cxx p -> valid_for);
-
-      const scmd = __iiTwoOps(cmd);
-      const sarg = __Tok2Cmdname(arg);
-      const sres = __Tok2Cmdname(res);
-      if ( (pp != Cint(2))||(scmd == "\$INVALID\$")||(sarg == "\$INVALID\$")||(sres == "\$INVALID\$") )
-          nPos = nPos + Cint(1);
-          continue;
-      end 
-
-      println();
-      println("\#$nPos: { ($cmd) '", scmd, 
-             "', arg: ($arg) '", sarg, 
-	     "', res: ($res) '", sres, 
-	     "' }, valid_for: ", bin(opt, 5) );
-    
-# TODO: CHANGE CURRENT RING???! 
-     const sarg = LEFTV(arg);
-
-     try  ##      SingularKernel.
-      eval(:(
-         function $(symbol(scmd))( ___arg :: $(sarg) )
-	       const __arg = ToLeftv( ___arg ); ## Leftv{}
-	       _arg = get_raw_ptr(__arg); ## leftv
-	 
-#	      ($arg != ANY_TYPE()) && @assert Cint(@cxx _arg -> Typ()) == $arg
-
-	      d = Ref{Ptr{Void}}(C_NULL); t = Ref{Cint}(Cint(0)); e = Ref{Cint}(Cint(0));
-	      
-	      const cmd = $(cmd);
-
-	      icxx""" sleftv r;r.Init(); $e = ((int)iiExprArith1(&r,$_arg,$cmd)); $d=r.data;$t=r.rtyp; """ ;
-
-	      const f = string($(scmd)) * "( " * string($(sarg)) * " )";
-
-	      println("Singular interpreter kenel procedure '$f' returns: ", e[], ", errorreported: ", (@cxx errorreported));
-
-	      if (e[] > 0)
-                  icxx""" errorreported = 0; /* reset error handling */ """ ;
-		  error("Error during Singular Kernel Call via Interpreter: '$f'");
-	      end
-
-	      ($res == NONE()) && return Void()
-
-#	      ($res != ANY_TYPE()) && @assert $t == $res;
-
-	      return FromLeftv( Leftv(t[], d[]) );
-           end; 
-         ) );
-
-     catch
-     end
-
-      nPos = nPos + Cint(1);
-   end
-
-
-   println("varstr(int 1): '", varstr(1), "'");
-   println("varstr(int 2): '", varstr(2), "'");
-   println("size(string): '", size("123456"), "'");
-   println("rvar(string): '", rvar(varstr(1)), "'"); 
-   println("rvar(string): '", rvar("a"), "'");
+   println("varstr(int 1): '", Nemo.libSingular.varstr(1), "'");
+   println("varstr(int 2): '", Nemo.libSingular.varstr(2), "'");
+   println("size(string): '", Nemo.libSingular.size("123456"), "'");
+   println("rvar(string): '", Nemo.libSingular.rvar(Nemo.libSingular.varstr(1)), "'"); 
+   println("rvar(string): '", Nemo.libSingular.rvar("a"), "'");
    println("Executing string: "); 
-   execute("int j = 3; print((j*j+j) == 12); ");
+   Nemo.libSingular.execute("int j = 3; print((j*j+j) == 12); ");
 
 end
 
@@ -1142,7 +743,7 @@ function test_singular()
 
    println(); gc(); test_benchmarks_singular()
 
-   println(); gc(); Nemo.libSingular.omPrintInfoStats()
+#   println(); gc(); Nemo.libSingular.omPrintInfoStats()
 
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
 
