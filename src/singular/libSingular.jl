@@ -9,14 +9,13 @@ export n_coeffType, number, coeffs, n_Test, p_Test, r_Test, id_Test, TRUE, FALSE
 using Cxx
 function __libSingular_init__()
    const local prefix = joinpath(Pkg.dir("Nemo"), "local");
-   addHeaderDir(joinpath(prefix, "include"), kind = C_System)
-   addHeaderDir(joinpath(prefix, "include", "singular"), kind = C_System)
-   cxxinclude(joinpath("gmp.h"), isAngled=false)
-   cxxinclude(joinpath("debugbreak.h"), isAngled=false)
-   cxxinclude(joinpath("omalloc", "omalloc.h"), isAngled=false);
+   addHeaderDir(joinpath(prefix, "include"), kind = C_System); addHeaderDir(joinpath(prefix, "include", "singular"), kind = C_System)
+   cxxinclude(joinpath("gmp.h"), isAngled=false); cxxinclude(joinpath("debugbreak.h"), isAngled=false);
+   cxxinclude(joinpath("omalloc", "omalloc.h"), isAngled=false); 
    cxxinclude(joinpath("misc", "intvec.h"), isAngled=false); cxxinclude(joinpath("misc", "auxiliary.h"), isAngled=false);
    cxxinclude(joinpath("reporter", "reporter.h"), isAngled=false);
    cxxinclude(joinpath("coeffs", "coeffs.h"), isAngled=false); cxxinclude(joinpath("polys", "clapsing.h"), isAngled=false);
+   cxxinclude(joinpath("coeffs", "bigintmat.h"), isAngled=false);
    cxxinclude(joinpath("polys", "monomials", "ring.h"), isAngled=false);
    cxxinclude(joinpath("polys", "monomials", "p_polys.h"), isAngled=false);
    cxxinclude(joinpath("polys", "simpleideals.h"), isAngled=false);
@@ -25,6 +24,7 @@ function __libSingular_init__()
    cxxinclude(joinpath("Singular", "ipshell.h"), isAngled=false); cxxinclude(joinpath("Singular", "ipid.h"), isAngled=false);
    cxxinclude(joinpath("Singular", "subexpr.h"), isAngled=false); cxxinclude(joinpath("Singular", "lists.h"), isAngled=false); 
    cxxinclude(joinpath("Singular", "idrec.h"), isAngled=false); cxxinclude(joinpath("Singular", "tok.h"), isAngled=false); 
+   cxxinclude(joinpath("kernel_commands.h"), isAngled=false);
 ## NOTE: make sure the line number is correct in case of any changes above here!!!!
 cxx"""#line 30 "libSingular.jl"
     #include "omalloc/omalloc.h"
@@ -33,6 +33,7 @@ cxx"""#line 30 "libSingular.jl"
     #include "misc/auxiliary.h"
     #include "reporter/reporter.h"
     #include "coeffs/coeffs.h"
+    #include "coeffs/bigintmat.h"
 
     #include "polys/monomials/ring.h"
     #include "polys/monomials/p_polys.h"
@@ -50,6 +51,7 @@ cxx"""#line 30 "libSingular.jl"
     #include "Singular/subexpr.h"
     #include "Singular/lists.h"
     #include "Singular/tok.h"
+    #include "kernel_commands.h"
 
     #include "debugbreak.h"
     #include <cassert>
@@ -243,6 +245,8 @@ cxx"""#line 30 "libSingular.jl"
    template<typename T> 
    void setPtr( T& f, void* p)
    { f = (T)(p); };
+
+   extern char *iiArithGetCmd( int nPos );
 
 """
 
@@ -1670,6 +1674,7 @@ typealias poly_ref Ref{poly} ###   rcpp"poly" #  ??
 
 ## NOTE & TODO?: ideal is easy to wrapp a-la Nemo (or GMP) structs!
 typealias ideal Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:sip_sideal},(false,false,false)},(false,false,false)}
+
 
 function rGetCoeffs(r :: ring) 
    #   static coeffs rGetCoeffs(const ring r)
