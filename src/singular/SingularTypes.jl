@@ -10,22 +10,20 @@ export elem_type, parent_type, base_ring, check_parent, show
 export characteristic
 export mullow, den, num
 export mul!, addeq!
+export get_raw_ptr, parent
+export PRingElem, PRing, PModuleElem, SingularIdeal, SingularModule, Singular_ZZElem
 
 using Cxx
 
 ###############################################################################
 #
-#   Singular low-level wrappers for coeffs
+#   Singular low-level wrappers for Singular structures and classes
 #
 ###############################################################################
 
 include("libSingular.jl")
 
 using .libSingular
-
-__singular_init__() = libSingular.__libSingular_init__()
-
-using Cxx
 
 ###############################################################################
 #
@@ -36,22 +34,16 @@ using Cxx
 ### See ../../src/AbstractTypes.jl:
 #   abstract Ring{T} <: Group{T}
 #   abstract Field{T} <: Ring{T}
-
 #   abstract RingElem <: GroupElem
 #   abstract FieldElem <: RingElem
 
+
 #### T :: Type of base_elem, e.g. ZZ for QQ
 #   abstract PolyElem{T} <: RingElem
-
 #   abstract ResidueElem{T} <: RingElem # Zp?
-
 #   abstract FractionElem{T} <: FieldElem
-
 #   abstract IntegerRingElem <: RingElem
-
 #   abstract NumberFieldElem <: FieldElem # Alg Ext!
-
-
 #   abstract FiniteFieldElem <: FieldElem
 
 
@@ -208,3 +200,10 @@ include("PRings.jl") # include("PRingElem.jl?")
 
 characteristic(::Field) = 0
 characteristic(::Ring) = 0
+
+include("Interpreter.jl")
+
+function __singular_init__() 
+   libSingular.__libSingular_init__();
+   SingularKernel.__init_singular_interpreter__();
+end

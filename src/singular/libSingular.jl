@@ -6,9 +6,14 @@ import Base: Array, call, checkbounds, convert, cmp, contains, deepcopy,
              isless, lcm, length, mod, ndigits, num, one, parent,
              promote_rule, Rational, rem, setindex!, show, sign, size, string,  zero,
              +, -, *, ==, ^, &, |, $, <<, >>, ~, <=, >=, <, >, //, /, !=
-export n_coeffType, number, coeffs, n_Test, p_Test, r_Test, id_Test, TRUE, FALSE
+export n_coeffType, number, coeffs, n_Test, p_Test, r_Test, id_Test, TRUE, FALSE, rChangeCurrRing, omFree, omStrDup
+export poly, number, coeffs, ring, ideal, leftv, intvec, si_link, bigintmat, syStrategy, procinfov, BT
+export n_Copy, coeffs_BIGINT, p_Copy, id_Copy, currRing
 using Cxx
 function __libSingular_init__()
+
+   println("\n\n__libSingular_init__()!!!!!!!!!!!!!!!!!!!!!!!!\n\n");
+
    const local prefix = joinpath(Pkg.dir("Nemo"), "local");
    addHeaderDir(joinpath(prefix, "include"), kind = C_System); addHeaderDir(joinpath(prefix, "include", "singular"), kind = C_System)
    cxxinclude(joinpath("gmp.h"), isAngled=false); cxxinclude(joinpath("debugbreak.h"), isAngled=false);
@@ -20,18 +25,19 @@ function __libSingular_init__()
    cxxinclude(joinpath("polys", "monomials", "ring.h"), isAngled=false);
    cxxinclude(joinpath("polys", "monomials", "p_polys.h"), isAngled=false);
    cxxinclude(joinpath("polys", "simpleideals.h"), isAngled=false);
-   cxxinclude(joinpath("kernel", "GBEngine", "kstd1.h"), isAngled=false); cxxinclude(joinpath("kernel", "ideals.h"), isAngled=false);
+   cxxinclude(joinpath("kernel", "GBEngine", "kstd1.h"), isAngled=false); 
+   cxxinclude(joinpath("kernel", "GBEngine", "syz.h"), isAngled=false); 
+   cxxinclude(joinpath("kernel", "ideals.h"), isAngled=false); cxxinclude(joinpath("kernel", "polys.h"), isAngled=false);
    cxxinclude(joinpath("Singular", "libsingular.h"), isAngled=false); cxxinclude(joinpath("Singular", "fevoices.h"), isAngled=false);
    cxxinclude(joinpath("Singular", "ipshell.h"), isAngled=false); cxxinclude(joinpath("Singular", "ipid.h"), isAngled=false);
    cxxinclude(joinpath("Singular", "subexpr.h"), isAngled=false); cxxinclude(joinpath("Singular", "lists.h"), isAngled=false); 
    cxxinclude(joinpath("Singular", "idrec.h"), isAngled=false); cxxinclude(joinpath("Singular", "tok.h"), isAngled=false); 
+   cxxinclude(joinpath("Singular", "links", "silink.h"), isAngled=false);
+
    cxxinclude(joinpath("kernel_commands.h"), isAngled=false);
 
-
-
-
 ################# NOTE: make sure the line number is correct in case of any changes above here!!!! #################################
-cxx"""#line 35 "libSingular.jl"
+cxx"""#line 40 "libSingular.jl"
     #include "omalloc/omalloc.h"
     #include "gmp.h"
     #include "misc/intvec.h"
@@ -45,8 +51,10 @@ cxx"""#line 35 "libSingular.jl"
     #include "polys/clapsing.h"
     #include "polys/simpleideals.h"
 
-    #include "kernel/GBEngine/kstd1.h"
     #include "kernel/ideals.h"
+    #include "kernel/polys.h"
+    #include "kernel/GBEngine/kstd1.h"
+    #include "kernel/GBEngine/syz.h"
 
     #include "Singular/libsingular.h"
     #include "Singular/fevoices.h"
@@ -56,6 +64,8 @@ cxx"""#line 35 "libSingular.jl"
     #include "Singular/subexpr.h"
     #include "Singular/lists.h"
     #include "Singular/tok.h"
+    #include "Singular/links/silink.h"
+
     #include "kernel_commands.h"
 
     #include "debugbreak.h"
@@ -197,10 +207,10 @@ cxx"""#line 35 "libSingular.jl"
 
      if(!idIs0(I)) 
      {
-       const ring origin = currRing; 
        intvec* nullVector = NULL; 
        tHomog h = testHomog; 
 
+       const ring origin = currRing; 
        if (origin != R)
        	  rChangeCurrRing(R);
 
@@ -264,7 +274,7 @@ cxx"""#line 35 "libSingular.jl"
    # unique coeffs:
 
    # Ring:
-   global ptr_ZZ = (@cxx coeffs_BIGINT) ## nInitChar(n_Z(), Ptr{Void}(0))  ### (@cxx coeffs_BIGINT) # NOTE: wrong n_IsUnit!??
+   global ptr_ZZ = coeffs_BIGINT() ## nInitChar(n_Z(), Ptr{Void}(0))  ### (@cxx coeffs_BIGINT) # NOTE: wrong n_IsUnit!??
    @assert (ptr_ZZ != C_NULL)
 
    # Fields:
@@ -287,7 +297,7 @@ cxx"""#line 35 "libSingular.jl"
    global setMap_ZZ2QQ = n_SetMap(ptr_ZZ, ptr_QQ)
    @assert (setMap_ZZ2QQ != C_NULL)
 
-   global const dictOrdSymbols = Dict{Symbol, libSingular.rRingOrder_t}(
+   global const dictOrdSymbols = Dict{Symbol, rRingOrder_t}(
    	  :lex => ringorder_lp(), :revlex => ringorder_rp(), 
    	  :neglex => ringorder_ls(), :negrevlex => ringorder_rs(), 
 	  :degrevlex => ringorder_dp(), :deglex => ringorder_Dp(),
@@ -295,111 +305,6 @@ cxx"""#line 35 "libSingular.jl"
 	  :comp1max => ringorder_c(), :comp1min => ringorder_C() );
 
    global const n_NemoCoeffs = registerNemoCoeffs();
-
-   __init_singular_interpreter__();
-end
-
-function __init_singular_interpreter__()
-
-#   cV = (@cxx currentVoice); # PVoice?
-   const i = (icxx""" return (feInitStdin(NULL)); """);
-
-#   println(typeof(i));
-#   println(i);
-
-   icxx""" setPtr(currentVoice, $i); """
-
-#   cV = (@cxx currentVoice); # PVoice?
-#   @show cV
-
-   ## Cxx.CppFptr{Cxx.CppFunc{Void,Tuple{Ptr{UInt8}}}}
-   global const WerrorS_callback = (@cxx WerrorS_callback);
-#   @show  WerrorS_callback
-
-   if (WerrorS_callback == typeof(WerrorS_callback)(C_NULL))
-      const _nemoWerrorS = cfunction(nemoWerrorS, Void, (Ptr{Cuchar},));
-      icxx""" setPtr(WerrorS_callback, $_nemoWerrorS); """
-   end
-
-
-   nPos = Cint(0);
-   while true
-
-      const p = getArith1( nPos );
-
-      (p == C_NULL) && break;
-
-      const cmd  = Cint(@cxx p -> cmd);
-
-      (cmd == Cint(0)) && break;
-
-      const pp   = Cint(@cxx p -> p);
-
-      const res  = Cint(@cxx p -> res);
-      const arg  = Cint(@cxx p -> arg);
-      const opt  = Cint(@cxx p -> valid_for);
-
-      const scmd = __iiTwoOps(cmd);
-      const sarg = __Tok2Cmdname(arg);
-      const sres = __Tok2Cmdname(res);
-
-      if ( (pp != Cint(2))||(scmd == "\$INVALID\$")||(sarg == "\$INVALID\$")||(sres == "\$INVALID\$") )
-          nPos = nPos + Cint(1);
-          continue;
-      end 
-
-      if ( (scmd == "-")&&(sarg == "int") )
-          nPos = nPos + Cint(1);
-          continue;
-      end 
-
-      println();
-      println("\#$nPos: { ($cmd) '", scmd, 
-             "', arg: ($arg) '", sarg, 
-	     "', res: ($res) '", sres, 
-	     "' }, valid_for: ", bin(opt, 5) );
-    
-# TODO: CHANGE CURRENT RING???! 
-     const sarg = LEFTV(arg);
-
-     try  ##      SingularKernel.
-      eval(:(
-         function $(symbol(scmd))( ___arg :: $(sarg) )
-	       const __arg = ToLeftv( ___arg ); ## Leftv{}
-	       _arg = get_raw_ptr(__arg); ## leftv
-	 
-#	      ($arg != ANY_TYPE()) && @assert Cint(@cxx _arg -> Typ()) == $arg
-
-	      d = Ref{Ptr{Void}}(C_NULL); t = Ref{Cint}(Cint(0)); e = Ref{Cint}(Cint(0));
-	      
-	      const cmd = $(cmd);
-
-#	      @assert (@cxx errorreported) == 0
-	      icxx""" sleftv r;r.Init(); $e = ((int)iiExprArith1(&r,$_arg,$cmd)); $d=r.data;$t=r.rtyp; """ ;
-
-	      const f = string($(scmd)) * "( " * string($(sarg)) * " )";
-
-	      println("Singular interpreter kenel procedure '$f' returns: ", e[], ", errorreported: ", (@cxx errorreported));
-
-	      if (e[] > 0)
-                  icxx""" errorreported = 0; /* reset error handling */ """ ;
-		  error("Error during Singular Kernel Call via Interpreter: '$f'");
-	      end
-
-	      ($res == NONE()) && return Void()
-
-#	      ($res != ANY_TYPE()) && @assert $t == $res;
-
-	      return FromLeftv( Leftv(t[], d[]) );
-           end; 
-         ) );
-
-     catch
-     end
-
-      nPos = nPos + Cint(1);
-   end
-
 end
 
 function TRUE()
@@ -410,37 +315,12 @@ function FALSE()
    return Cint(0) # (icxx""" return (BOOLEAN)0; """);
 end
 
-function MAX_TOK()
-    return Cint( icxx""" return (MAX_TOK); """ );
-end
-
-function NONE()
-    return Cint( icxx""" return (int)(NONE); """ );
-end
-
-function ANY_TYPE()
-    return Cint( icxx""" return (int)(ANY_TYPE); """ );
-end
-
-function IDHDL()
-    return Cint( icxx""" return (int)(IDHDL); """ );
-end
-
-function INT_CMD()
-   return Cint( @cxx INT_CMD ); 
-end
-
-function STRING_CMD()
-   return Cint( @cxx STRING_CMD ); 
-end
-
-
 typealias PVoice pcpp"Voice" # Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:Voice},(false,false,false)},(false,false,false)}
 typealias idhdl pcpp"idrec"  # Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:idrec},(false,false,false)},(false,false,false)}
 typealias leftv pcpp"sleftv" # Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:sleftv},(false,false,false)},(false,false,false)}
 typealias bigintmat pcpp"bigintmat"
 typealias intvec pcpp"intvec"
-typealias intmat pcpp"intvec"
+##typealias intmat pcpp"intvec"
 
 typealias map pcpp"sip_smap"
 typealias matrix pcpp"ip_smatrix"
@@ -451,7 +331,7 @@ typealias procinfov pcpp"procinfo"
 typealias syStrategy pcpp"ssyStrategy" 
 
 typealias ring pcpp"ip_sring"
-typealias qring pcpp"ip_sring"
+##typealias qring pcpp"ip_sring"
 
 typealias poly pcpp"spolyrec"
 typealias vector pcpp"spolyrec"
@@ -462,7 +342,7 @@ typealias number2 pcpp"snumber2"
 typealias bigint pcpp"snumber"
 
 typealias ideal pcpp"sip_sideal"
-typealias modul pcpp"sip_sideal"
+##typealias modul pcpp"sip_sideal"
 
 typealias resolvente pcpp"ideal"
 
@@ -515,92 +395,6 @@ typealias __mpz_struct pcpp"__mpz_struct"
 
 typealias mpz_t pcpp"mpz_t"
 #Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:mpz_t},(false,false,false)},(false,false,false)}
-
-
-
-
-# // const char *Tok2Cmdname( int tok);
-Tok2Cmdname( tok::Cint ) = bytestring( @cxx Tok2Cmdname(tok) ) 
-
-# // const char *  iiTwoOps(int t);
-iiTwoOps( tok::Cint ) = bytestring( @cxx iiTwoOps(tok) ) 
-
-# tokval -> toktype
-iiTokType( op :: Cint ) = Cint( @cxx iiTokType(op) )
-
-
-
-__Tok2Cmdname( tok::Cint ) = bytestring( @cxx __Tok2Cmdname(tok) ) 
-__iiTwoOps( tok::Cint ) = bytestring( @cxx __iiTwoOps(tok) ) 
-
-
-# // int iiArithFindCmd(const char *szName)
-iiArithFindCmd( szName :: Ptr{Cuchar} ) = Cint( @cxx iiArithFindCmd(szName) ) 
-
-# // char *iiArithGetCmd( int nPos )
-iiArithGetCmd( nPos :: Cint ) = @cxx iiArithGetCmd(nPos) 
-
-
-
-
-# // static inline sValCmd1* getArith1( int i )
-
-function getArith1( i :: Cint ) 
-    return (icxx""" return getArith1($i); """);
-end
-function getArith2( i :: Cint ) 
-    return (icxx""" return getArith2($i); """);
-end
-function getArith3( i :: Cint ) 
-    return (icxx""" return getArith3($i); """);
-end
-function getArithM( i :: Cint ) 
-    return (icxx""" return getArithM($i); """);
-end
-
-function IsCmd(n)
-    const p = pointer(n);
-    tok = Ref{Cint}(0);
-
-# // int IsCmd(const char *n, int & tok)      
-    ret = Cint( icxx""" return IsCmd($p, $tok); """ );
-
-    return ret, tok[]
-end  
-
-function nemoWerrorS(msg :: Ptr{Cuchar})
-     # // void WerrorS_dummy(const char *)
-     println("J: ERROR on the SINGULAR side: ", msg);
-
-     BT();
-     return Void()
-end
-
-
-function Toktype( tt :: Cint )
-
-    (tt == (@cxx CMD_1)) && return "CMD_1";
-    (tt == (@cxx CMD_2)) && return "CMD_2";
-    (tt == (@cxx CMD_3)) && return "CMD_3";
-    (tt == (@cxx CMD_12)) && return "CMD_12";
-    (tt == (@cxx CMD_123)) && return "CMD_123";
-    (tt == (@cxx CMD_23)) && return "CMD_23";
-    (tt == (@cxx CMD_M)) && return "CMD_M";
-    (tt == (@cxx SYSVAR)) && return "SYSVAR";
-    (tt == (@cxx ROOT_DECL)) && return "ROOT_DECL";
-    (tt == (@cxx ROOT_DECL_LIST)) && return "ROOT_DECL_LIST";
-    (tt == (@cxx RING_DECL)) && return "RING_DECL";
-    (tt == NONE()) && return "NONE";
-
-    if (tt > Cint(' ')) && (tt < Cint(127))
-       return "[" * string(Char(Int(tt))) * "]";
-    end
-
-   return "'" * iiTwoOps(tt) * "'";
-end 
-
-
-
 
 
 ## todo: avoid the above!
@@ -2555,162 +2349,26 @@ end
 ## ideal kNF(ideal F, ideal Q, ideal p,int syzComp=0, int lazyReduce=0);
 ## poly k_NF (ideal F, ideal Q, poly p,int syzComp, int lazyReduce, const ring _currRing);
 
+################################################################################################
 
 
-
-
-### TODO: id == INT_CMD() !?
-
-type Leftv{id}
-  ptr :: leftv
-  
-  function Leftv(p::leftv)
-#     (Cint(id) != ANY_TYPE()) && @assert Cint(id) == Cint(@cxx p -> rtyp)
-     z = new(p); finalizer(z, _Leftv_clear_fn); return z;
-  end
-
-end  
-
-function get_raw_ptr{id}(l::Leftv{id})
-   const p = l.ptr;
-#   (Cint(id) != ANY_TYPE()) && @assert Cint(id) == Cint(@cxx p -> rtyp)
-   return p
+function coeffs_BIGINT()
+   return(@cxx coeffs_BIGINT);
 end
 
-function _Leftv_clear_fn{id}(l::Leftv{id})
-   const p = get_raw_ptr(l); l.ptr = leftv(C_NULL);
-### Ring?  Cleanup?
-   icxx""" omFreeBin((ADDRESS)$p, sleftv_bin); """
+function currRing()
+   return(@cxx currRing);
 end
 
-
-  function Leftv(id::Cint)
-     const p = (icxx""" return ((leftv)omAllocBin(sleftv_bin)); """);
-     @cxx p -> Init();
-     (icxx""" $p -> rtyp = (int)$id; """);
-     return Leftv{id}(p);
-  end
-
-  function Leftv(id::Cint, d::Ptr{Void})
-     z = Leftv(id)
-     p = get_raw_ptr(z)
-     (icxx""" $p -> data = $d; """);
-     return z; 
-  end
-
-
-
-function remove_raw_data{id}(l::Leftv{id})
-   const p = get_raw_ptr(l)
-   const data = Ptr{Void}(@cxx p -> data); 
-   (icxx""" $p -> data = NULL; """);
-   return data;
+function rChangeCurrRing(n::ring)
+   ## void rChangeCurrRing(ring r)
+   const origin = currRing();
+   if (origin != n && n != ring(C_NULL))
+      (@cxx rChangeCurrRing(n));
+   end
+   return(origin);
 end
 
-function get_raw_data{id}(l::Leftv{id})
-   const p = get_raw_ptr(l);
-   const data = Ptr{Void}(@cxx p -> data);
-   return data;
-end
-
-function get_raw_id{id}(l::Leftv{id}) 
-   const p = get_raw_ptr(l);
-   const t = Cint(@cxx p -> rtyp); 
-#   (Cint(id) != ANY_TYPE()) && @assert t == Cint(id);
-   return t
-   return Cint(id) ## TODO: for release version !
-end
-
-function get_data{id}(l::Leftv{id})
-   const p = get_raw_ptr(l)
-   return Ptr{Void}(@cxx p -> Data() );
-end
-
-function get_id{id}(l::Leftv{id}) 
-   const p = get_raw_ptr(l);
-   const t = Cint(@cxx p -> Typ() ); 
-   return t
-end
-
-
-function ToLeftv{id}( a::Leftv{id} )
-   return (a);
-end
-
-function ToLeftv( a::Int )
-   const id = INT_CMD();
-   const data = Ptr{Void}(a);
-   return Leftv(id, data);
-end
-
-function ToLeftv( a::AbstractString )
-   const id = (@cxx STRING_CMD);
-   const data = Ptr{Void}( omStrDup( Ptr{Cuchar}(pointer(a)) ) );
-   return Leftv(id, data);
-end
-
-
-
-function FromLeftv( l::Leftv )
-   const data = get_raw_data(l);
-   const cmd  = get_raw_id(l);   
-
-   (cmd == INT_CMD()) && return Int( data );
-
-   (cmd == Cint(@cxx STRING_CMD)) && return bytestring( Ptr{Cuchar}(data) );
-
-   return l
-end
-
-
-
-
-function LEFTV(arg :: Cint)
-
-#    DEF_CMD,
-    (arg == ANY_TYPE()) && return :Any;
-
-    (arg == INT_CMD()) && return :Int ;
-    (arg == @cxx STRING_CMD) && return :AbstractString; # Ptr{Cuchar}; # symbol() ;
-
-    return :(Leftv{$arg})
-
-### Ring dependent:
-
-    (arg == @cxx IDEAL_CMD) && return :ideal ;
-    (arg == @cxx MODUL_CMD) && return :modul ;
-
-    (arg == @cxx NUMBER_CMD) && return :number ;
-
-    (arg == @cxx RING_CMD) && return :ring ;
-    (arg == @cxx QRING_CMD) && return :qring ;
-
-    (arg == @cxx POLY_CMD) && return :poly ;
-    (arg == @cxx VECTOR_CMD) && return :vector ;
-
-
-    (arg == @cxx BIGINT_CMD) && return :bigint ;
-    (arg == IDHDL()) && return :idhdl;
-    (arg == @cxx BIGINTMAT_CMD) && return :bigintmat ;
-    (arg == @cxx INTMAT_CMD) && return :intmat ;
-    (arg == @cxx INTVEC_CMD) && return :intvec ;
-    (arg == @cxx LIST_CMD) && return :lists ;
-    (arg == @cxx MAP_CMD) && return :map ;
-    (arg == @cxx MATRIX_CMD) && return :matrix ;
-
-    (arg == @cxx LINK_CMD) && return :si_link ;
-    (arg == @cxx PACKAGE_CMD) && return :idhdl ;
-    (arg == @cxx PROC_CMD) && return :procinfov ;
-    (arg == @cxx RESOLUTION_CMD) && return :syStrategy ;
-
-   return :leftv;
-end
-
-
-
-##module SingularKernel 
-##end ## module
-
-
+################################################################################################
 
 end # libSingular module

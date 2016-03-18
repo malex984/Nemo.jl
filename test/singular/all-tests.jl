@@ -489,7 +489,7 @@ function test_SINGULAR()
    if (h == typeof(h)(C_NULL))
       println("Singular's name '$n' does not exist!");   
    else
-      println("Singular Variable '$n' of type ", Nemo.libSingular.Tok2Cmdname(@cxx h -> typ), 
+      println("Singular Variable '$n' of type ", Nemo.SingularKernel.Tok2Cmdname(@cxx h -> typ), 
               ", with value: ", (icxx""" return (IDINT($h)); """) );
 #      println("Singular Variable '$n' of type ", (@cxx h -> typ),", with value: ", (icxx""" return ((int)(long)IDDATA($h)); """))
    end
@@ -503,7 +503,7 @@ function test_SINGULAR()
    if (h == typeof(h)(C_NULL))
       println("Singular's name 'datetime' does not exist!");   
    else
-      println("Singular's name 'datetime' of type ", Nemo.libSingular.Tok2Cmdname(@cxx h -> typ)); 
+      println("Singular's name 'datetime' of type ", Nemo.SingularKernel.Tok2Cmdname(@cxx h -> typ)); 
 
       ### BOOLEAN iiMake_proc(idhdl pn, package pack, sleftv* sl);
       error_code = Cint(icxx""" return ((int)iiMake_proc($h, NULL, NULL)); """); 
@@ -513,7 +513,7 @@ function test_SINGULAR()
       if (error_code > 0)
          icxx""" errorreported = 0; /* reset error handling */ """
       else
-         println("datetime returned type: ", Nemo.libSingular.Tok2Cmdname( (icxx""" return (iiRETURNEXPR.Typ()); """) ) );
+         println("datetime returned type: ", Nemo.SingularKernel.Tok2Cmdname( (icxx""" return (iiRETURNEXPR.Typ()); """) ) );
          println("datetime returned data: ",  bytestring( Ptr{Cuchar}(icxx""" return ((char *)iiRETURNEXPR.Data()); """)) );
       end
    end
@@ -528,7 +528,7 @@ function test_SINGULAR()
 
    @show ringID
 
-   const r = Nemo.get_raw_ptr(R); icxx""" IDRING($ringID) = ring($r);"""
+   const r = get_raw_ptr(R); icxx""" IDRING($ringID) = ring($r);"""
    
    # // make R the default ring (include rChangeCurrRing):
    @cxx rSetHdl(ringID);
@@ -555,7 +555,7 @@ function test_SINGULAR()
    if (h == typeof(h)(C_NULL))
       println("Singular's name 'p' does not exist!");   
    else
-      print("Singular Variable 'p' of type ", Nemo.libSingular.Tok2Cmdname(@cxx h -> typ),", with value: ");
+      print("Singular Variable 'p' of type ", Nemo.SingularKernel.Tok2Cmdname(@cxx h -> typ),", with value: ");
       p = (icxx""" return ((poly)IDPOLY($h)); """); 
 
       const P = R(p, true); # TODO: FIXME: takes ownership!!! For later cleanup!
@@ -585,8 +585,8 @@ function test_SINGULAR()
    if (error_code > 0) 
       (icxx""" errorreported = 0; /* reset error handling */ """);
    else
-      println("Singular '", Nemo.libSingular.Tok2Cmdname(@cxx TYPEOF_CMD),
-       "' returned type: ", Nemo.libSingular.Tok2Cmdname(@cxx r1 -> Typ()));
+      println("Singular '", Nemo.SingularKernel.Tok2Cmdname(@cxx TYPEOF_CMD),
+       "' returned type: ", Nemo.SingularKernel.Tok2Cmdname(@cxx r1 -> Typ()));
       println("Returned data: ", bytestring( Ptr{Cuchar}(@cxx r1 -> Data())));
 
       (@cxx r1 -> Print());
@@ -603,7 +603,7 @@ function test_SINGULAR()
 
    @cxx r1 -> Init(); 
 
-   c, mx = Nemo.libSingular.IsCmd("maxideal");
+   c, mx = Nemo.SingularKernel.IsCmd("maxideal");
 
    @assert c == (@cxx CMD_1);
    @assert mx == (@cxx MAXID_CMD);
@@ -620,17 +620,17 @@ function test_SINGULAR()
 
          const t = (@cxx r1 -> Typ());
 
-         println("Singular '", Nemo.libSingular.Tok2Cmdname(mx),"' returned type: ", Nemo.libSingular.Tok2Cmdname(t));
+         println("Singular '", Nemo.SingularKernel.Tok2Cmdname(mx),"' returned type: ", Nemo.SingularKernel.Tok2Cmdname(t));
          println("Returned data: ") #  bytestring( Ptr{Cuchar}(@cxx r1 -> Data())));
 
 	 @assert t == (@cxx IDEAL_CMD);
 
-	 I = Nemo.SingularIdeal(R, Nemo.libSingular.ideal(@cxx r1 -> Data()), true);
+	 I = Nemo.SingularIdeal(R, Nemo.ideal(@cxx r1 -> Data()), true);
 	 println("maxideal(): ", I);
 
          @cxx arg -> CleanUp(r);
 
-	 _, std = Nemo.libSingular.IsCmd("std");
+	 _, std = Nemo.SingularKernel.IsCmd("std");
 	 @assert std == (@cxx STD_CMD);
 
          error_code = Cint( icxx""" return ((int)iiExprArith1($arg, $r1, $std)); """ )
@@ -653,27 +653,37 @@ function test_SINGULAR()
 
    nPos :: Cint = 0;
    while true
-      p = Nemo.libSingular.iiArithGetCmd( nPos );
+      p = Nemo.SingularKernel.iiArithGetCmd( nPos );
 
       (p == C_NULL) && break;
 
       s = bytestring(p);
 
-      t, op = Nemo.libSingular.IsCmd(s);
-      println("$nPos: cmd: $op ('$s') / '", Nemo.libSingular.iiTwoOps(op), "', type[$t]: ", Nemo.libSingular.Toktype(t));
+      t, op = Nemo.SingularKernel.IsCmd(s);
+      println("$nPos: cmd: $op ('$s') / '", Nemo.SingularKernel.iiTwoOps(op), "', type[$t]: ", Nemo.SingularKernel.Toktype(t));
 
       nPos = nPos + Cint(1);
    end
 
 ##############################################################
 
-   println("varstr(int 1): '", Nemo.libSingular.varstr(1), "'");
-   println("varstr(int 2): '", Nemo.libSingular.varstr(2), "'");
-   println("size(string): '", Nemo.libSingular.size("123456"), "'");
-   println("rvar(string): '", Nemo.libSingular.rvar(Nemo.libSingular.varstr(1)), "'"); 
-   println("rvar(string): '", Nemo.libSingular.rvar("a"), "'");
+   @test Nemo.SingularKernel.varstr(1) == "x"
+   @test Nemo.SingularKernel.varstr(2) == "y"
+   @test Nemo.SingularKernel.varstr(3) == "z"
+   @test Nemo.SingularKernel._size("123456") == 6
+   @test Nemo.SingularKernel._size("..") == 2
+   @test Nemo.SingularKernel.rvar("x") == 1
+   @test Nemo.SingularKernel.rvar("y") == 2
+   @test Nemo.SingularKernel.rvar("z") == 3
+   @test Nemo.SingularKernel.rvar("a") == 0
+
    println("Executing string: "); 
-   Nemo.libSingular.execute("int j = 3; print((j*j+j) == 12); ");
+   Nemo.SingularKernel.execute("int j = 3; ASSUME(0, (j*j+j) == 12); ");
+
+   @test Nemo.SingularKernel._size("") == 0
+
+   println("maxideal(3): ", Nemo.SingularKernel.maxideal(3));
+   println("freemodule(3): ", Nemo.SingularKernel.freemodule(5));
 
 end
 

@@ -82,6 +82,13 @@ type PRing <: SingularPolynomialRing
       finalizer(d, _PRing_clear_fn)
       return d
    end
+
+
+   function PRing(ptr::libSingular.ring) 
+      (r_Test(ptr) == libSingular.ring(C_NULL)) && error("Singular polynomial ring construction failure")
+      
+      return(SRingID[ptr]); #### TODO: FIXME: Ring has to be known to Nemo!!!!!!!!!!!!!!!!!!!!!! :((((((((((
+   end
 end
 
 const SModuleID = ObjectIdDict()
