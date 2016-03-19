@@ -151,12 +151,10 @@ function test_generic_polys(C::Nemo.SingularCoeffs)
 
    # Benchmark:
 
-   U, t = SingularPolynomialRing(C, "x, y, z, t"); #PolynomialRing(C, "x");
+   println("!!!!!!!!!!!!Generic Poly vs PRing!!!!!!!!!!!!!!!!")
 
-#	S, y = PolynomialRing(R, "y"); 
-#        T, z = PolynomialRing(S, "z"); 
-#	U, t = PolynomialRing(T, "t");
 
+   U, t = SingularPolynomialRing(C, "x, y, z, t"); 
    x = gen(U, 1); y = gen(U, 2); z = gen(U, 3);
 
 	println(U);
@@ -164,13 +162,33 @@ function test_generic_polys(C::Nemo.SingularCoeffs)
         p = (t + z + y + x + 1);
         println("p: ", p)
 
-        @time pp = p^4
+        @time pp = p^4;
+        @time pp = p^4;
 
-        # println("pp: ", pp)
         @time ppp = pp*(pp+1);
-
+        @time ppp = pp*(pp+1);
 		
         println("\n...PASS")
+
+
+        R, x = PolynomialRing(C, "x"); 
+	S, y = PolynomialRing(R, "y"); 
+        T, z = PolynomialRing(S, "z"); 
+	U, t = PolynomialRing(T, "t");
+
+	println(U);
+
+        p = (t + z + y + x + 1);
+        println("p: ", p)
+
+        @time pp = p^4;
+        @time pp = p^4;
+        @time ppp = pp*(pp+1);
+        @time ppp = pp*(pp+1);
+		
+        println("\n...PASS")
+
+
 end
 
 
