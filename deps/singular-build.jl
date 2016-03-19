@@ -76,6 +76,7 @@ if !on_windows
 
    ### add debugbreak.h into local/include/
     run(`ln -sf $pkgdir/src/singular/debugbreak.h $vdir/include/debugbreak.h`)
+    run(`ln -sf $pkgdir/src/singular/kernel_commands.h $vdir/include/singular/kernel_commands.h`)
 end
 
 cd(oldwdir);
