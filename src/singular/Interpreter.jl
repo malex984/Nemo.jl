@@ -7,18 +7,15 @@ import Base: Array, call, checkbounds, convert, cmp, contains, deepcopy,
              +, -, *, ==, ^, &, |, $, <<, >>, ~, <=, >=, <, >, //, /, !=
 
 import Nemo: Ring, RingElem, divexact, characteristic, degree, gen, transpose ## , deepcopy #
-##using Nemo: Ring, RingElem, divexact, characteristic, degree, gen, transpose ## , deepcopy #
-import Nemo: PRingElem, PRing, PModuleElem, SingularIdeal, SingularModule, Singular_ZZElem, get_raw_ptr
+import Nemo: PRingElem, PRing, PModuleElem, SingularIdeal, SingularModule, Singular_ZZElem, SingularCoeffsElems, get_raw_ptr
+
 using Nemo
-## using Nemo: PRingElem, PRing, PModuleElem, SingularIdeal, SingularModule, Singular_ZZElem, get_raw_ptr
-
 using ..libSingular
-
 using Cxx
 
 function __init_singular_interpreter__()
-#   cV = (@cxx currentVoice); # PVoice?
-   const i = (icxx""" return (feInitStdin(NULL)); """);
+#   cV = (@cxx currentVoice); # Voice?
+   const i = (@cxx feInitStdin( Voice(C_NULL) ) );
 
 #   println(typeof(i));
 #   println(i);
@@ -33,8 +30,8 @@ function __init_singular_interpreter__()
 #   @show  WerrorS_callback
 
    if (WerrorS_callback == typeof(WerrorS_callback)(C_NULL))
-      const _nemoWerrorS = cfunction(nemoWerrorS, Void, (Ptr{Cuchar},));
-      icxx""" setPtr(WerrorS_callback, $_nemoWerrorS); """
+##      const _nemoWerrorS = cfunction(nemoWerrorS, Void, (Ptr{Cuchar},));
+      (icxx""" setPtr( WerrorS_callback, $(cfunction(nemoWerrorS, Void, (Ptr{Cuchar},))) ); """); # _nemoWerrorS
    end
 
 
@@ -67,15 +64,10 @@ function __init_singular_interpreter__()
       if ( (scmd == sarg) && (scmd == sres) )
           nPos = nPos + Cint(1);
           continue;
-      end 
+      end
 
-      println();
-      println("\#$nPos: { ($cmd) '", scmd, 
-             "', arg: ($arg) '", sarg, 
-	     "', res: ($res) '", sres, 
-	     "' }, valid_for: ", bin(opt, 5) );
+     println("\#$nPos:  $scmd:$cmd( $sarg:$arg ) -> $sres:$res, valid_for: ", bin(opt, 5) );
     
-# TODO: CHANGE CURRENT RING???! 
      const sarg = LEFTV(arg);
 
      try  ##      SingularKernel.
@@ -123,6 +115,334 @@ function __init_singular_interpreter__()
 
       nPos = nPos + Cint(1);
    end
+
+
+
+
+
+   nPos = Cint(0);
+   while true
+
+      const p = getArith2( nPos );
+
+      (p == C_NULL) && break;
+
+      const cmd  = Cint(@cxx p -> cmd);
+
+      (cmd == Cint(0)) && break;
+
+      const pp   = Cint(@cxx p -> p);
+
+      const res  = Cint(@cxx p -> res);
+      const arg1  = Cint(@cxx p -> arg1);
+      const arg2  = Cint(@cxx p -> arg2);
+      const opt  = Cint(@cxx p -> valid_for);
+
+      const scmd = __iiTwoOps(cmd);
+      const sarg1 = __Tok2Cmdname(arg1);
+      const sarg2 = __Tok2Cmdname(arg2);
+      const sres = __Tok2Cmdname(res);
+
+      if ( (pp != Cint(2))||(scmd == "\$INVALID\$")||(sarg1 == "\$INVALID\$")||(sarg2 == "\$INVALID\$")||(sres == "\$INVALID\$") )
+          nPos = nPos + Cint(1);
+          continue;
+      end 
+
+     println("\#$nPos:  $scmd:$cmd( $sarg1:$arg1, $sarg2:$arg2 ) -> $sres:$res, valid_for: ", bin(opt, 5) );
+
+     const sarg1 = LEFTV(arg1);
+     const sarg2 = LEFTV(arg2);
+
+     try  ##      SingularKernel.
+      eval(:(
+         function $(symbol(scmd))( ___arg1 :: $(sarg1), ___arg2 :: $(sarg2) ) # Julia types  <-1:1-> Singular Interpreter Types
+	      const __arg1 = ToLeftv( ___arg1 ); ## Leftv{}
+	      const _arg1 = get_raw_ptr(__arg1); ## leftv
+
+	      const __arg2 = ToLeftv( ___arg2 ); ## Leftv{}
+	      const _arg2 = get_raw_ptr(__arg2); ## leftv
+
+	      const f = string($(scmd)) * "( " * string($(sarg1)) * ", " * string($(sarg2)) * " )";
+
+	      const R1 = get_raw_context(__arg1);
+	      const R2 = get_raw_context(__arg2);
+
+	      if R1 != ring(C_NULL) && R2 != ring(C_NULL) && ( R1 != R2 )
+		  error("Error at Singular Kernel Call via Interpreter: '$f': different context rings!");
+	      end
+
+	      const orig_ring = rChangeCurrRing(R1);
+	      rChangeCurrRing(R2);
+
+#	      ($arg1 != ANY_TYPE()) && @assert Cint(@cxx _arg1 -> Typ()) == $arg1
+
+	      d = Ref{Ptr{Void}}(C_NULL); t = Ref{Cint}(Cint(0)); e = Ref{Cint}(Cint(0));
+	      
+	      const cmd = $(cmd);
+
+#	      @assert (@cxx errorreported) == 0
+	      icxx""" sleftv r;r.Init(); $e = ((int)iiExprArith2(&r,$_arg1,$cmd,$_arg2)); $d=r.data;$t=r.rtyp; """ ;
+
+	      println("Singular interpreter kenel procedure '$f' returns: ", e[], ", errorreported: ", (@cxx errorreported));
+
+	      if (e[] > 0)
+                  icxx""" errorreported = 0; /* reset error handling */ """ ;
+		  error("Error during Singular Kernel Call via Interpreter: '$f'");
+	      end
+
+	      if ($res == NONE()) 
+                  rChangeCurrRing(orig_ring);
+                  return Void() ### TODO: should not be run-time check! 
+              end
+
+#	      ($res != ANY_TYPE()) && @assert $t == $res;
+
+	      ret = FromLeftv( t[], d[], currRing() );
+              rChangeCurrRing(orig_ring);
+	      return ret;
+           end; 
+         ) );
+
+
+     catch
+     end
+
+      nPos = nPos + Cint(1);
+   end
+
+
+
+
+
+   nPos = Cint(0);
+   while true
+
+      const p = getArith3( nPos );
+
+      (p == C_NULL) && break;
+
+      const cmd  = Cint(@cxx p -> cmd);
+
+      (cmd == Cint(0)) && break;
+
+      const pp   = Cint(@cxx p -> p);
+
+      const res  = Cint(@cxx p -> res);
+      const arg1  = Cint(@cxx p -> arg1);
+      const arg2  = Cint(@cxx p -> arg2);
+      const arg3  = Cint(@cxx p -> arg3);
+      const opt  = Cint(@cxx p -> valid_for);
+
+      const scmd = __iiTwoOps(cmd);
+      const sarg1 = __Tok2Cmdname(arg1);
+      const sarg2 = __Tok2Cmdname(arg2);
+      const sarg3 = __Tok2Cmdname(arg3);
+      const sres = __Tok2Cmdname(res);
+
+      if ( (pp != Cint(2))||(scmd == "\$INVALID\$")||(sarg1 == "\$INVALID\$")||(sarg2 == "\$INVALID\$")||(sarg3 == "\$INVALID\$")||(sres == "\$INVALID\$") )
+          nPos = nPos + Cint(1);
+          continue;
+      end 
+
+     println("\#$nPos:  $scmd:$cmd( $sarg1:$arg1, $sarg2:$arg2, $sarg3:$arg3 ) -> $sres:$res, valid_for: ", bin(opt, 5) );
+
+     const sarg1 = LEFTV(arg1);
+     const sarg2 = LEFTV(arg2);
+     const sarg3 = LEFTV(arg3);
+
+     try  ##      SingularKernel.
+      eval(:(
+         function $(symbol(scmd))( ___arg1 :: $(sarg1), ___arg2 :: $(sarg2), ___arg3 :: $(sarg3) )
+	      const __arg1 = ToLeftv( ___arg1 ); ## Leftv{}
+	      const _arg1 = get_raw_ptr(__arg1); ## leftv
+
+	      const __arg2 = ToLeftv( ___arg2 ); ## Leftv{}
+	      const _arg2 = get_raw_ptr(__arg2); ## leftv
+
+	      const __arg3 = ToLeftv( ___arg3 ); ## Leftv{}
+	      const _arg3 = get_raw_ptr(__arg3); ## leftv
+
+	      const f = string($(scmd)) * "( " * string($(sarg1)) * ", " * string($(sarg2)) * ", " * string($(sarg3)) * " )";
+
+	      const R1 = get_raw_context(__arg1);
+	      const R2 = get_raw_context(__arg2);
+	      const R3 = get_raw_context(__arg3);
+
+	      if R1 != ring(C_NULL) && R2 != ring(C_NULL) && ( R1 != R2 )
+		  error("Error at Singular Kernel Call via Interpreter: '$f': different context rings!");
+	      end
+
+	      if R1 != ring(C_NULL) && R3 != ring(C_NULL) && ( R1 != R3 )
+		  error("Error at Singular Kernel Call via Interpreter: '$f': different context rings!");
+	      end
+
+	      if R2 != ring(C_NULL) && R3 != ring(C_NULL) && ( R2 != R3 )
+		  error("Error at Singular Kernel Call via Interpreter: '$f': different context rings!");
+	      end
+
+	      const orig_ring = rChangeCurrRing(R1);
+	      rChangeCurrRing(R2);
+	      rChangeCurrRing(R3);
+
+#	      ($arg1 != ANY_TYPE()) && @assert Cint(@cxx _arg1 -> Typ()) == $arg1
+
+	      d = Ref{Ptr{Void}}(C_NULL); t = Ref{Cint}(Cint(0)); e = Ref{Cint}(Cint(0));
+	      
+	      const cmd = $(cmd);
+
+#	      @assert (@cxx errorreported) == 0
+	      icxx""" sleftv r;r.Init(); $e = ((int)iiExprArith3(&r,$cmd,$_arg1,$_arg2,$_arg3)); $d=r.data;$t=r.rtyp; """ ;
+
+	      println("Singular interpreter kenel procedure '$f' returns: ", e[], ", errorreported: ", (@cxx errorreported));
+
+	      if (e[] > 0)
+                  icxx""" errorreported = 0; /* reset error handling */ """ ;
+		  error("Error during Singular Kernel Call via Interpreter: '$f'");
+	      end
+
+	      if ($res == NONE()) 
+                  rChangeCurrRing(orig_ring);
+                  return Void() ### TODO: should not be run-time check! 
+              end
+
+#	      ($res != ANY_TYPE()) && @assert $t == $res;
+
+	      ret = FromLeftv( t[], d[], currRing() );
+              rChangeCurrRing(orig_ring);
+	      return ret;
+           end; 
+         ) );
+
+
+     catch
+     end
+
+      nPos = nPos + Cint(1);
+   end
+
+
+
+
+   nPos = Cint(0);
+   while true
+
+      const p = getArithM( nPos );
+
+      (p == C_NULL) && break;
+
+      const cmd  = Cint(@cxx p -> cmd);
+
+      (cmd == Cint(0)) && break;
+
+      const pp   = Cint(@cxx p -> p);
+
+      const res  = Cint(@cxx p -> res);
+      const narg  = Cint(@cxx p -> number_of_args);
+      const opt  = Cint(@cxx p -> valid_for);
+
+      const scmd = __iiTwoOps(cmd);
+##      const sarg = __Tok2Cmdname(arg);
+      const sres = __Tok2Cmdname(res);
+
+      if ( (pp != Cint(2))||(scmd == "\$INVALID\$")||(1 <= narg && narg <= 3 )||(sres == "\$INVALID\$") )
+          nPos = nPos + Cint(1);
+          continue;
+      end 
+
+#      if ( scmd == "breakpoint" || scmd == "reduce" )
+      if ( (scmd == "string") && (scmd == sres) )
+          scmd = "_" *  scmd;
+#          nPos = nPos + Cint(1);
+#          continue;
+      end
+
+
+     println("\#$nPos:  $scmd:$cmd( ,,,$narg?,,, ) -> $sres:$res, valid_for: ", bin(opt, 5) );
+    
+#     const sarg = LEFTV(arg);
+
+     try  ##      SingularKernel.
+      eval(:(
+         function $(symbol(scmd))( ___args... )
+              if $narg >= 0
+	          @assert (length(___args) == $narg);
+              else
+                  @assert (length(___args) >= (-$narg - 1));   # -1 => any, -2 => at least one...
+	      end
+
+	      const f = string($(scmd)) * "( ,,,?" * string($(narg)) * "?,,, )";
+
+	      _args = leftv(C_NULL);
+	      _tail = leftv(C_NULL);
+
+	      const orig_ring = currRing();
+
+	      R = ring(C_NULL);
+
+	      for arg in ___args
+   	          const __arg = ToLeftv( arg ); ## Leftv{}
+	      	  const r = get_raw_context(__arg);
+		  
+		  if( r != ring(C_NULL) )
+		      if R == ring(C_NULL)
+		          R = r;
+		      end
+		      
+		      (R != r) && error("Error at Singular Kernel Call via Interpreter: '$f': different context rings!");
+		  end
+		        
+		  
+  		  if _args == leftv(C_NULL)
+		     _args = get_raw_ptr(__arg); ## leftv
+		     _tail = _args;
+		  else
+ 		     @assert _tail != leftv(C_NULL)
+		     const _arg = remove_raw_data(__arg);
+		     (icxx""" ((leftv)$_tail) -> next = (leftv)($_arg); """);
+		     _tail = _arg;
+		  end
+
+		  
+	      end
+
+	      rChangeCurrRing(R);
+
+#	      ($arg != ANY_TYPE()) && @assert Cint(@cxx _arg -> Typ()) == $arg
+
+	      d = Ref{Ptr{Void}}(C_NULL); t = Ref{Cint}(Cint(0)); e = Ref{Cint}(Cint(0));
+	      
+	      const cmd = $(cmd);
+
+#	      @assert (@cxx errorreported) == 0
+	      icxx""" sleftv r;r.Init(); $e = ((int)iiExprArithM(&r,(leftv)$_args,$cmd)); $d=r.data;$t=r.rtyp; """ ;
+
+	      println("Singular interpreter kenel procedure '$f' returns: ", e[], ", errorreported: ", (@cxx errorreported));
+
+	      if (e[] > 0)
+                  icxx""" errorreported = 0; /* reset error handling */ """ ;
+		  error("Error during Singular Kernel Call via Interpreter: '$f'");
+	      end
+
+	      if ($res == NONE()) 
+                  rChangeCurrRing(orig_ring);
+                  return Void() ### TODO: should not be run-time check! 
+              end
+
+#	      ($res != ANY_TYPE()) && @assert $t == $res;
+
+	      ret = FromLeftv( t[], d[], currRing() );
+              rChangeCurrRing(orig_ring);
+	      return ret;
+           end; 
+         ) );
+
+     catch
+     end
+
+      nPos = nPos + Cint(1);
+   end
+
+
 end
 
 function MAX_TOK()
@@ -148,6 +468,83 @@ end
 function STRING_CMD()
    return Cint( @cxx STRING_CMD ); 
 end
+
+function INTVEC_CMD()
+   const t = (@cxx INTVEC_CMD);
+   return Cint(icxx""" return ((int)($t)); """);
+end
+
+function NUMBER_CMD()
+   const t = (@cxx NUMBER_CMD);
+   return Cint(icxx""" return ((int)($t)); """);
+end
+
+function LINK_CMD()
+   const t = (@cxx LINK_CMD); 
+   return Cint(icxx""" return ((int)($t)); """);
+end
+
+function BIGINTMAT_CMD()
+   const t = (@cxx BIGINTMAT_CMD);
+   return Cint(icxx""" return ((int)($t)); """);
+end
+
+function BIGINT_CMD()
+   const t = (@cxx BIGINT_CMD);
+   return Cint(icxx""" return ((int)($t)); """);
+end
+
+function IDEAL_CMD()
+   const t = (@cxx IDEAL_CMD);
+   return Cint(icxx""" return ((int)($t)); """);
+end
+
+function INTMAT_CMD()
+   const t = (@cxx INTMAT_CMD);
+   return Cint(icxx""" return ((int)($t)); """);
+end
+
+function LIST_CMD()
+   const t = (@cxx LIST_CMD);
+   return Cint(icxx""" return ((int)($t)); """);
+end
+
+function MODUL_CMD()
+   const t = (@cxx MODUL_CMD);
+   return Cint(icxx""" return ((int)($t)); """);
+end
+
+function POLY_CMD()
+   const t = (@cxx POLY_CMD);
+   return Cint(icxx""" return ((int)($t)); """);
+end
+
+function PROC_CMD()
+   const t = (@cxx PROC_CMD);
+   return Cint(icxx""" return ((int)($t)); """);
+end
+
+function QRING_CMD()
+   const t = (@cxx QRING_CMD);
+   return Cint(icxx""" return ((int)($t)); """);
+end
+
+function RESOLUTION_CMD()
+   const t = (@cxx RESOLUTION_CMD);
+   return Cint(icxx""" return ((int)($t)); """);
+end
+
+function RING_CMD()
+   const t = (@cxx RING_CMD);
+   return Cint(icxx""" return ((int)($t)); """);
+end
+
+function VECTOR_CMD()
+   const t = (@cxx VECTOR_CMD);
+   return Cint(icxx""" return ((int)($t)); """);
+end
+
+
 
 function getArith2( i :: Cint ) 
     return (icxx""" return getArith2($i); """);
@@ -329,7 +726,7 @@ function deepcopy{id}(l::Leftv{id})
    const p = get_raw_ptr(l); 
    const ctx = get_raw_context(l); # Ring Context Parent 
 
-   const res = Leftv(id, ctx);
+   const res = Leftv{id}(id, ctx);
    const pp = get_raw_ptr(res); 
 
    if isRingDependend(l) && (ctx != ring(C_NULL))
@@ -368,13 +765,6 @@ end
 #     return Leftv{id}(p, R);
 #  end
 
-  function Leftv(id::Cint, d::Ptr{Void}, R::ring = ring(C_NULL))
-     const p = (icxx""" return ((leftv)omAllocBin(sleftv_bin)); """); @cxx p -> Init();
-     (icxx""" $p -> rtyp = (int)$id;  $p -> data = $d; """);
-     z = Leftv{id}(p, R)
-     return z; 
-  end
-
 function remove_raw_data{id}(l::Leftv{id})
    const p = get_raw_ptr(l)
    const data = Ptr{Void}(@cxx p -> data); 
@@ -406,6 +796,14 @@ function get_id{id}(l::Leftv{id})
    const t = Cint(@cxx p -> Typ() ); 
    return t
 end
+
+
+  function ToLeftv(id::Cint, d::Ptr{Void}, R::ring = ring(C_NULL))
+     const p = (icxx""" return ((leftv)omAllocBin(sleftv_bin)); """); @cxx p -> Init();
+     (icxx""" $p -> rtyp = (int)$id;  $p -> data = $d; """);
+     z = Leftv{id}(p, R)
+     return z; 
+  end
 
 
 function ToLeftv{id}( a::Leftv{id} )
@@ -498,103 +896,110 @@ static inline void * s_internalCopy(const int t,  void *d)
 
 function ToLeftv( a::Int )
    const id = INT_CMD();
-   const data = Ptr{Void}(a); # deepcopy?!
-   return Leftv(id, data, ring(C_NULL));
+#   const data = Ptr{Void}(a); # deepcopy?!
+   return ToLeftv(id, (icxx""" return ((void*)($a)); """));
 end
 
 function ToLeftv( a::AbstractString )
    const id = STRING_CMD();
-   const data = Ptr{Void}( omStrDup( Ptr{Cuchar}(pointer(a)) ) ); # copy!
-   return Leftv(id, data);
+   const data = omStrDup( Ptr{Cuchar}(pointer(a)) ); # copy!
+   return ToLeftv(id, (icxx""" return ((void*)($data)); """));
 end
-
 
 function ToLeftv( a::intvec )
    (@cxx a -> ivTEST());
-   const id = (@cxx INTVEC_CMD);
+   const id = INTVEC_CMD();
    const aa = (@cxx ivCopy(a));
    (@cxx aa -> ivTEST());
-   const data = Ptr{Void}(aa); # copy!
-   return Leftv(id, data);
+#   const data = Ptr{Void}(aa); # copy!
+   return ToLeftv(id, (icxx""" return ((void*)($aa)); """));
 end
 
 function ToLeftv( a::si_link )
-   const id = (@cxx LINK_CMD);
+   const id = LINK_CMD();
    const aa = (@cxx slCopy(a)); # copy!
-   const data = Ptr{Void}(aa); 
-   return Leftv(id, data);
+#   const data = Ptr{Void}(aa); 
+   return ToLeftv(id, (icxx""" return ((void*)($aa)); """));
 end
 
 function ToLeftv( a::bigintmat )
-   const id = (@cxx BIGINTMAT_CMD);
+   const id = BIGINTMAT_CMD(); 
    const aa = (@cxx bimCopy(a)); # copy!
-   const data = Ptr{Void}(aa); 
-   return Leftv(id, data);
+#   const data = Ptr{Void}(aa); 
+   return ToLeftv(id, (icxx""" return ((void*)($aa)); """));
 end
 
-
 function ToLeftv( a::syStrategy )
-   const id = (@cxx RESOLUTION_CMD);
+   const id = RESOLUTION_CMD();
    const aa = (@cxx syCopy(a)); # shallow copy!
-   const data = Ptr{Void}(aa); 
-   return Leftv(id, data);
+#   const data = Ptr{Void}(aa); 
+   return ToLeftv(id, (icxx""" return ((void*)($aa)); """));
 end
 
 function ToLeftv( a::procinfov ) # syStrategy )
-   const id = (@cxx PROC_CMD);
+   const id = PROC_CMD();
    const aa = (@cxx piCopy(a)); # shallow copy!
-   const data = Ptr{Void}(aa); 
-   return Leftv(id, data);
+#   const data = Ptr{Void}(aa); 
+   return ToLeftv(id, (icxx""" return ((void*)($aa)); """));
 end
 
-function ToLeftv( a::Singular_ZZElem )
-   const id = (@cxx BIGINT_CMD);
-   const c = coeffs_BIGINT(); ###### TODO: NOTE: depends on the use of coeffs_BIGINT() for ptr_ZZ!!!!
-   const aa = n_Copy(get_raw_ptr(a), c); # copy!
-   const data = Ptr{Void}(aa); 
-   return Leftv(id, data); # no ring!
+function ToLeftv( a::BigInt )
+   const id = BIGINT_CMD();
+   const aa = n_InitMPZ(a, coeffs_BIGINT());
+   return ToLeftv(id, (icxx""" return ((void*)($aa)); """)); # no ring!
 end
 
 function ToLeftv( a::PRing )
-   const id = (@cxx RING_CMD);
+   const id = RING_CMD();
    const g = get_raw_ptr(a);
    if (g != ring(C_NULL))
       icxx""" ring gg = (ring)$g; gg->ref++; """; ## shallow copy...
    end
-   const data = Ptr{Void}(g);
-   return Leftv(id, data); # NOTE: no additional ring!
+   return ToLeftv(id, (icxx""" return ((void*)($g)); """)); # NOTE: no additional ring!
 end
 
 function ToLeftv( a::PRingElem )
-   const id = (@cxx POLY_CMD);
+   const id = POLY_CMD();
    const rr = get_raw_ptr(parent(a));
    const p = get_raw_ptr(a);
-   const data = Ptr{Void}(p_Copy(p, rr));
-   return Leftv(id, data, rr);
+   const data = p_Copy(p, rr);
+   return ToLeftv(id, (icxx""" return ((void*)($data)); """), rr);
 end
 
 function ToLeftv( a::PModuleElem )
-   const id = (@cxx VECTOR_CMD);
+   const id = VECTOR_CMD();
    const rr = get_raw_ptr(parent(a));
    const p = get_raw_ptr(a);
-   const data = Ptr{Void}(p_Copy(p, rr));
-   return Leftv(id, data, rr);
+   const data = p_Copy(p, rr);
+   return ToLeftv(id, (icxx""" return ((void*)($data)); """), rr);
 end
 
 function ToLeftv( a::SingularIdeal )
-   const id = (@cxx IDEAL_CMD);
+   const t = IDEAL_CMD(); # (@cxx ); # Cxx.CppEnum{:yytokentype}
+   const id = Cint(icxx""" return ((int)($t)); """);
    const rr = get_raw_ptr(parent(a));
-   const p = get_raw_ptr(a);
-   const data = Ptr{Void}(id_Copy(p, rr));
-   return Leftv(id, data, rr);
+   const data = id_Copy(get_raw_ptr(a), rr);
+   return ToLeftv(id, (icxx""" return ((void*)($data)); """), rr);
 end
 
 function ToLeftv( a::SingularModule )
-   const id = (@cxx MODUL_CMD);
+   const t = MODUL_CMD();
+   const id = Cint(icxx""" return ((int)($t)); """);
    const rr = get_raw_ptr(parent(a));
    const p = get_raw_ptr(a);
-   const data = Ptr{Void}(id_Copy(p, rr));
-   return Leftv(id, data, rr);
+   const data = id_Copy(p, rr);
+   return ToLeftv(id, (icxx""" return ((void*)($data)); """), rr);
+end
+
+function ToLeftv( a::SingularCoeffsElems )
+   const id = NUMBER_CMD();
+   const c = get_raw_ptr(parent(a));
+   const rr = currRing();
+
+   (c != rGetCoeffs(rr)) && error("Error during converting NUMBER -> LEFTV: number coeffs is not from current ring!");
+
+   const data = n_Copy(get_raw_ptr(a), c);
+   return ToLeftv(id, (icxx""" return ((void*)($data)); """), rr); # no ring!
 end
 
 #### coeffs -> PRing( SingularCoeffs(coeffs), "@", :lex ) ?! check currRing! ## get_raw_ptr,ring = get_raw_ptr(parent)??
@@ -605,24 +1010,31 @@ function FromLeftv( cmd::Cint, data::Ptr{Void}, R::ring )
 	 return(s);
     end	 
     (cmd == INT_CMD()) && return Int( data );
-    (cmd == @cxx INTVEC_CMD) && return intvec(data) ;
+    (cmd == INTVEC_CMD()) && return intvec(data) ;
 
-    (cmd == @cxx LINK_CMD) && return si_link(data) ;
-    (cmd == @cxx PROC_CMD) && return procinfov(data) ;
+    (cmd == LINK_CMD()) && return si_link(data) ;
+    (cmd == PROC_CMD()) && return procinfov(data) ;
 
-    (cmd == @cxx BIGINT_CMD) && return Singular_ZZElem(number(data));
-    (cmd == @cxx BIGINTMAT_CMD) && return bigintmat(data) ;
-
-    (cmd == @cxx RESOLUTION_CMD) && return syStrategy(data) ;
-
-    (cmd == @cxx RING_CMD) && return PRing(ring(data));
+    if (cmd == BIGINT_CMD())  ##return convert(BigInt, Singular_ZZElem(number(data));
+       const c = coeffs_BIGINT(); 
+       n = Ref(icxx""" return ((number)($data)); """);       
+       const b = n_MPZ(n, c);
+       n_Delete( n[], c);
+       return b;
+    end	
+ 
+    (cmd == BIGINTMAT_CMD()) && return bigintmat(data) ;
+    (cmd == RESOLUTION_CMD()) && return syStrategy(data) ;
+    (cmd == RING_CMD()) && return PRing(ring(data)); 
 
 #    if R != ring(C_NULL)
-       (cmd == @cxx POLY_CMD) && return PRingElem(PRing(R), (icxx""" return ((poly)($data)); """) );   
-       (cmd == @cxx VECTOR_CMD) && return PModuleElem(PRing(R), (icxx""" return ((poly)($data)); """) );
+       (cmd == NUMBER_CMD()) && return base_ring(PRing(R))(icxx""" return ((number)($data)); """); 
 
-       (cmd == @cxx IDEAL_CMD) && return SingularIdeal(PRing(R), (icxx""" return ((ideal)($data)); """) );
-       (cmd == @cxx MODUL_CMD) && return SingularModule(PRing(R), (icxx""" return ((ideal)($data)); """) );
+       (cmd == POLY_CMD()) && return PRingElem(PRing(R), (icxx""" return ((poly)($data)); """) );   
+       (cmd == VECTOR_CMD()) && return PModuleElem(PRing(R), (icxx""" return ((poly)($data)); """) );
+
+       (cmd == IDEAL_CMD()) && return SingularIdeal(PRing(R), (icxx""" return ((ideal)($data)); """) );
+       (cmd == MODUL_CMD()) && return SingularModule(PRing(R), (icxx""" return ((ideal)($data)); """) );
 #    end
 
     return Leftv(cmd, data, R);
@@ -642,36 +1054,37 @@ function LEFTV(arg :: Cint)
     (arg == STRING_CMD()) && return :AbstractString; # Ptr{Cuchar}; # symbol() ;
     (arg == INT_CMD()) && return :Int ;
 
-    (arg == @cxx INTVEC_CMD) && return :intvec ;
-    (arg == @cxx LINK_CMD) && return :si_link ;
-    (arg == @cxx PROC_CMD) && return :procinfov ;
+    (arg == INTVEC_CMD()) && return :intvec ;
+    (arg == LINK_CMD()) && return :si_link ;
+    (arg == PROC_CMD()) && return :procinfov ;
 
-    (arg == @cxx BIGINTMAT_CMD) && return :bigintmat ;
-    (arg == @cxx BIGINT_CMD) && return :Singular_ZZElem;
+    (arg == BIGINTMAT_CMD()  ) && return :bigintmat ;
+    (arg == BIGINT_CMD()  ) && return :BigInt;
 
-    (arg == @cxx RING_CMD) && return :PRing;
+    (arg == RING_CMD()  ) && return :PRing;
 
-    (arg == @cxx IDEAL_CMD) && return :SingularIdeal ;
-    (arg == @cxx MODUL_CMD) && return :SingularModule ;
+    (arg == IDEAL_CMD()  ) && return :SingularIdeal ;
+    (arg == MODUL_CMD()  ) && return :SingularModule ;
 
-    (arg == @cxx POLY_CMD) && return :PRingElem ;
-    (arg == @cxx VECTOR_CMD) && return :PModuleElem ;
+    (arg == POLY_CMD()  ) && return :PRingElem ;
+    (arg == VECTOR_CMD()  ) && return :PModuleElem ;
 
-    (arg == @cxx RESOLUTION_CMD) && return :syStrategy ;
+    (arg == RESOLUTION_CMD()  ) && return :syStrategy ;
+
+    (arg == NUMBER_CMD()  ) && return :SingularCoeffsElems ; ### TODO: ????
 
     return :(Leftv{$arg})
 ######################################################
 
-#    (arg == @cxx QRING_CMD) && return :SingularPolynomialRing; ### not yet...
-    (arg == @cxx LIST_CMD) && return :lists ;
+#    (arg == QRING_CMD()  ) && return :SingularPolynomialRing; ### not yet...
+    (arg == LIST_CMD()  ) && return :lists ; ### Array(Any, 1)
 
-    (arg == @cxx PACKAGE_CMD) && return :idhdl ;
+    (arg == PACKAGE_CMD() ) && return :idhdl ;
     (arg == IDHDL()) && return :idhdl;
 
-    (arg == @cxx INTMAT_CMD) && return :intmat ;
+    (arg == INTMAT_CMD()  ) && return :intmat ;
 
 ### Ring dependent:
-#    (arg == @cxx NUMBER_CMD) && return :SingularCoeffsElems ; ### ????
 
 # TODO:
 #    (arg == @cxx MAP_CMD) && return :SingularMap ;

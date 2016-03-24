@@ -7,8 +7,8 @@ import Base: Array, call, checkbounds, convert, cmp, contains, deepcopy,
              promote_rule, Rational, rem, setindex!, show, sign, size, string,  zero,
              +, -, *, ==, ^, &, |, $, <<, >>, ~, <=, >=, <, >, //, /, !=
 export n_coeffType, number, coeffs, n_Test, p_Test, r_Test, id_Test, TRUE, FALSE, rChangeCurrRing, omFree, omStrDup
-export poly, number, coeffs, ring, ideal, leftv, intvec, si_link, bigintmat, syStrategy, procinfov, BT
-export n_Copy, coeffs_BIGINT, p_Copy, id_Copy, currRing
+export poly, number, coeffs, ring, ideal, leftv, intvec, si_link, bigintmat, syStrategy, procinfov, Voice
+export n_Copy, coeffs_BIGINT, p_Copy, id_Copy, currRing, BT, n_InitMPZ, n_MPZ, n_Delete
 using Cxx
 function __libSingular_init__()
 
@@ -19,7 +19,7 @@ function __libSingular_init__()
    cxxinclude(joinpath("gmp.h"), isAngled=false); cxxinclude(joinpath("debugbreak.h"), isAngled=false);
    cxxinclude(joinpath("omalloc", "omalloc.h"), isAngled=false); 
    cxxinclude(joinpath("misc", "intvec.h"), isAngled=false); cxxinclude(joinpath("misc", "auxiliary.h"), isAngled=false);
-   cxxinclude(joinpath("reporter", "reporter.h"), isAngled=false);
+   cxxinclude(joinpath("reporter", "reporter.h"), isAngled=false); cxxinclude(joinpath("resources", "feFopen.h"), isAngled=false);
    cxxinclude(joinpath("coeffs", "coeffs.h"), isAngled=false); cxxinclude(joinpath("polys", "clapsing.h"), isAngled=false);
    cxxinclude(joinpath("coeffs", "bigintmat.h"), isAngled=false);
    cxxinclude(joinpath("polys", "monomials", "ring.h"), isAngled=false);
@@ -28,14 +28,13 @@ function __libSingular_init__()
    cxxinclude(joinpath("kernel", "GBEngine", "kstd1.h"), isAngled=false); 
    cxxinclude(joinpath("kernel", "GBEngine", "syz.h"), isAngled=false); 
    cxxinclude(joinpath("kernel", "ideals.h"), isAngled=false); cxxinclude(joinpath("kernel", "polys.h"), isAngled=false);
+   cxxinclude(joinpath("Singular", "grammar.h"), isAngled=false); 
    cxxinclude(joinpath("Singular", "libsingular.h"), isAngled=false); cxxinclude(joinpath("Singular", "fevoices.h"), isAngled=false);
    cxxinclude(joinpath("Singular", "ipshell.h"), isAngled=false); cxxinclude(joinpath("Singular", "ipid.h"), isAngled=false);
    cxxinclude(joinpath("Singular", "subexpr.h"), isAngled=false); cxxinclude(joinpath("Singular", "lists.h"), isAngled=false); 
    cxxinclude(joinpath("Singular", "idrec.h"), isAngled=false); cxxinclude(joinpath("Singular", "tok.h"), isAngled=false); 
    cxxinclude(joinpath("Singular", "links", "silink.h"), isAngled=false);
-
    cxxinclude(joinpath("kernel_commands.h"), isAngled=false);
-
 ################# NOTE: make sure the line number is correct in case of any changes above here!!!! #################################
 cxx"""#line 40 "libSingular.jl"
     #include "omalloc/omalloc.h"
@@ -43,6 +42,7 @@ cxx"""#line 40 "libSingular.jl"
     #include "misc/intvec.h"
     #include "misc/auxiliary.h"
     #include "reporter/reporter.h"
+    #include "resources/feFopen.h"
     #include "coeffs/coeffs.h"
     #include "coeffs/bigintmat.h"
 
@@ -56,6 +56,7 @@ cxx"""#line 40 "libSingular.jl"
     #include "kernel/GBEngine/kstd1.h"
     #include "kernel/GBEngine/syz.h"
 
+    #include "Singular/grammar.h"
     #include "Singular/libsingular.h"
     #include "Singular/fevoices.h"
     #include "Singular/ipshell.h"
@@ -315,12 +316,11 @@ function FALSE()
    return Cint(0) # (icxx""" return (BOOLEAN)0; """);
 end
 
-typealias PVoice pcpp"Voice" # Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:Voice},(false,false,false)},(false,false,false)}
-typealias idhdl pcpp"idrec"  # Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:idrec},(false,false,false)},(false,false,false)}
-typealias leftv pcpp"sleftv" # Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:sleftv},(false,false,false)},(false,false,false)}
+typealias Voice pcpp"Voice"
+typealias idhdl pcpp"idrec"
+typealias leftv pcpp"sleftv"
 typealias bigintmat pcpp"bigintmat"
 typealias intvec pcpp"intvec"
-##typealias intmat pcpp"intvec"
 
 typealias map pcpp"sip_smap"
 typealias matrix pcpp"ip_smatrix"
@@ -331,8 +331,6 @@ typealias procinfov pcpp"procinfo"
 typealias syStrategy pcpp"ssyStrategy" 
 
 typealias ring pcpp"ip_sring"
-##typealias qring pcpp"ip_sring"
-
 typealias poly pcpp"spolyrec"
 typealias vector pcpp"spolyrec"
 
@@ -342,22 +340,17 @@ typealias number2 pcpp"snumber2"
 typealias bigint pcpp"snumber"
 
 typealias ideal pcpp"sip_sideal"
-##typealias modul pcpp"sip_sideal"
-
 typealias resolvente pcpp"ideal"
-
-
-typealias nMapFunc Cxx.CppFptr{Cxx.CppFunc{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Tuple{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}}}}
 
 typealias n_coeffType Cxx.CppEnum{:n_coeffType} # vcpp"n_coeffType" ## ? 
 
-### FIXME : Cxx Type?
+typealias nMapFunc Cxx.CppFptr{Cxx.CppFunc{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Tuple{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}}}}
+
 typealias coeffs pcpp"n_Procs_s"
 
 # typealias coeffs Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}
 # cpcpp"coeffs" 
 # Ptr{Void}
-
 
 typealias const_coeffs coeffs # pcpp"const coeffs"
 # NOTE: no need in coeffs_ptr, right?

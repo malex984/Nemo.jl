@@ -195,7 +195,7 @@ static inline const char * __Tok2Cmdname(int tok)
   return cmds[0].name;
 }
 
-/// generic
+/// generic operator name conversion Singular -> Julia
 static inline const char * __iiTwoOps(int t)
 {
   if (t<127)
@@ -204,8 +204,19 @@ static inline const char * __iiTwoOps(int t)
 
     switch (t)
     {
-      //      case '-':        return "Base.-";
-      case '(':        return "Base.call";
+      case '^':        return "__power__";
+      case '|':        return "__or__";
+      case '&':        return "__and__";
+      case '*':        return "__mul__";
+      case '%':        return "__mod__";
+      case '/':        return "__div__";
+      case '+':        return "__plus__";
+      case '-':        return "__minus__";
+      case ':':        return "__colon__";
+      case '<':        return "__less__";
+      case '>':        return "__greater__";
+      case '(':        return "_call";
+      case '[':        return "_getindex";
       //      case '|':        return "|";
       default:
         ch[5]=t; //        ch[1]='\0';
@@ -214,18 +225,24 @@ static inline const char * __iiTwoOps(int t)
   }
   switch (t)
   {
-    case COLONCOLON:  return "::";
-    case DOTDOT:      return "..";
+    case COLONCOLON:  return "__coloncolon__";
+    case DOTDOT:      return "__dotdot__";
+    case MINUSMINUS:  return "__minusminus__";
+    case PLUSPLUS:    return "__plusplus__";
+    case EQUAL_EQUAL: return "__eqeq__";
+    case LE:          return "__leq__";
+    case GE:          return "__geq__";
+    case NOT:         return "__not__";
+    case ARROW:       return "__arrow__";
+    case NOTEQUAL:    return "__neq__";
+    case COUNT_CMD:   return "_size";
+    case PRINT_CMD:   return "_print";
+    case INTDIV_CMD:  return "_div";
+    case GCD_CMD:     return "_gcd";
+
     //case PLUSEQUAL:   return "+=";
     //case MINUSEQUAL:  return "-=";
-    case MINUSMINUS:  return "--";
-    case PLUSPLUS:    return "++";
-    case EQUAL_EQUAL: return "Base.==";
-    case LE:          return "Base.<=";
-    case GE:          return "Base.>=";
-    case NOTEQUAL:    return "Base.!=";
-    case COUNT_CMD:   return "_size";
-      //    case PRINT_CMD:   return "Base.print"
+
     default:          return __Tok2Cmdname(t);
   }
 }

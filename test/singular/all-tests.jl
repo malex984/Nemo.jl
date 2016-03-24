@@ -700,8 +700,25 @@ function test_SINGULAR()
 
    @test Nemo.SingularKernel._size("") == 0
 
-   println("maxideal(3): ", Nemo.SingularKernel.maxideal(3));
-   println("freemodule(3): ", Nemo.SingularKernel.freemodule(5));
+   Nemo.SingularKernel.reservedName();
+
+
+   println( "Singular Version: ", Nemo.SingularKernel.system("version") );
+
+   println("'123456789ABCDEF'[2,4]: ", Nemo.SingularKernel._getindex( "123456789ABCDEF" , 2, 4) );
+
+   println("gcd(11*4, 121): ", Nemo.SingularKernel._gcd(44, 121) );
+
+   const M3 = Nemo.SingularKernel.maxideal(3);
+   println("maxideal(3): ", M3);
+   const F5 = Nemo.SingularKernel.freemodule(5);
+   println("freemodule(5): ", F5);
+
+
+   println("simplify(maxideal(3)): ", Nemo.SingularKernel.simplify( M3, 1+2+4+8));
+   println("simplify(freemodule(3)): ", Nemo.SingularKernel.simplify( F5, 1+2+4+8));
+
+##   println("Names: ", Nemo.SingularKernel.names()) # TODO: list!
 
 end
 
@@ -740,10 +757,11 @@ end
 function test_singular()
    println("Singular unique rings & fields will use context-less implementation, right?  ", Nemo.uq_default_choice)
 
-   println(); gc(); test_singular_wrappers()
+   println(); gc(); Nemo.libSingular.omPrintInfoStats()
 
    println(); gc(); test_SINGULAR();
 
+   println(); gc(); test_singular_wrappers()
 
    println(); gc(); test_singular_lowlevel_coeffs()
 
@@ -759,7 +777,7 @@ function test_singular()
 
    println(); gc(); test_QQ_poly_singular(); # TODO: as for ZZ_poly!
 
-##   include("???.jl"); #test_????()
+   println(); gc(); test_NemoCoeffs();
 
    println(); gc(); test_fraction_singular()
 
@@ -771,12 +789,9 @@ function test_singular()
 
    println(); gc(); test_benchmarks_singular()
 
-#   println(); gc(); Nemo.libSingular.omPrintInfoStats()
-
    println(); gc(); Nemo.libSingular.omPrintInfoStats()
 
-   println(); gc(); test_NemoCoeffs();
-
+##   include("???.jl"); #test_????()
 
    println()
 end

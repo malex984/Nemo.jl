@@ -234,9 +234,9 @@ function get_raw_ptr(::Singular_ZZ)
 end
 
 global uq_default_choice = true # e.g. for testing both non-unique and unique reps. of rings/fields 
-
 function toggle_uq_default_choice() 
-    uq_default_choice = !uq_default_choice
+############## DEPRECATED!!! #######################
+#    uq_default_choice = !uq_default_choice
 end
 
 # ~BigInt?
@@ -326,12 +326,27 @@ end
 #n_long_C() => true  /**< complex floating point (GMP) numbers */
 #n_Z() => true 
 
-##isparameterlessdomain(t::libSingular.n_coeffType) = 
-##     (t in (libSingular.n_Z(), libSingular.n_Q(), libSingular.n_R(), libSingular.n_long_R(), libSingular.n_long_C())) 
+#isparameterlessdomain(t::libSingular.n_coeffType) = 
+#    (t in (libSingular.n_Z(), libSingular.n_Q(), libSingular.n_R(), libSingular.n_long_R(), libSingular.n_long_C())) 
 
-
-
-### isunique(cf::SingularCoeffs) = isparameterlessdomain(libSingular.getCoeffType(get_raw_ptr(cf)))
+#isunique(cf::SingularCoeffs) = isparameterlessdomain(libSingular.getCoeffType(get_raw_ptr(cf)))
 #isunique(::SingularUniqueRing) = true
 #isunique(::SingularUniqueField) = true
 #isunique(cf::SingularCoeffs) = false
+
+
+function GetSingularCoeffs(cf)
+   const t = libSingular.getCoeffType(cf);
+
+   if  (t in (libSingular.n_Z(), libSingular.n_Q(), libSingular.n_R(), libSingular.n_long_R(), libSingular.n_long_C())) 
+      (t == libSingular.n_Z()) && return Singular_ZZ()
+      (t == libSingular.n_Q()) && return Singular_QQ()
+      (t == libSingular.n_long_R()) && return Singular_RR()
+      (t == libSingular.n_C()) && return Singular_CC()
+      (t == libSingular.n_R()) && return Singular_Rr()
+   end
+
+   (libSingular.nCoeff_is_Ring(cf)) && return Coeffs(cf);
+
+   return CoeffsField(cf)
+end

@@ -11,7 +11,7 @@ export characteristic
 export mullow, den, num
 export mul!, addeq!
 export get_raw_ptr, parent
-export PRingElem, PRing, PModuleElem, SingularIdeal, SingularModule, Singular_ZZElem
+export PRingElem, PRing, PModuleElem, SingularIdeal, SingularModule, Singular_ZZElem, SingularCoeffsElems
 
 using Cxx
 

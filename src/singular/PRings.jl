@@ -86,8 +86,15 @@ type PRing <: SingularPolynomialRing
 
    function PRing(ptr::libSingular.ring) 
       (r_Test(ptr) == libSingular.ring(C_NULL)) && error("Singular polynomial ring construction failure")
-      
-      return(SRingID[ptr]); #### TODO: FIXME: Ring has to be known to Nemo!!!!!!!!!!!!!!!!!!!!!! :((((((((((
+      try
+         R = SRingID[ptr]; #### TODO: FIXME: Ring has to be known to Nemo!!!!!!!!!!!!!!!!!!!!!! :((((((((((
+         return(R); 
+      catch
+      end
+
+      const cf = rGetCoeffs(ptr);
+      const C = GetSingularCoeffs(cf);  ### TODO!!!
+      return PRing(C, ptr);
    end
 end
 
