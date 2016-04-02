@@ -49,7 +49,7 @@ type PRing <: SingularPolynomialRing
 
       ptr = r_Test(libSingular.rDefault(get_raw_ptr(cf), vvv, ord, blk0, blk1));
 
-      (ptr == libSingular.ring(C_NULL)) && error("Singular polynomial ring construction failure")
+      (ptr == C_NULL) && error("Singular polynomial ring construction failure")
 
       try
          R = SRingID[ptr]
@@ -64,7 +64,7 @@ type PRing <: SingularPolynomialRing
    end
 
    function PRing(cf::SingularCoeffs, ptr::libSingular.ring) 
-      (r_Test(ptr) == libSingular.ring(C_NULL)) && error("Singular polynomial ring construction failure")      
+      (r_Test(ptr) == C_NULL) && error("Singular polynomial ring construction failure")      
 
       try
          R = SRingID[ptr] # TODO: use rVarStr etc...!?
@@ -85,7 +85,7 @@ type PRing <: SingularPolynomialRing
 
 
    function PRing(ptr::libSingular.ring) 
-      (r_Test(ptr) == libSingular.ring(C_NULL)) && error("Singular polynomial ring construction failure")
+      (r_Test(ptr) == C_NULL) && error("Singular polynomial ring construction failure")
       try
          R = SRingID[ptr]; #### TODO: FIXME: Ring has to be known to Nemo!!!!!!!!!!!!!!!!!!!!!! :((((((((((
          return(R); 
@@ -590,7 +590,7 @@ function ^(x::PRingElem, y::Cint)
 end
 
 function iszero(p :: SingularPolynomialElem)
-    return (get_raw_ptr(p) == libSingular.poly(C_NULL))
+    return (get_raw_ptr(p) == C_NULL)
 end
 
 function isone(x :: PRingElem)
@@ -610,7 +610,7 @@ function isunit(x :: SingularPolynomialElem)
     const p = get_raw_ptr(x);
     const r = get_raw_ptr(parent(x));
 
-    return (p != libSingular.poly(C_NULL)) && (libSingular.pNext!(p) == libSingular.poly(C_NULL)) && libSingular.pp_IsUnit(p, r);
+    return (p != C_NULL) && (libSingular.pNext!(p) == C_NULL) && libSingular.pp_IsUnit(p, r);
 end
 
 function leadcoeff(x :: SingularPolynomialElem)
@@ -748,11 +748,11 @@ function muleq!(x :: SingularPolynomialElem, y :: SingularPolynomialElem)
 
     r = get_raw_ptr(parent(x)); 
 
-    if (xx == libSingular.poly(C_NULL))
+    if (xx == C_NULL)
         return;
     end
 
-    if (yy == libSingular.poly(C_NULL))
+    if (yy == C_NULL)
         libSingular._p_Delete(xx, r);
 	set_raw_ptr!(x, libSingular.poly(C_NULL)); # NOTE: unsafe!
 	return       
@@ -779,11 +779,11 @@ function addeq!(x :: SingularPolynomialElem, y :: SingularPolynomialElem)
 
     r = get_raw_ptr(parent(x)); 
     
-    if (yy == libSingular.poly(C_NULL))
+    if (yy == C_NULL)
        return;
     end
 
-    if (xx == libSingular.poly(C_NULL))
+    if (xx == C_NULL)
     	const ptr = libSingular.p_Copy(yy, r);
 	set_raw_ptr!(x, ptr); # NOTE: unsafe!
 	return       
@@ -828,14 +828,14 @@ function mul!(c::SingularPolynomialElem, x::SingularPolynomialElem, y::SingularP
     const yy = get_raw_ptr(y);
     const cc = get_raw_ptr(c);
 
-    @assert (cc == libSingular.poly(C_NULL)) || ((cc != xx) && (cc != yy)) ## ???
+    @assert (cc == C_NULL) || ((cc != xx) && (cc != yy)) ## ???
 
     const R = parent(x); 
     const r = get_raw_ptr(R); 
 
     const ptr = libSingular.pp_Mult_qq(xx, yy, r);
 
-    if cc != libSingular.poly(C_NULL)
+    if cc != C_NULL
         libSingular._p_Delete(cc, get_raw_ptr(parent(c)));
     end
     
@@ -1094,7 +1094,7 @@ function string(I::SingularIdeal)
    for i = 1:n 
 
       p = libSingular.p_Test( libSingular.getindex(J, Cint(i-1)), rr);
-      if p == libSingular.poly(C_NULL) 
+      if p == C_NULL 
          a[i] = "0";
       else
 #         a[i] = string(p)
@@ -1140,7 +1140,7 @@ function string(I::SingularModule)
       p = libSingular.p_Test( libSingular.getindex(J, Cint(i-1)), rr);
 #     p = libSingular.getindex(J, Cint(i)); # J[i];
 
-      if p == libSingular.poly(C_NULL) 
+      if p == C_NULL 
          a[i] = "0";
       else
 #         a[i] = string(p) # Copy: getindex(I, i) :(

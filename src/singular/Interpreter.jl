@@ -73,11 +73,13 @@ function __init_singular_interpreter__()
      try  ##      SingularKernel.
       eval(:(
          function $(symbol(scmd))( ___arg :: $(sarg) ) # Julia types  <-1:1-> Singular Interpreter Types
+	      @assert Cshort(@cxx errorreported) == Cshort(0)
+
 	      const __arg = ToLeftv( ___arg ); ## Leftv{}
 	      const _arg = get_raw_ptr(__arg); ## leftv
 
 	      const R = get_raw_context(__arg);
-	      const orig_ring = rChangeCurrRing(R);
+	      const orig_ring = rChangeCurrRing(R); 
 
 #	      ($arg != ANY_TYPE()) && @assert Cint(@cxx _arg -> Typ()) == $arg
 
@@ -85,8 +87,9 @@ function __init_singular_interpreter__()
 	      
 	      const cmd = $(cmd);
 
-#	      @assert (@cxx errorreported) == 0
+              StartPrintCapture();
 	      icxx""" sleftv r;r.Init(); $e = ((int)iiExprArith1(&r,$_arg,$cmd)); $d=r.data;$t=r.rtyp; """ ;
+              EndPrintCapture();
 
 	      const f = string($(scmd)) * "( " * string($(sarg)) * " )";
 
@@ -105,6 +108,7 @@ function __init_singular_interpreter__()
 #	      ($res != ANY_TYPE()) && @assert $t == $res;
 
 	      ret = FromLeftv( t[], d[], currRing() );
+
               rChangeCurrRing(orig_ring);
 	      return ret;
            end; 
@@ -115,8 +119,6 @@ function __init_singular_interpreter__()
 
       nPos = nPos + Cint(1);
    end
-
-
 
 
 
@@ -156,6 +158,8 @@ function __init_singular_interpreter__()
      try  ##      SingularKernel.
       eval(:(
          function $(symbol(scmd))( ___arg1 :: $(sarg1), ___arg2 :: $(sarg2) ) # Julia types  <-1:1-> Singular Interpreter Types
+	      @assert Cshort(@cxx errorreported) == Cshort(0)
+
 	      const __arg1 = ToLeftv( ___arg1 ); ## Leftv{}
 	      const _arg1 = get_raw_ptr(__arg1); ## leftv
 
@@ -180,8 +184,9 @@ function __init_singular_interpreter__()
 	      
 	      const cmd = $(cmd);
 
-#	      @assert (@cxx errorreported) == 0
+              StartPrintCapture();
 	      icxx""" sleftv r;r.Init(); $e = ((int)iiExprArith2(&r,$_arg1,$cmd,$_arg2)); $d=r.data;$t=r.rtyp; """ ;
+              EndPrintCapture();
 
 	      println("Singular interpreter kenel procedure '$f' returns: ", e[], ", errorreported: ", (@cxx errorreported));
 
@@ -253,6 +258,8 @@ function __init_singular_interpreter__()
      try  ##      SingularKernel.
       eval(:(
          function $(symbol(scmd))( ___arg1 :: $(sarg1), ___arg2 :: $(sarg2), ___arg3 :: $(sarg3) )
+	      @assert Cshort(@cxx errorreported) == Cshort(0)
+
 	      const __arg1 = ToLeftv( ___arg1 ); ## Leftv{}
 	      const _arg1 = get_raw_ptr(__arg1); ## leftv
 
@@ -290,9 +297,11 @@ function __init_singular_interpreter__()
 	      
 	      const cmd = $(cmd);
 
-#	      @assert (@cxx errorreported) == 0
+              StartPrintCapture();
+
 	      icxx""" sleftv r;r.Init(); $e = ((int)iiExprArith3(&r,$cmd,$_arg1,$_arg2,$_arg3)); $d=r.data;$t=r.rtyp; """ ;
 
+	      EndPrintCapture();
 	      println("Singular interpreter kenel procedure '$f' returns: ", e[], ", errorreported: ", (@cxx errorreported));
 
 	      if (e[] > 0)
@@ -364,6 +373,8 @@ function __init_singular_interpreter__()
      try  ##      SingularKernel.
       eval(:(
          function $(symbol(scmd))( ___args... )
+	      @assert Cshort(@cxx errorreported) == Cshort(0)
+
               if $narg >= 0
 	          @assert (length(___args) == $narg);
               else
@@ -413,8 +424,11 @@ function __init_singular_interpreter__()
 	      
 	      const cmd = $(cmd);
 
-#	      @assert (@cxx errorreported) == 0
+              StartPrintCapture(); 
+
 	      icxx""" sleftv r;r.Init(); $e = ((int)iiExprArithM(&r,(leftv)$_args,$cmd)); $d=r.data;$t=r.rtyp; """ ;
+
+              EndPrintCapture();
 
 	      println("Singular interpreter kenel procedure '$f' returns: ", e[], ", errorreported: ", (@cxx errorreported));
 
@@ -443,7 +457,144 @@ function __init_singular_interpreter__()
    end
 
 
+
+
+
 end
+
+function StartPrintCapture()
+    @cxx SPrintStart();
+end
+
+function EndPrintCapture()
+    println( bytestring( @cxx SPrintEnd() ) );
+end
+
+
+function CALLPROC(n::AbstractString, ___args...)
+   @assert Cshort(@cxx errorreported) == Cshort(0)
+
+   h = ggetid(n); # Singular Proc from standard.lib
+
+   if (h == idhdl(C_NULL))
+      error("Singular's procedure '$n' does not exist!");   
+   end
+
+   println("Singular's name '$n' of type ", Tok2Cmdname(@cxx h -> typ));
+
+   _args = leftv(C_NULL);
+   _tail = leftv(C_NULL);
+
+   const orig_ring = currRing();
+
+   R = ring(C_NULL);
+
+   for arg in ___args
+
+	          const __arg = ToLeftv( arg ); ## Leftv{}
+	      	  const r = get_raw_context(__arg);
+		  
+		  if( r != ring(C_NULL) )
+		      if R == ring(C_NULL)
+		          R = r;
+		      end
+		      
+		      (R != r) && error("Error at Singular Kernel Call via Interpreter: '$f': different context rings!");
+		  end
+		        
+		  
+  		  if _args == leftv(C_NULL)
+		     _args = get_raw_ptr(__arg); ## leftv
+		     _tail = _args;
+		  else
+ 		     @assert _tail != leftv(C_NULL)
+		     const _arg = remove_raw_data(__arg);
+		     (icxx""" ((leftv)$_tail) -> next = (leftv)($_arg); """);
+		     _tail = _arg;
+		  end
+   end
+
+   rChangeCurrRing(R);
+   tmpHdl = rSetFakeRingHdl();
+
+   (icxx""" iiRETURNEXPR.Init(); """);
+
+
+   StartPrintCapture();
+
+   ### BOOLEAN iiMake_proc(idhdl pn, package pack, sleftv* sl);
+   error_code = Cint(icxx""" return ((int)iiMake_proc($h, NULL, (leftv)$_args)); """);
+
+   EndPrintCapture();
+
+   println("Singular interpreter returned: $error_code, errorreported: ", (@cxx errorreported));
+
+
+   if (error_code > 0) 
+      icxx""" errorreported = 0; /* reset error handling */ """
+      rKillFakeRingHdl(tmpHdl);
+      rChangeCurrRing(orig_ring);
+      error("Sorry: error while calling procedure $n(...)!");
+   end
+
+   t = (icxx""" return (iiRETURNEXPR.Typ()); """);
+   d = (icxx""" return ((char *)iiRETURNEXPR.Data()); """) 
+
+   println("Return Type: ", Tok2Cmdname( (icxx""" return (iiRETURNEXPR.Typ()); """) ) );
+   println("Return Data: ", d );
+
+   rKillFakeRingHdl(tmpHdl);   
+   rChangeCurrRing(orig_ring);
+
+##   return(true);
+
+end
+
+
+function EVALUATE(s::AbstractString)
+    @assert Cshort(@cxx errorreported) == Cshort(0)
+
+    s *= ";RETURN();";
+
+    println("Evaluating singular code: ", s);
+
+    tmpHdl = rSetFakeRingHdl(); 
+
+
+   ### TODO: Ask Hans about myynest!
+   icxx""" myynest = 1; /* <=0: interactive at eof / >=1: non-interactive */ """;
+
+#=
+enum   feBufferTypes {
+  BT_none  = 0,  // entry level
+  BT_break = 1,  // while, for
+  BT_proc,       // proc
+  BT_example,    // example
+  BT_file,       // <"file"
+  BT_execute,    // execute
+  BT_if,         // if
+  BT_else        // else
+};
+=#
+   StartPrintCapture(); 
+
+   ## BT_proc: BOOLEAN err = iiAllStart(NULL, s, BT_proc, 0);
+   error_code = Cint( icxx""" return ((int)iiAllStart(NULL, (char*)$(pointer(s)), BT_execute, 0)); """ )
+
+   EndPrintCapture();
+
+   rKillFakeRingHdl(tmpHdl);   
+
+   println("Singular interpreter returned: $error_code, errorreported: ", (@cxx errorreported));
+
+   if (error_code > 0) 
+      icxx""" errorreported = 0; /* reset error handling */ """
+      return(false);
+   end
+
+   return(true);
+end
+
 
 function MAX_TOK()
     return Cint( icxx""" return (int)(MAX_TOK); """ );
@@ -457,9 +608,9 @@ function ANY_TYPE()
     return Cint( icxx""" return (int)(ANY_TYPE); """ );
 end
 
-#function IDHDL()
-#    return Cint( icxx""" return (int)(IDHDL); """ );
-#end
+function IDHDL()
+    return Cint( icxx""" return (int)(IDHDL); """ );
+end
 
 function INT_CMD()
    return Cint( @cxx INT_CMD ); 
@@ -915,6 +1066,10 @@ function ToLeftv( a::intvec )
    return ToLeftv(id, (icxx""" return ((void*)($aa)); """));
 end
 
+
+# TODO: avoid copying via IDHDL containers with fake symbol names 
+### ASK Hans?!
+
 function ToLeftv( a::si_link )
    const id = LINK_CMD();
    const aa = (@cxx slCopy(a)); # copy!
@@ -996,13 +1151,12 @@ function ToLeftv( a::SingularCoeffsElems )
    const c = get_raw_ptr(parent(a));
    const rr = currRing();
 
+   #### TODO: for Hans on Singular side: e.g. currentCoeffs?
    (c != rGetCoeffs(rr)) && error("Error during converting NUMBER -> LEFTV: number coeffs is not from current ring!");
 
    const data = n_Copy(get_raw_ptr(a), c);
    return ToLeftv(id, (icxx""" return ((void*)($data)); """), rr); # no ring!
 end
-
-#### coeffs -> PRing( SingularCoeffs(coeffs), "@", :lex ) ?! check currRing! ## get_raw_ptr,ring = get_raw_ptr(parent)??
 
 function FromLeftv( cmd::Cint, data::Ptr{Void}, R::ring )
     if (cmd == STRING_CMD())
@@ -1074,22 +1228,25 @@ function LEFTV(arg :: Cint)
     (arg == NUMBER_CMD()  ) && return :SingularCoeffsElems ; ### TODO: ????
 
     return :(Leftv{$arg})
+
+
 ######################################################
 
+###!!! (arg == IDHDL()) && return :idhdl; ### ????
+###????
+      (arg == PACKAGE_CMD() ) && return :idhdl ;
+
+## easy:
 #    (arg == QRING_CMD()  ) && return :SingularPolynomialRing; ### not yet...
-    (arg == LIST_CMD()  ) && return :lists ; ### Array(Any, 1)
+#    (arg == LIST_CMD()  ) && return :lists ; ### Array(Any, 1)
+#    (arg == INTMAT_CMD()  ) && return :intmat ;
 
-    (arg == PACKAGE_CMD() ) && return :idhdl ;
-    (arg == IDHDL()) && return :idhdl;
-
-    (arg == INTMAT_CMD()  ) && return :intmat ;
 
 ### Ring dependent:
 
-# TODO:
+# TODO: ring?
 #    (arg == @cxx MAP_CMD) && return :SingularMap ;
 #    (arg == @cxx MATRIX_CMD) && return :SingularMatrix ;
-    return :leftv;
 
 #######################################################################################
 #=

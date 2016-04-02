@@ -484,27 +484,18 @@ end
 function test_SINGULAR()
 
    const n = "iSingularVersion";
-   s = "int $n = system(\"version\");RETURN();\n";
+   s = "int $n = system(\"version\");\n";
    println("Evaluating singular code: ", s);
 
-   ### TODO: Ask Hans about myynest!
-   icxx""" myynest = 1; /* <=0: interactive at eof / >=1: non-interactive */ """;
-   error_code = Cint( icxx""" return ((int)iiAllStart(NULL, (char*)$(pointer(s)), BT_execute, 0)); """ )
+   Nemo.SingularKernel.EVALUATE(s);
 
-   println("Singular interpreter returns: $error_code, errorreported: ", (@cxx errorreported));
-
-   if (error_code > 0) 
-      icxx""" errorreported = 0; /* reset error handling */ """
-   end
-
-   ##idhdl ggetid(const char *n); idhdl ggetid(const char *n, BOOLEAN local, idhdl *packhdl);
-   h = (@cxx ggetid(pointer(n)))
+   h = Nemo.libSingular.ggetid(n)
 
    println(h);
    println(typeof(h));
    @show h
 
-   if (h == typeof(h)(C_NULL))
+   if (h == C_NULL)
       println("Singular's name '$n' does not exist!");   
    else
       println("Singular Variable '$n' of type ", Nemo.SingularKernel.Tok2Cmdname(@cxx h -> typ), 
@@ -512,13 +503,13 @@ function test_SINGULAR()
 #      println("Singular Variable '$n' of type ", (@cxx h -> typ),", with value: ", (icxx""" return ((int)(long)IDDATA($h)); """))
    end
 
-   h = (@cxx ggetid(pointer("datetime"))); # Singular Proc from standard.lib
+   h = Nemo.libSingular.ggetid("datetime"); # Singular Proc from standard.lib
 
    println(h);
    println(typeof(h));
    @show h
 
-   if (h == typeof(h)(C_NULL))
+   if (h == C_NULL)
       println("Singular's name 'datetime' does not exist!");   
    else
       println("Singular's name 'datetime' of type ", Nemo.SingularKernel.Tok2Cmdname(@cxx h -> typ)); 

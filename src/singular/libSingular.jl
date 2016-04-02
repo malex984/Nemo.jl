@@ -9,6 +9,7 @@ import Base: Array, call, checkbounds, convert, cmp, contains, deepcopy,
 export n_coeffType, number, coeffs, n_Test, p_Test, r_Test, id_Test, TRUE, FALSE, rChangeCurrRing, omFree, omStrDup
 export poly, number, coeffs, ring, ideal, leftv, intvec, si_link, bigintmat, syStrategy, procinfov, Voice
 export n_Copy, coeffs_BIGINT, p_Copy, id_Copy, currRing, BT, n_InitMPZ, n_MPZ, n_Delete
+export rSetFakeRingHdl, rKillFakeRingHdl, ggetid, idhdl
 using Cxx
 function __libSingular_init__()
 
@@ -2361,6 +2362,79 @@ function rChangeCurrRing(n::ring)
    end
    return(origin);
 end
+
+## ?
+function currRingHdl()
+   return(@cxx currRingHdl);
+end
+
+function rGetHdl(r::ring)
+   @assert r != ring(C_NULL)
+   return(idhdl(@cxx r -> idroot));
+end
+
+function IDRING(h::idhdl)
+   @assert h != idhdl(C_NULL)
+   return(icxx"""return (ring)(IDRING($h));""");
+end
+
+
+
+function rSetHdl(h::idhdl)
+   @assert h != idhdl(C_NULL)
+
+   origin = currRingHdl();
+   (origin == h) && return(origin);
+
+   ## void rSetHdl(idhdl h); ## void rChangeCurrRing(ring r)
+   (@cxx rSetHdl(h));
+   return(origin);
+end
+
+
+
+function ggetid(n::AbstractString)
+   # idhdl ggetid(const char *n); 
+   return (@cxx ggetid(pointer(n)));
+end
+
+function ggetid(n::AbstractString, loc::Cint, packhdl::Ptr{idhdl})
+   # idhdl ggetid(const char *n, BOOLEAN local, idhdl *packhdl);
+   return (@cxx ggetid(pointer(n), loc, packhdl));
+end
+
+
+#   #//idhdl enterid(const char * a, int lev /*nesting level,0=global*/, int t, idhdl* root, BOOLEAN init=TRUE, BOOLEAN serach=TRUE);
+#   return (icxx""" return (idhdl)(enterid( \"R\"         /*ring name*/, 0, RING_CMD, &IDROOT, FALSE ));""");
+#   return (icxx""" return (idhdl)(enterid( \" Nemo fake currRingHdl \", 0, RING_CMD, &IDROOT, FALSE, FALSE)); """);
+
+function rSetFakeRingHdl()
+   r = currRing();
+
+   (r == ring(C_NULL)) && return idhdl(C_NULL);
+
+   h = currRingHdl();
+
+   if h != idhdl(C_NULL)
+       (IDRING(h) == r) && return idhdl(C_NULL);
+   end    
+   
+   #### TODO: Q? use omStrDup as ID name
+   tmpHdl = (icxx""" return (idhdl)enterid(\" Nemo fake currRingHdl \" , 0, RING_CMD, &IDROOT, FALSE, FALSE); """);
+
+   @assert tmpHdl != idhdl(C_NULL)
+
+   (icxx""" idhdl h = (idhdl)$tmpHdl; IDRING(h) = currRing; currRing->ref++; currRingHdl = h; """);
+  
+   return(tmpHdl); 
+end
+
+function rKillFakeRingHdl(tmpHdl::idhdl)
+   if tmpHdl != idhdl(C_NULL)
+       (icxx""" killhdl(((idhdl)$tmpHdl), currPack); currRingHdl = NULL; """);
+   end
+end 
+
 
 ################################################################################################
 
