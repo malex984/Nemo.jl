@@ -6,16 +6,16 @@ import Base: Array, call, checkbounds, convert, cmp, contains, deepcopy,
              isless, lcm, length, mod, ndigits, num, one, parent,
              promote_rule, Rational, rem, setindex!, show, sign, size, string,  zero,
              +, -, *, ==, ^, &, |, $, <<, >>, ~, <=, >=, <, >, //, /, !=
-export n_coeffType, number, coeffs, n_Test, p_Test, r_Test, id_Test, TRUE, FALSE, rChangeCurrRing, omFree, omStrDup
+export n_coeffType, number, coeffs, n_Test, p_Test, r_Test, id_Test, TRUE, FALSE, rChangeCurrRing, omFree, omStrDup, PrintS, PrintLn
 export poly, number, coeffs, ring, ideal, leftv, intvec, si_link, bigintmat, syStrategy, procinfov, Voice
 export n_Copy, coeffs_BIGINT, p_Copy, id_Copy, currRing, BT, n_InitMPZ, n_MPZ, n_Delete
-export rSetFakeRingHdl, rKillFakeRingHdl, ggetid, idhdl
+export idhdl, package, language_defs
 using Cxx
 function __libSingular_init__()
 
    println("\n\n__libSingular_init__()!!!!!!!!!!!!!!!!!!!!!!!!\n\n");
 
-   const local prefix = joinpath(Pkg.dir("Nemo"), "local");
+   local prefix = joinpath(Pkg.dir("Nemo"), "local");
    addHeaderDir(joinpath(prefix, "include"), kind = C_System); addHeaderDir(joinpath(prefix, "include", "singular"), kind = C_System)
    cxxinclude(joinpath("gmp.h"), isAngled=false); cxxinclude(joinpath("debugbreak.h"), isAngled=false);
    cxxinclude(joinpath("omalloc", "omalloc.h"), isAngled=false); 
@@ -267,7 +267,7 @@ cxx"""#line 40 "libSingular.jl"
 
 """
 
-   local const binSingular = joinpath(prefix, "bin", "Singular")
+   local binSingular = joinpath(prefix, "bin", "Singular")
    ENV["SINGULAR_EXECUTABLE"] = binSingular
 
    # Initialize Singular!
@@ -329,6 +329,7 @@ typealias matrix pcpp"ip_smatrix"
 typealias lists pcpp"slists"
 typealias si_link pcpp"ip_link"
 typealias procinfov pcpp"procinfo"
+typealias package pcpp"sip_package"
 typealias syStrategy pcpp"ssyStrategy" 
 
 typealias ring pcpp"ip_sring"
@@ -344,6 +345,7 @@ typealias ideal pcpp"sip_sideal"
 typealias resolvente pcpp"ideal"
 
 typealias n_coeffType Cxx.CppEnum{:n_coeffType} # vcpp"n_coeffType" ## ? 
+typealias language_defs Cxx.CppEnum{:language_defs} # 
 
 typealias nMapFunc Cxx.CppFptr{Cxx.CppFunc{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Tuple{Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:snumber},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)},Cxx.CppPtr{Cxx.CxxQualType{Cxx.CppBaseType{:n_Procs_s},(false,false,false)},(false,false,false)}}}}
 
@@ -431,9 +433,14 @@ end
 # icxx""" PrintS($s); """   # quick and dirty shortcut
 # PrintS(m) = ccall( Libdl.dlsym(Nemo.libsingular, :PrintS), Void, (Ptr{Uint8},), m) # workaround for C function
 
+function PrintS(m::AbstractString)
+   PrintS(pointer(m))
+end
+
 function PrintS(m)
    @cxx _PrintS(m)
 end 
+
 function PrintLn()
    @cxx _PrintLn()
 end 
@@ -504,7 +511,7 @@ function n_unknown()
 end
 
 function nRegister(t :: n_coeffType, f)   ## n_coeffType nRegister(n_coeffType n, cfInitCharProc f);
-   const tt :: n_coeffType = (icxx""" return nRegister($t, (cfInitCharProc)$f); """);
+   tt :: n_coeffType = (icxx""" return nRegister($t, (cfInitCharProc)$f); """);
    @assert tt != n_unknown();
    return tt;
 
@@ -513,25 +520,25 @@ end
 ####################################################################################
 ####################################################################################
 
-const nemoNumberID = Base.Dict{Tuple{coeffs,number}, RingElem}(); # All nemo ringelems are to be kept alive via this Dict!
-const nemoNumberID2 = Base.Dict{Tuple{coeffs,number}, RingElem}(); # All nemo ringelems are to be kept alive via this Dict!
+global const nemoNumberID = Base.Dict{Tuple{coeffs,number}, RingElem}(); # All nemo ringelems are to be kept alive via this Dict!
+global const nemoNumberID2 = Base.Dict{Tuple{coeffs,number}, RingElem}(); # All nemo ringelems are to be kept alive via this Dict!
 
 function nemoContext( cf :: coeffs )
 
-   @assert (cf != coeffs(C_NULL));
+   @assert (cf != C_NULL);
    @assert (n_NemoCoeffs == getCoeffType(cf));
 
-   const data = (@cxx cf -> data);
-   const r :: Ring = unsafe_pointer_to_objref(data);
+   data = (@cxx cf -> data);
+   r :: Ring = unsafe_pointer_to_objref(data);
 
    return r
 end
 
 function nemoNumber2Elem( p :: number, cf :: coeffs ) 
 
-   @assert (p != number(C_NULL));
-##   const j = unsafe_pointer_to_objref(p);
-   const j :: RingElem = unsafe_pointer_to_objref(icxx""" return (void*)$p; """);
+   @assert (p != C_NULL);
+##   j = unsafe_pointer_to_objref(p);
+   j :: RingElem = unsafe_pointer_to_objref(icxx""" return (void*)$p; """);
 
    if haskey( nemoNumberID, (cf,p) )
 #      println("nemoNumber2Elem([$j], p, $cf), p: ", p);
@@ -548,10 +555,10 @@ function nemoNumber2Elem( p :: number, cf :: coeffs )
 end
 
 function nemoElem2Number{T <: RingElem}(j :: T, cf :: coeffs) 
-   const n = number( pointer_from_objref(j) ); ## icxx"""return (void*)($(jpcpp"jl_value_t"( j )));""" ); # pointer_from_objref ???
+   n = number( pointer_from_objref(j) ); ## icxx"""return (void*)($(jpcpp"jl_value_t"( j )));""" ); # pointer_from_objref ???
 
 #   println("nemoElem2Number($j, $cf) --> $n");
-   @assert (n != number(C_NULL));
+   @assert (n != C_NULL);
 
    @assert !haskey( nemoNumberID, (cf,n) );
    @assert !haskey( nemoNumberID2, (cf,n) );
@@ -576,32 +583,32 @@ function nemoDelete( pp :: Ptr{number}, cf::coeffs )
 
    @assert pp != Ptr{number}(C_NULL);
 
-   const p :: number = unsafe_load(pp);
+   p :: number = unsafe_load(pp);
 
-   if p == number(C_NULL)
+   if p == C_NULL
      println("ERROR? nemoDelete: NULL NUMBER ptr: ($pp --> $p, $cf)!");     
      return Void();
    end
 
-   @assert p != number(C_NULL);
+   @assert p != C_NULL
 
    if haskey(nemoNumberID, (cf,p))
 
      @assert  haskey(nemoNumberID,  (cf,p));
      @assert !haskey(nemoNumberID2, (cf,p));
 
-     const j = pop!(nemoNumberID, (cf, p));
+     j = pop!(nemoNumberID, (cf, p));
 #     println("nemoDelete($pp --> $p, $cf): ", j);
       nemoNumberID2[(cf, p)] = j;
 
    elseif haskey(nemoNumberID2, (cf,p))
 
-     const j = nemoNumberID2[(cf, p)];
+     j = nemoNumberID2[(cf, p)];
      println("ERROR: REPEATED DELETION: nemoDelete($pp --> $p, $cf): ", j);
 
    else
 
-     const j = unsafe_pointer_to_objref(icxx""" return (void*)$p; """);
+     j = unsafe_pointer_to_objref(icxx""" return (void*)$p; """);
      println("ERROR: MISSING: nemoDelete($pp --> $p, $cf): ", j);
 
    end
@@ -611,20 +618,20 @@ function nemoDelete( pp :: Ptr{number}, cf::coeffs )
 end
 
 function nemoCoeffWrite( cf:: coeffs, details :: Cint )
-   const r = nemoContext(cf);
-   const s = string(r) * ( (details > 0) ? " % [" * string(typeof(r)) * "]" : "" );
+   r = nemoContext(cf);
+   s = string(r) * ( (details > 0) ? " % [" * string(typeof(r)) * "]" : "" );
    PrintS(pointer(s)); 
    return Void() # Nothing
 end
 
 function nemoCoeffString( cf:: coeffs )
-   const r = nemoContext(cf);
+   r = nemoContext(cf);
    StringSetS(string(r));  m = StringEndS(); # TODO: FIXME: omStrDup?
    return Ptr{Cuchar}(m);
 end
 
 function nemoCoeffName( cf:: coeffs )
-   const r = nemoContext(cf);
+   r = nemoContext(cf);
    StringSetS(string(r));  ### No way to get Nemo name for that Ring/Field :(
    m = StringEndS();
    return Ptr{Cuchar}(m);
@@ -634,73 +641,73 @@ end
 function nemoCoeffIsEqual( cf:: coeffs, t :: n_coeffType, p :: Ptr{Void} )
    (t != n_NemoCoeffs) && return FALSE();  
    (p == C_NULL) && return FALSE();
-   const rr = nemoContext(cf);
-   const r = unsafe_pointer_to_objref(p);
+   rr = nemoContext(cf);
+   r = unsafe_pointer_to_objref(p);
    (r != rr) && return FALSE();
    return TRUE();
 end
 
 function nemoInit( i::Clong, cf::coeffs )
-   const r = nemoContext(cf); # Unique!  
+   r = nemoContext(cf); # Unique!  
    return nemoElem2Number(r(i), cf); 
 end
 
 function nemoWriteNumber( n::number, cf::coeffs )
-    const r = nemoContext(cf); # Unique!
-    const j = nemoNumber2Elem(n, cf);
+    r = nemoContext(cf); # Unique!
+    j = nemoNumber2Elem(n, cf);
     PrintS(pointer(string(j))); # Write?
     return Void()
 end
 
 ### @cxxm "void nemoKillChar(coeffs cf)" begin  
 function nemoKillChar( cf:: coeffs )
-   @assert (cf != coeffs(C_NULL));
+   @assert (cf != C_NULL);
    @assert (n_NemoCoeffs == getCoeffType(cf));
    (icxx""" ((coeffs)$cf) -> data = NULL; """);
    return Void()
 end
 
 function nemoMult(a:: number, b::number, cf::coeffs)
-    const r :: Ring = nemoContext(cf); # Unique!
+    r :: Ring = nemoContext(cf); # Unique!
     return nemoElem2Number( nemoNumber2Elem(a, cf) * nemoNumber2Elem(b, cf), cf); 
 end
 
 function nemoAdd(a:: number, b::number, cf::coeffs)
-    const r :: Ring = nemoContext(cf); # Unique!
+    r :: Ring = nemoContext(cf); # Unique!
     return nemoElem2Number( nemoNumber2Elem(a, cf) + nemoNumber2Elem(b, cf), cf); 
 end
 
 function nemoSub(a:: number, b::number, cf::coeffs)
-    const r :: Ring = nemoContext(cf); # Unique!
+    r :: Ring = nemoContext(cf); # Unique!
     return nemoElem2Number( nemoNumber2Elem(a, cf) - nemoNumber2Elem(b, cf), cf); 
 end
 
 function nemoDiv(a:: number, b::number, cf::coeffs)
-    const r :: Ring = nemoContext(cf); # Unique!
-    const q :: RingElem = divexact( nemoNumber2Elem(a, cf), nemoNumber2Elem(b, cf) ) ; ##  "//" -> rational // div?
+    r :: Ring = nemoContext(cf); # Unique!
+    q :: RingElem = divexact( nemoNumber2Elem(a, cf), nemoNumber2Elem(b, cf) ) ; ##  "//" -> rational // div?
     return nemoElem2Number(q, cf); 
 end
 
 function nemoExactDiv(a:: number, b::number, cf::coeffs)
-    const r = nemoContext(cf); # Unique!
-    const d :: RingElem = divexact(nemoNumber2Elem(a, cf), nemoNumber2Elem(b, cf));
+    r = nemoContext(cf); # Unique!
+    d :: RingElem = divexact(nemoNumber2Elem(a, cf), nemoNumber2Elem(b, cf));
     return nemoElem2Number(d, cf); 
 end
 
 function nemoIntMod(a:: number, b::number, cf::coeffs)
-    const r = nemoContext(cf); # Unique!
-    const m :: RingElem = mod(nemoNumber2Elem(a, cf), nemoNumber2Elem(b, cf)); # divrem?
+    r = nemoContext(cf); # Unique!
+    m :: RingElem = mod(nemoNumber2Elem(a, cf), nemoNumber2Elem(b, cf)); # divrem?
     return nemoElem2Number( m, cf); 
 end
 
 function nemoCopy(a:: number, cf::coeffs) #      // number  Copy(number a,  coeffs r);
-    const r = nemoContext(cf); # Unique!
-    const b :: RingElem = deepcopy( nemoNumber2Elem(a, cf) );
+    r = nemoContext(cf); # Unique!
+    b :: RingElem = deepcopy( nemoNumber2Elem(a, cf) );
     return nemoElem2Number(b, cf); 
 end
 
 function nemoSetChar(cf::coeffs)
-#   const r = nemoContext(cf); # Unique!
+#   r = nemoContext(cf); # Unique!
 #      // void nemoSetChar(const coeffs r);    
    return Void()
 end
@@ -709,20 +716,20 @@ end
 
 
 function nemoInt(nref::Ptr{number}, cf::coeffs)#      // long    Int(number &n,  coeffs r);
-   const r = nemoContext(cf); # Unique!
+   r = nemoContext(cf); # Unique!
 
    @assert (nref != C_NULL)
 
-   const p = (icxx""" number* n = $nref; return ((number)(*n)); """);
-   const n :: RingElem = nemoNumber2Elem(p, cf);
-#   const l = convert(Clong, n);
-#   delete!(nemoNumberID, (cf, p)); const pp = nemoElem2Number(n); nref[] = pp;
+   p = (icxx""" number* n = $nref; return ((number)(*n)); """);
+   n :: RingElem = nemoNumber2Elem(p, cf);
+#   l = convert(Clong, n);
+#   delete!(nemoNumberID, (cf, p)); pp = nemoElem2Number(n); nref[] = pp;
 
    ret :: Clong = 0;
 
    try
-     const q = convert(Rational{BigInt}, n)
-     const qq = div(num(q), den(q));
+     q = convert(Rational{BigInt}, n)
+     qq = div(num(q), den(q));
      ret = convert(Clong, qq);
    catch
      ret = convert(Clong, n);
@@ -736,15 +743,15 @@ end
 # function nemoInt(nref::Ref{number}, cf::coeffs); end
 
 function  nemoInpNeg(p::number, cf::coeffs) #      // number  InpNeg(number a,  coeffs r);
-   const r = nemoContext(cf); # Unique!
+   r = nemoContext(cf); # Unique!
 
    if haskey(nemoNumberID, (cf,p))
-     const N :: RingElem = pop!(nemoNumberID, (cf, p)); # remove the cached safe reference to this number...
+     N :: RingElem = pop!(nemoNumberID, (cf, p)); # remove the cached safe reference to this number...
      nemoNumberID2[(cf, p)] = N;
      return nemoElem2Number(-N, cf);
    end
 
-   const j :: RingElem = nemoNumber2Elem(p, cf);
+   j :: RingElem = nemoNumber2Elem(p, cf);
 
    if haskey(nemoNumberID2, (cf,p))
      println("ERROR: REPEATED DELETION: nemoInpNeg($p, $cf): ", j);     
@@ -759,12 +766,12 @@ end
 function  nemoRead(p::Ptr{Cuchar}, nptr::Ptr{number}, cf::coeffs)
 #      //  char *  Read( char * s, number * a,  coeffs r);
 
-   const R = nemoContext(cf); # Unique!
+   R = nemoContext(cf); # Unique!
 
-   const s = string(p);
-   const e = R(s);
+   s = string(p);
+   e = R(s);
 
-   const n = nemoElem2Number(e, cf);
+   n = nemoElem2Number(e, cf);
 #   unsafe_store!(nptr, n);
    (icxx""" *(number*)($nptr) = (number)($n); """); #   unsafe_store!(nptr, n);
 
@@ -773,34 +780,34 @@ end
 
 function  nemoGreater(a::number, b::number, cf::coeffs)      
 #      // BOOLEAN Greater(number a,number b,  coeffs r);
-#   const R = nemoContext(cf); # Unique!
+#   R = nemoContext(cf); # Unique!
    return Cint(nemoNumber2Elem(a, cf) > nemoNumber2Elem(b, cf))
 end
 
 function  nemoEqual(a::number, b::number, cf::coeffs)      
 #      // BOOLEAN Equal(number a,number b,  coeffs r);
-#   const R = nemoContext(cf); # Unique!
+#   R = nemoContext(cf); # Unique!
    return Cint(nemoNumber2Elem(a, cf) == nemoNumber2Elem(b, cf))
 end
 
 function  nemoIsZero(n::number, cf::coeffs) #      // BOOLEAN IsZero(number a,  coeffs r);
-   const R = nemoContext(cf); # Unique!
+   R = nemoContext(cf); # Unique!
 #   return Cint( iszero( nemoNumber2Elem(n, cf)) ) # TODO: iszero
    return Cint(nemoNumber2Elem(n, cf) == zero(R)); # TODO: iszero
 end
 
 function  nemoIsOne(n::number, cf::coeffs)      #      // BOOLEAN IsOne(number a,  coeffs r);
-   const R = nemoContext(cf); # Unique!
+   R = nemoContext(cf); # Unique!
    return Cint(nemoNumber2Elem(n, cf) == one(R));
 end
 
 function  nemoIsMOne(n::number, cf::coeffs)      #      // BOOLEAN IsMOne(number a,  coeffs r);
-   const R = nemoContext(cf); # Unique!
+   R = nemoContext(cf); # Unique!
    return Cint(nemoNumber2Elem(n, cf) == R(-1));
 end
 
 function  nemoGreaterZero(n::number, cf::coeffs) #    // BOOLEAN GreaterZero(number a,  coeffs r);
-   const R = nemoContext(cf); # Unique!
+   R = nemoContext(cf); # Unique!
    return Cint(nemoNumber2Elem(n, cf) > zero(R));
 end
 
@@ -812,20 +819,20 @@ end
 ##########################################################################################
 
 function  nemoInpMult(a::Ptr{number}, b::number, cf::coeffs) #      // void    InpMult(number &a, number b,  coeffs r);
-   const bb = nemoNumber2Elem(b, cf)
+   bb = nemoNumber2Elem(b, cf)
 
-   const p = unsafe_load(a);
+   p = unsafe_load(a);
 
    if haskey(nemoNumberID, (cf,p))
-     const N :: RingElem = pop!(nemoNumberID, (cf, p)); # remove the cached safe reference to this number...
+     N :: RingElem = pop!(nemoNumberID, (cf, p)); # remove the cached safe reference to this number...
      nemoNumberID2[(cf, p)] = N;
      mul!(N, N, bb);
-     const nn = nemoElem2Number(N, cf);
+     nn = nemoElem2Number(N, cf);
      (icxx""" *(number*)($a) = $nn; """);  #  unsafe_store!(a, nn);
      return ;
    end
 
-   const j :: RingElem = nemoNumber2Elem(p, cf);
+   j :: RingElem = nemoNumber2Elem(p, cf);
 
    if haskey(nemoNumberID2, (cf,p))
       println("ERROR: REPEATED DELETION: nemoInpMult($p, $cf): ", j);     
@@ -834,7 +841,7 @@ function  nemoInpMult(a::Ptr{number}, b::number, cf::coeffs) #      // void    I
    end
 
    mul!(j, j, bb);
-   const nn = nemoElem2Number(j, cf);
+   nn = nemoElem2Number(j, cf);
 
    (icxx""" *(number*)($a) = $nn; """);  #  unsafe_store!(a, nn);
 
@@ -842,20 +849,20 @@ function  nemoInpMult(a::Ptr{number}, b::number, cf::coeffs) #      // void    I
 end
 
 function  nemoInpAdd(a::Ptr{number}, b::number, cf::coeffs) #      // void    InpAdd(number &a, number b,  coeffs r);
-   const bb = nemoNumber2Elem(b, cf)
+   bb = nemoNumber2Elem(b, cf)
 
-   const p = unsafe_load(a);
+   p = unsafe_load(a);
 
    if haskey(nemoNumberID, (cf,p))
-     const N :: RingElem = pop!(nemoNumberID, (cf, p)); # remove the cached safe reference to this number...
+     N :: RingElem = pop!(nemoNumberID, (cf, p)); # remove the cached safe reference to this number...
      nemoNumberID2[(cf, p)] = N;
      N += bb;
-     const nn = nemoElem2Number(N, cf);
+     nn = nemoElem2Number(N, cf);
      (icxx""" *(number*)($a) = $nn; """);  #  unsafe_store!(a, nn);
      return Void();
    end
 
-   const j :: RingElem = nemoNumber2Elem(p, cf);
+   j :: RingElem = nemoNumber2Elem(p, cf);
 
    if haskey(nemoNumberID2, (cf,p))
       println("ERROR: REPEATED DELETION: nemoInpAdd($p, $cf): ", j);     
@@ -865,44 +872,44 @@ function  nemoInpAdd(a::Ptr{number}, b::number, cf::coeffs) #      // void    In
 
    j += bb;
 
-   const nn = nemoElem2Number(j, cf);
+   nn = nemoElem2Number(j, cf);
    (icxx""" *(number*)($a) = $nn; """);  #  unsafe_store!(a, nn);
 
    return Void() 
 end
 
 function nemoPower(a::number, i::Cint, result::Ptr{number}, cf::coeffs) # // void Power(number a, int i, number * result,  coeffs r)
-   const j = nemoNumber2Elem(a, cf);
-   const n = nemoElem2Number(^(j, Int(i)), cf);
+   j = nemoNumber2Elem(a, cf);
+   n = nemoElem2Number(^(j, Int(i)), cf);
    (icxx""" *(number*)($result) = $n; """);  #  unsafe_store!(result, n);
    return Void();
 end
 
 
 function nemoGetDenom(n::Ptr{number}, cf::coeffs)    # // number  GetDenom(number &n,  coeffs r);
-   const R = nemoContext(cf); # Unique!
-   const p = unsafe_load(n);
-   const j = nemoNumber2Elem(p, cf);
+   R = nemoContext(cf); # Unique!
+   p = unsafe_load(n);
+   j = nemoNumber2Elem(p, cf);
    return nemoElem2Number(den(j), cf);
 end
 
 function nemoGetNumerator(n::Ptr{number}, cf::coeffs)  # // number  GetNumerator(number &n,  coeffs r);
-   const R = nemoContext(cf); # Unique!
-   const p = unsafe_load(n);
-   const j = nemoNumber2Elem(p, cf);
+   R = nemoContext(cf); # Unique!
+   p = unsafe_load(n);
+   j = nemoNumber2Elem(p, cf);
    return nemoElem2Number(num(j), cf);
 end
 
 function  nemoExtGcd(a::number, b::number, ps::Ptr{number}, pt::Ptr{number}, cf::coeffs)
 # // number  ExtGcd(number a, number b, number *s, number *t, coeffs r); // extgcd
 
-   const aa = nemoNumber2Elem(a, cf);  
-   const bb = nemoNumber2Elem(b, cf);
+   aa = nemoNumber2Elem(a, cf);  
+   bb = nemoNumber2Elem(b, cf);
 
    gg, ss, tt = gcdx(aa, bb);
 
-   const s = nemoElem2Number(ss, cf);
-   const t = nemoElem2Number(tt, cf);
+   s = nemoElem2Number(ss, cf);
+   t = nemoElem2Number(tt, cf);
 
    (icxx""" *(number*)($ps) = $s; *(number*)($pt) = $t; """);  #  unsafe_store!(ps, s); unsafe_store!(pt, t);
 
@@ -912,12 +919,12 @@ end
 function  nemoQuotRem(a::number, b::number, prem::Ptr{number}, cf::coeffs)
 #      // number  QuotRem(number a, number b, number *rem,  coeffs r); // divrem 
 
-   const aa :: RingElem = nemoNumber2Elem(a, cf);  
-   const bb :: RingElem = nemoNumber2Elem(b, cf);
+   aa :: RingElem = nemoNumber2Elem(a, cf);  
+   bb :: RingElem = nemoNumber2Elem(b, cf);
 
    qq, rr = divrem(aa, bb);
 
-   const r = nemoElem2Number(rr, cf);
+   r = nemoElem2Number(rr, cf);
 
    (icxx""" *(number*)($prem) = $r; """);  #  unsafe_store!(prem, r);
 
@@ -927,18 +934,18 @@ end
 ############################
 
 function  nemoInvers(a::number,  cf::coeffs) #      // number  Invers(number a,  coeffs r); // inv
-   const n = nemoNumber2Elem(a, cf);
+   n = nemoNumber2Elem(a, cf);
    return nemoElem2Number(inv(n), cf);
 end
 
 function  nemoGcd(a::number, b::number,  cf::coeffs) #      // number  Gcd(number a, number b,  coeffs r); // gcd
-   const aa = nemoNumber2Elem(a, cf);  const bb = nemoNumber2Elem(b, cf);
+   aa = nemoNumber2Elem(a, cf);  bb = nemoNumber2Elem(b, cf);
    return nemoElem2Number(gcd(aa, bb), cf);
 end
 
 function  nemoLcm(a::number, b::number, cf::coeffs) #      // number  Lcm(number a, number b,  coeffs r); // lcm?
-   const aa = nemoNumber2Elem(a, cf)
-   const bb = nemoNumber2Elem(b, cf)
+   aa = nemoNumber2Elem(a, cf)
+   bb = nemoNumber2Elem(b, cf)
 
    return nemoElem2Number(lcm(aa, bb), cf);
 end
@@ -958,15 +965,15 @@ end
 
 
 function  nemoInitMPZ(b::BigInt, cf::coeffs) #  // number  InitMPZ(mpz_t i,  coeffs r);
-   const R = nemoContext(cf); # Unique!
+   R = nemoContext(cf); # Unique!
    return nemoElem2Number(R(b), cf);
 end
 
 
 function  nemoMPZ(b::BigInt, nptr::Ptr{number}, cf::coeffs) #  // void    MPZ(mpz_t result, number &n,  coeffs r);
-   const p = unsafe_load(nptr);
-   const k = convert(BigInt, nemoNumber2Elem(p, cf));
-   const kk = pointer_from_objref(k); 
+   p = unsafe_load(nptr);
+   k = convert(BigInt, nemoNumber2Elem(p, cf));
+   kk = pointer_from_objref(k); 
 
 #    bb = pointer_from_objref(b); 
    bb = __mpz_struct(pointer_from_objref(b))
@@ -983,11 +990,11 @@ end
 function nemoInitCharProc( cf :: coeffs, p :: Ptr{Void} )
 
 #   println("nemoInitCharProc(cf: $cf, p: $p)... ");
-   @assert cf != coeffs(C_NULL);
+   @assert cf != C_NULL
 
    (p == C_NULL) && throw(ErrorException("nemoInitCharProc: Wrong parameter: nemo-ring-context-pointer cannot be NULL!"));
 
-   const r  = unsafe_pointer_to_objref(p);
+   r  = unsafe_pointer_to_objref(p);
    @assert pointer_from_objref(r) == p;
 
 #   println("typeof(r): ", typeof(r)); 
@@ -1023,7 +1030,7 @@ function nemoInitCharProc( cf :: coeffs, p :: Ptr{Void} )
       cf->pParameterNames = NULL; // var() / string -> ..
    """
 
-   const _nemoWriteNumber = cfunction(nemoWriteNumber, Void, (number, coeffs));
+   _nemoWriteNumber = cfunction(nemoWriteNumber, Void, (number, coeffs));
 
    icxx""" coeffs cf = (coeffs)($cf);
       // void    (*cfWriteLong)(number a, const coeffs r); // void    (*cfWriteShort)(number a, const coeffs r);
@@ -1114,7 +1121,7 @@ function nemoInitCharProc( cf :: coeffs, p :: Ptr{Void} )
       setPtr( $cf -> cfSetMap, $(cfunction( nemoSetMap, nMapFunc, (coeffs, coeffs) )) ); 
    """
 
-   const _nemoInt = cfunction(nemoInt, Clong, (Ptr{number}, coeffs)); ## cfunction(nemoInt, Clong, (Ref{number}, coeffs));
+   _nemoInt = cfunction(nemoInt, Clong, (Ptr{number}, coeffs)); ## cfunction(nemoInt, Clong, (Ref{number}, coeffs));
 
    icxx"""
       setPtr( $cf -> cfInt, $_nemoInt ); 
@@ -1127,7 +1134,7 @@ function nemoInitCharProc( cf :: coeffs, p :: Ptr{Void} )
 #######################################
 
    try 
-      const t = den(one(r));
+      t = den(one(r));
 
       icxx"""
          // Int, Fractions Poly/Fractions: den, num? methods???? try/catch!
@@ -1138,7 +1145,7 @@ function nemoInitCharProc( cf :: coeffs, p :: Ptr{Void} )
    end
 
    try 
-      const t = num(one(r));
+      t = num(one(r));
       icxx"""
       	 // number  GetNumerator(number &n,  coeffs r);
       	 setPtr( $cf -> cfGetNumerator, $(cfunction( nemoGetNumerator, number, (Ptr{number}, coeffs) )) ); 
@@ -1286,8 +1293,8 @@ end
 #####################################################################################
 
 function registerNemoCoeffs()
-   const c = cfunction(nemoInitCharProc, Cint, (coeffs, Ptr{Void}));
-   const t = nRegister(n_unknown(), c);
+   c = cfunction(nemoInitCharProc, Cint, (coeffs, Ptr{Void}));
+   t = nRegister(n_unknown(), c);
    @assert (t != n_unknown());
    return t;
 end
@@ -1485,7 +1492,7 @@ n_Param(i::Int, cf :: coeffs) = n_Test((@cxx n_Param(i, cf)), cf)
 
 # void n_Write(number& n,  const coeffs r, const BOOLEAN bShortOut = TRUE)
 function n_Write( n::number_ref, cf :: coeffs, bShortOut::Bool = false )
-   const d :: Int = (bShortOut? 1 : 0);
+   d :: Int = (bShortOut? 1 : 0);
 
    n_Test(n[], cf);
    icxx""" n_Write($n, $cf, $d); """ 
@@ -1786,7 +1793,7 @@ function rSum(A :: ring, B :: ring)
     r_Test(B)
     println(A)
     println(B)
-    const ret = icxx""" return rSum($A,$B,$S); """
+    ret = icxx""" return rSum($A,$B,$S); """
     @assert (ret == 1)
     println(S)
     return r_Test(S[])
@@ -1831,7 +1838,7 @@ end
 
 function rRing_has_Comp(r :: ring)
    ## #define rRing_has_Comp(r)   (r->pCompIndex >= 0)
-   const ret = icxx""" return rRing_has_Comp($r); """
+   ret = icxx""" return rRing_has_Comp($r); """
    return Bool(ret)
 end
 
@@ -2026,27 +2033,27 @@ end
 
         function pp_IsOne(x :: poly, r :: ring)
 	    ## static inline BOOLEAN p_IsOne(const poly p, const ring R)
-            const ret = ( @cxx p_IsOne(p_Test(x,r), r) );
+            ret = ( @cxx p_IsOne(p_Test(x,r), r) );
             return (ret > 0)
         end
 
 
         function pp_IsUnit(x :: poly, r :: ring) # LT is an invertible constant?
 	    # static inline BOOLEAN p_IsUnit(const poly p, const ring r)
-            const ret = ( @cxx p_IsUnit(p_Test(x,r), r) );
+            ret = ( @cxx p_IsUnit(p_Test(x,r), r) );
             return (ret > 0)
         end
 
 
         function pp_IsConstant(x :: poly, r :: ring)
 	    # static inline BOOLEAN p_IsConstant(const poly p, const ring r)
-            const ret = ( @cxx p_IsConstant(p_Test(x,r), r) );
+            ret = ( @cxx p_IsConstant(p_Test(x,r), r) );
             return (ret > 0)
         end
 
         function pp_IsVar(x :: poly, r :: ring)
 	    #    static int pp_IsVar(const poly p, const ring r)
-            const ret = ( @cxx pp_IsVar(p_Test(x,r), r) ); # either ret = -1 or x == var(ret)!
+            ret = ( @cxx pp_IsVar(p_Test(x,r), r) ); # either ret = -1 or x == var(ret)!
             return (ret != -1)
         end
 
@@ -2059,7 +2066,7 @@ end
 
         function pp_EqualPolys(p1 :: poly, p2 :: poly, r :: ring)
 	    # BOOLEAN p_EqualPolys(poly p1, poly p2, const ring r);
-            const ret = ( @cxx p_EqualPolys( p_Test(p1,r), p_Test(p2, r), r) );
+            ret = ( @cxx p_EqualPolys( p_Test(p1,r), p_Test(p2, r), r) );
             return (ret > 0)
         end
 
@@ -2086,7 +2093,7 @@ function singclap_extgcd(f :: poly, g :: poly, r :: ring)
    res = poly_ref(poly(C_NULL)); a = poly_ref(poly(C_NULL)); b = poly_ref(poly(C_NULL));
 
    # BOOLEAN singclap_extgcd ( poly f, poly g, poly &res, poly &pa, poly &pb , const ring r);
-   const ret = icxx""" return singclap_extgcd($f, $g, $res, $a, $b, $r); """
+   ret = icxx""" return singclap_extgcd($f, $g, $res, $a, $b, $r); """
    @assert (ret == 0)
    
    return p_Test(res[],r), p_Test(a[],r), p_Test(b[],r)
@@ -2129,17 +2136,17 @@ end
 
 
 function ncols(I::ideal) 
-  @assert I != ideal(C_NULL)
+  @assert I != C_NULL
   return icxx""" return (int)IDELEMS($I); """ # # MATCOLS
 end
 
 function getrank(I::ideal)
-  @assert I != ideal(C_NULL)
+  @assert I != C_NULL
   return icxx""" return (long)($I)->rank; """
 end
 
 function setrank!(I::ideal, r :: Clong)
-  @assert I != ideal(C_NULL)
+  @assert I != C_NULL
   icxx""" ($I)->rank = r; """
 end
 
@@ -2147,32 +2154,32 @@ end
 ## length(I::ideal) = ncols(I)
 
 function nrows(I::ideal) 
-  @assert I != ideal(C_NULL)
+  @assert I != C_NULL
   return icxx""" return (int)MATROWS($I); """
 end
 
 function id_Print(I::ideal, R::ring)
-   @assert I != ideal(C_NULL)
+   @assert I != C_NULL
    icxx""" id_Print($I, $R, $R); """
 end
 
 function getindex(I::ideal, i::Cint, j::Cint) 
-  @assert I != ideal(C_NULL)
+  @assert I != C_NULL
   return icxx""" return (poly)MATELEM($I,$i,$j); """
 end
 
 function getindex(I::ideal, j::Cint) 
-  @assert I != ideal(C_NULL)
+  @assert I != C_NULL
   return icxx""" ideal I = $I; return (poly)(I->m[$j]); """
 end
 
 function setindex!(I::ideal, x::poly, j::Cint) 
-  @assert I != ideal(C_NULL)
+  @assert I != C_NULL
   icxx"""ideal I = $I; I->m[$j] = (poly)($x); """
 end
 
 function setindex!(I::ideal, x::poly, i::Cint, j::Cint) 
-  @assert I != ideal(C_NULL)
+  @assert I != C_NULL
   icxx""" MATELEM($I,$i,$j) = $x; """
 end
 
@@ -2182,14 +2189,14 @@ function _id_Test(I :: ideal, R :: ring)
 end
 
 function id_Test(I :: ideal, R :: ring)
-   @assert I != ideal(C_NULL)
+   @assert I != C_NULL
    _id_Test(I, R);
    return (I);
 end
 
 function _id_Delete(I :: ideal, R :: ring)
-  @assert I != ideal(C_NULL)
-#   if I != ideal(C_NULL)
+  @assert I != C_NULL
+#   if I != C_NULL
      I = id_Test(I, R);
      ###    id_Delete(&a, r);
      icxx""" ideal I = $I; id_Delete(&I, $R); """
@@ -2197,7 +2204,7 @@ function _id_Delete(I :: ideal, R :: ring)
 end
 
 function id_Copy(I :: ideal, R :: ring)
-  @assert I != ideal(C_NULL)
+  @assert I != C_NULL
    ## ideal id_Copy (ideal h1,const ring r);
    return (@cxx id_Copy(I, R));
 end
@@ -2209,33 +2216,33 @@ function idInit(size::Cint, rank::Cint = 1)
 end
 
 function idIs0(I :: ideal)
-   @assert I != ideal(C_NULL)
+   @assert I != C_NULL
    ## BOOLEAN idIs0 (ideal h);
-   const ret = ( @cxx idIs0(I) );
+   ret = ( @cxx idIs0(I) );
    return (ret > 0)
 end
 
 function id_RankFreeModule(I :: ideal, R :: ring)
-   @assert I != ideal(C_NULL)
+   @assert I != C_NULL
    ## static inline long id_RankFreeModule(ideal m, ring r)
    return @cxx id_RankFreeModule(id_Test(I, R), R)
 end
 
 function idElem(I :: ideal)
-   @assert I != ideal(C_NULL)
+   @assert I != C_NULL
    ## int     idElem(const ideal F); /// number of non-zero polys in F
    return (@cxx idElem(I));
 end
 
 function id_Normalize(I :: ideal, R :: ring)
-   @assert I != ideal(C_NULL)
+   @assert I != C_NULL
    ## void    id_Normalize(ideal id, const ring r); /// normialize all polys in id
    @cxx id_Normalize(id_Test(I, R), R)
    I = id_Test(I, R); # Just self test
 end
 
 function idSkipZeroes(I :: ideal)
-   @assert I != ideal(C_NULL)
+   @assert I != C_NULL
    ## void idSkipZeroes (ideal ide); /// gives an ideal the minimal possible size
    @cxx idSkipZeroes(I);
    return I
@@ -2244,7 +2251,7 @@ end
 
 
 function id_FreeModule(k:: Cint, R :: ring)
-   @assert I != ideal(C_NULL)
+   @assert I != C_NULL
    ## ideal id_FreeModule (int i, const ring r);
    return id_Test( (@cxx id_FreeModule(k, R)), R ); 
 end
@@ -2255,52 +2262,52 @@ function id_MaxIdeal(k:: Cint, R :: ring)
 end
 
 function id_Transp(I :: ideal, R :: ring)
-   @assert I != ideal(C_NULL)
+   @assert I != C_NULL
    ## ideal id_Transp(ideal a, const ring rRing); /// transpose a module
    return id_Test( (@cxx id_Transp(id_Test(I, R), R)), R);
 end
 
 function id_SimpleAdd(I :: ideal, J :: ideal, R :: ring)
-   @assert I != ideal(C_NULL)
-   @assert J != ideal(C_NULL)
+   @assert I != C_NULL
+   @assert J != C_NULL
    ## ideal id_SimpleAdd (ideal h1,ideal h2, const ring r);   /*adds two ideals without simplifying the result*/
    return id_Test( (@cxx id_SimpleAdd(id_Test(I,R), id_Test(J,R), R)), R );
 end
 
 function id_Add(I :: ideal, J :: ideal, R :: ring)
-   @assert I != ideal(C_NULL)
-   @assert J != ideal(C_NULL)
+   @assert I != C_NULL
+   @assert J != C_NULL
    ## ideal id_Add (ideal h1,ideal h2,const ring r);   /*adds the quotient ideal*/  /* h1 + h2 */
    return id_Test( (@cxx id_Add(id_Test(I,R), id_Test(J,R), R)), R );
 end
 
 function id_Mult(I :: ideal, J :: ideal, R :: ring)
-   @assert I != ideal(C_NULL)
-   @assert J != ideal(C_NULL)
+   @assert I != C_NULL
+   @assert J != C_NULL
    ## ideal id_Mult (ideal h1,ideal  h2, const ring r);
    return id_Test( (@cxx id_Mult(id_Test(I,R), id_Test(J,R), R)), R );
 end
 
 
 function id_Power(I :: ideal, e :: Cint, R :: ring)
-   @assert I != ideal(C_NULL)
+   @assert I != C_NULL
    ## ideal id_Power(ideal given,int exp, const ring r);
    return id_Test( (@cxx id_Power(id_Test(I,R), e, R)), R );
 end
 
 
 function kStd(I :: ideal, R :: ring)
-   @assert I != ideal(C_NULL)
+   @assert I != C_NULL
    return id_Test((@cxx _kStd( id_Test(I,R), R)), R);
 end
 
 function _id_Syzygies(I :: ideal, R :: ring)
-   @assert I != ideal(C_NULL)
+   @assert I != C_NULL
    return id_Test((@cxx _id_Syzygies( id_Test(I,R), R)), R);
 end
 
 function id_Head(I :: ideal, R :: ring)
-   @assert I != ideal(C_NULL)
+   @assert I != C_NULL
    # /// returns the ideals of initial terms
    # ideal id_Head(ideal h,const ring r)
 
@@ -2356,85 +2363,12 @@ end
 
 function rChangeCurrRing(n::ring)
    ## void rChangeCurrRing(ring r)
-   const origin = currRing();
-   if (origin != n && n != ring(C_NULL))
+   origin = currRing();
+   if (origin != n && n != C_NULL)
       (@cxx rChangeCurrRing(n));
    end
    return(origin);
 end
-
-## ?
-function currRingHdl()
-   return(@cxx currRingHdl);
-end
-
-function rGetHdl(r::ring)
-   @assert r != ring(C_NULL)
-   return(idhdl(@cxx r -> idroot));
-end
-
-function IDRING(h::idhdl)
-   @assert h != idhdl(C_NULL)
-   return(icxx"""return (ring)(IDRING($h));""");
-end
-
-
-
-function rSetHdl(h::idhdl)
-   @assert h != idhdl(C_NULL)
-
-   origin = currRingHdl();
-   (origin == h) && return(origin);
-
-   ## void rSetHdl(idhdl h); ## void rChangeCurrRing(ring r)
-   (@cxx rSetHdl(h));
-   return(origin);
-end
-
-
-
-function ggetid(n::AbstractString)
-   # idhdl ggetid(const char *n); 
-   return (@cxx ggetid(pointer(n)));
-end
-
-function ggetid(n::AbstractString, loc::Cint, packhdl::Ptr{idhdl})
-   # idhdl ggetid(const char *n, BOOLEAN local, idhdl *packhdl);
-   return (@cxx ggetid(pointer(n), loc, packhdl));
-end
-
-
-#   #//idhdl enterid(const char * a, int lev /*nesting level,0=global*/, int t, idhdl* root, BOOLEAN init=TRUE, BOOLEAN serach=TRUE);
-#   return (icxx""" return (idhdl)(enterid( \"R\"         /*ring name*/, 0, RING_CMD, &IDROOT, FALSE ));""");
-#   return (icxx""" return (idhdl)(enterid( \" Nemo fake currRingHdl \", 0, RING_CMD, &IDROOT, FALSE, FALSE)); """);
-
-function rSetFakeRingHdl()
-   r = currRing();
-
-   (r == ring(C_NULL)) && return idhdl(C_NULL);
-
-   h = currRingHdl();
-
-   if h != idhdl(C_NULL)
-       (IDRING(h) == r) && return idhdl(C_NULL);
-   end    
-   
-   #### TODO: Q? use omStrDup as ID name
-   tmpHdl = (icxx""" return (idhdl)enterid(\" Nemo fake currRingHdl \" , 0, RING_CMD, &IDROOT, FALSE, FALSE); """);
-
-   @assert tmpHdl != idhdl(C_NULL)
-
-   (icxx""" idhdl h = (idhdl)$tmpHdl; IDRING(h) = currRing; currRing->ref++; currRingHdl = h; """);
-  
-   return(tmpHdl); 
-end
-
-function rKillFakeRingHdl(tmpHdl::idhdl)
-   if tmpHdl != idhdl(C_NULL)
-       (icxx""" killhdl(((idhdl)$tmpHdl), currPack); currRingHdl = NULL; """);
-   end
-end 
-
 
 ################################################################################################
 

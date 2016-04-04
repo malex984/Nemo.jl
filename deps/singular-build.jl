@@ -1,9 +1,9 @@
 function install_singular() # and NTL 9-3-0
 
-const oldwdir = pwd()
-const pkgdir = Pkg.dir("Nemo") 
+oldwdir = pwd()
+pkgdir = Pkg.dir("Nemo") 
 
-const on_windows = @windows ? true : false
+on_windows = @windows ? true : false
 
 if on_windows
    wdir = "$pkgdir\\deps"
@@ -24,7 +24,7 @@ else
 end
 
 cd(wdir)
-const ntl="ntl-9.5.0"
+ntl="ntl-9.5.0"
 
 try
   run(`wget -q -nc -c -O "$wdir/$ntl.tar.gz" "http://www.shoup.net/ntl/$ntl.tar.gz"`)
@@ -33,7 +33,7 @@ end
 
 LDFLAGS = "-Wl,-rpath,$vdir/lib -Wl,-rpath,\$\$ORIGIN/../share/julia/site/v$(VERSION.major).$(VERSION.minor)/Nemo/local/lib"
 
-const tmp = mktempdir(wdir)
+tmp = mktempdir(wdir)
 
 # http://www.shoup.net/ntl/WinNTL-9_5_0.zip # under Windows?
 if !on_windows
@@ -51,7 +51,7 @@ end
 
 
 ## Install Singular
-const srcs = joinpath(wdir, "Singular")
+srcs = joinpath(wdir, "Singular")
 
 # get/update sources
 try

@@ -484,35 +484,33 @@ end
 function test_SINGULAR()
 
    const n = "iSingularVersion";
-   s = "int $n = system(\"version\");\n";
+   s = "proc myGetVersion()\n{ print(\"... inside myGetVersion! ...\"); return (system(\"version\")); }\n int $n = myGetVersion(); \n";
    println("Evaluating singular code: ", s);
 
    Nemo.SingularKernel.EVALUATE(s);
 
-   h = Nemo.libSingular.ggetid(n)
+   h = Nemo.SingularKernel.ggetid(n)
 
-   println(h);
-   println(typeof(h));
-   @show h
+#   println(h);   println(typeof(h));   @show h
 
    if (h == C_NULL)
       println("Singular's name '$n' does not exist!");   
    else
-      println("Singular Variable '$n' of type ", Nemo.SingularKernel.Tok2Cmdname(@cxx h -> typ), 
+       println("Singular Variable '$n' of type ", Nemo.SingularKernel.Tok2Cmdname(@cxx h -> typ), 
               ", with value: ", (icxx""" return (IDINT($h)); """) );
 #      println("Singular Variable '$n' of type ", (@cxx h -> typ),", with value: ", (icxx""" return ((int)(long)IDDATA($h)); """))
    end
 
-   h = Nemo.libSingular.ggetid("datetime"); # Singular Proc from standard.lib
+   println( "-> CALLPROC('myGetVersion'), result: ", Nemo.SingularKernel.CALLPROC( "myGetVersion" ) ); 
 
-   println(h);
-   println(typeof(h));
-   @show h
+   h = Nemo.SingularKernel.ggetid("myGetVersion"); # Singular Proc from standard.lib
+
+#   println(h); println(typeof(h)); @show h
 
    if (h == C_NULL)
-      println("Singular's name 'datetime' does not exist!");   
+      println("Singular's name 'myGetVersion' does not exist!");   
    else
-      println("Singular's name 'datetime' of type ", Nemo.SingularKernel.Tok2Cmdname(@cxx h -> typ)); 
+      println("Singular's name 'myGetVersion' of type ", Nemo.SingularKernel.Tok2Cmdname(@cxx h -> typ)); 
 
       ### BOOLEAN iiMake_proc(idhdl pn, package pack, sleftv* sl);
       error_code = Cint(icxx""" return ((int)iiMake_proc($h, NULL, NULL)); """); 
@@ -522,11 +520,16 @@ function test_SINGULAR()
       if (error_code > 0)
          icxx""" errorreported = 0; /* reset error handling */ """
       else
-         println("datetime returned type: ", Nemo.SingularKernel.Tok2Cmdname( (icxx""" return (iiRETURNEXPR.Typ()); """) ) );
-         println("datetime returned data: ",  bytestring( Ptr{Cuchar}(icxx""" return ((char *)iiRETURNEXPR.Data()); """)) );
+         println("myGetVersion returned type: ", Nemo.SingularKernel.Tok2Cmdname( (icxx""" return (iiRETURNEXPR.Typ()); """) ) );
+         println("myGetVersion returned data: ",  Cint(icxx""" return ((char *)iiRETURNEXPR.Data()); """) );
       end
+
    end
 
+   println( "-> CALLPROC(HDL('myGetVersion')), result: ", Nemo.SingularKernel.CALLPROC( h ) ); 
+
+
+   println("Testing Standard__datetime(): ", Nemo.SingularKernel.Standard__datetime())
 
 ##  R=rDefault(32003,3,n);
    const R,zz = SingularPolynomialRing(Nemo.SingularZp(32003), "x,y,z"); 
@@ -694,7 +697,7 @@ function test_SINGULAR()
    Nemo.SingularKernel.reservedName();
 
 
-   println( "Singular Version: ", Nemo.SingularKernel.system("version") );
+##   println( "Singular Version: "); Nemo.SingularKernel.system("version");
 
    println("'123456789ABCDEF'[2,4]: ", Nemo.SingularKernel._getindex( "123456789ABCDEF" , 2, 4) );
 
@@ -710,6 +713,29 @@ function test_SINGULAR()
    println("simplify(freemodule(3)): ", Nemo.SingularKernel.simplify( F5, 1+2+4+8));
 
 ##   println("Names: ", Nemo.SingularKernel.names()) # TODO: list!
+
+#   println();
+#   println();
+#   println("Packages & Procs @ Interpreter (standard state): ");
+#   println();
+#   println();
+#   Nemo.SingularKernel.visitPackages(1);
+   
+   println("Loading 'schreyer.lib': ");   Nemo.SingularKernel.load("schreyer.lib");
+
+   println("Packages & Procs @ Interpreter (after loading 'schreyer.lib'): ");
+   println();
+   println();
+   Nemo.SingularKernel.visitPackages(1);
+
+#   println("Loading 'all.lib': ");   Nemo.SingularKernel.load("all.lib");
+#   println("Packages & Procs @ Interpreter (after loading some libs): ");
+#   println();
+#   println();
+#   Nemo.SingularKernel.visitPackages(1);
+
+   println();
+   println();
 
 end
 
