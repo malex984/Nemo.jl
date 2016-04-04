@@ -18,5 +18,19 @@ Reference on Singular wrappers:
     * low-level Ring/polynomial wrappers 
        * http://doc.sagemath.org/html/en/reference/polynomial_rings/sage/rings/polynomial/multi_polynomial_libsingular.html
        * http://doc.sagemath.org/html/en/reference/polynomial_rings/sage/rings/polynomial/multi_polynomial_ideal_libsingular.html
- * Julia/Nemo:  
+ * Julia/Nemo: https://github.com/malex984/Nemo.jl
+    * depends on Cxx.jl (https://github.com/Keno/Cxx.jl) - often clashes with Julia (Cxx: 7b6307bed is known to work well with Julia: 5b1b0c5)
+    * deps/singular-build.jl - build NTL & libSingular shared libraries
+    * src/singular/* -  Singular related functionality (main file with basic types: SingularTypes.jl)
+Current functionality:
+       * low-level wrappers over libpolys & libSingular (major part in : `libSingular.jl` which serves as the basis for the rest)
+       * Smart wrappers for coeffs  and numer: `Coeffs.jl` & `NumberElem.jl` + `NumberCommons.jl`
+       * Adapter for making a **Nemo** ring or field usable as Singular coeffs. 
+       * Smart wrappers for multivariate polynomial rings over coeffs / free modules over such rings and their elements + some kernel algorithms: `PRings.jl`
+       * `debugbreak.h` - trigger a breakpoint handling (from https://github.com/scottt/debugbreak)
+       * Singular interpreter: Nemo.SingularKernel namespace gets all the "kernel" functions and procedures from LIB (`Interpreter.jl`)
+       * `kernel_commands.h` - access to <Singular/table.h> (due to missing public API) for Interpreter + `__iiTwoOps / __Tok2Cmdname`
+    * test/singular/* - corresponding test  (main file: all-tests.jl)
+
+
 
