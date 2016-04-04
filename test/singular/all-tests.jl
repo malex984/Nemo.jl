@@ -487,7 +487,7 @@ function test_SINGULAR()
    s = "proc myGetVersion()\n{ print(\"... inside myGetVersion! ...\"); return (system(\"version\")); }\n int $n = myGetVersion(); \n";
    println("Evaluating singular code: ", s);
 
-   Nemo.SingularKernel.EVALUATE(s);
+   Nemo.SingularKernel.execute_direct(s);
 
    h = Nemo.SingularKernel.ggetid(n)
 
@@ -501,7 +501,7 @@ function test_SINGULAR()
 #      println("Singular Variable '$n' of type ", (@cxx h -> typ),", with value: ", (icxx""" return ((int)(long)IDDATA($h)); """))
    end
 
-   println( "-> CALLPROC('myGetVersion'), result: ", Nemo.SingularKernel.CALLPROC( "myGetVersion" ) ); 
+   println( "-> call_proc('myGetVersion'), result: ", Nemo.SingularKernel.call_proc( "myGetVersion" ) ); 
 
    h = Nemo.SingularKernel.ggetid("myGetVersion"); # Singular Proc from standard.lib
 
@@ -526,7 +526,7 @@ function test_SINGULAR()
 
    end
 
-   println( "-> CALLPROC(HDL('myGetVersion')), result: ", Nemo.SingularKernel.CALLPROC( h ) ); 
+   println( "-> call_proc(HDL('myGetVersion')), result: ", Nemo.SingularKernel.call_proc( h ) ); 
 
 ##  R=rDefault(32003,3,n);
    const R,zz = SingularPolynomialRing(Nemo.SingularZp(32003), "x,y,z"); 
@@ -687,7 +687,7 @@ function test_SINGULAR()
    @test Nemo.SingularKernel.rvar("a") == 0
 
    println("Executing string: "); 
-   Nemo.SingularKernel.execute("int j = 3; ASSUME(0, (j*j+j) == 12); ");
+   Nemo.SingularKernel.execute("int j = 3; ASSUME(0, (j*j+j) == 12); "); # Interpreter's kernel function
 
    @test Nemo.SingularKernel._size("") == 0
 
@@ -736,8 +736,8 @@ function test_SINGULAR()
 
 
    println("Testing Standard__datetime(): ", Nemo.SingularKernel.Standard__datetime())
-   Nemo.SingularKernel.PRINTHELP("datetime");
-   Nemo.SingularKernel.RUNEXAMPLE("datetime");
+   Nemo.SingularKernel.print_help("datetime");
+   Nemo.SingularKernel.run_example("datetime");
 
 
 end

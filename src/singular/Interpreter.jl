@@ -471,7 +471,7 @@ function EndPrintCapture()
 end
 
 
-function RUNEXAMPLE(s::AbstractString)
+function run_example(s::AbstractString)
    @assert !isempty(s)
 
    StartPrintCapture();
@@ -480,7 +480,7 @@ function RUNEXAMPLE(s::AbstractString)
 end
 
 
-function PRINTHELP(s::AbstractString)
+function print_help(s::AbstractString)
    StartPrintCapture();
 
 # // fehelp.h: void feHelp(char* str = NULL);
@@ -493,9 +493,9 @@ function PRINTHELP(s::AbstractString)
    EndPrintCapture();
 end
 
-PRINTHELP() = PRINTHELP("")
+print_help() = print_help("")
 
-function CALLPROC(h::idhdl, ___args...)
+function call_proc(h::idhdl, ___args...)
 
    @assert Cshort(@cxx errorreported) == Cshort(0)
    @assert h != C_NULL
@@ -610,7 +610,7 @@ function CALLPROC(h::idhdl, ___args...)
 
 end
 
-function CALLPROC(n::AbstractString, ___args...)
+function call_proc(n::AbstractString, ___args...)
    h = ggetid(n); # Singular Proc from standard.lib
 
    if (h == C_NULL)
@@ -623,11 +623,10 @@ function CALLPROC(n::AbstractString, ___args...)
 
    @assert t == PROC_CMD()
 
-   return CALLPROC(h, ___args...);
+   return call_proc(h, ___args...);
 end
 
-
-function EVALUATE(s::AbstractString)
+function execute_direct(s::AbstractString) # TODO: rename: all lower case!
     @assert Cshort(@cxx errorreported) == Cshort(0)
 
     s *= ";RETURN();";
@@ -1494,7 +1493,8 @@ function visitPackages(H :: idhdl, PKG)
 
        if (! st) && (H == (@cxx packFindHdl(pkg)))
            procname = symbol(pk, "__", nn); # sname = (pk * "::" * nn);
-           eval( :( $procname(args...) = CALLPROC($h, args...) ) )  # LIBS. ? # @show $procname 
+	   ### TODO: procedure handle may not be safe to store ... ??? 
+           eval( :( $procname(args...) = call_proc($h, args...) ) )  # LIBS. ? # @show $procname 
        end
     end
 
