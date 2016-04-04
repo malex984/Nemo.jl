@@ -471,6 +471,30 @@ function EndPrintCapture()
 end
 
 
+function RUNEXAMPLE(s::AbstractString)
+   @assert !isempty(s)
+
+   StartPrintCapture();
+   (@cxx singular_example(pointer(s)));    # // void  singular_example(char *str);
+   EndPrintCapture();
+end
+
+
+function PRINTHELP(s::AbstractString)
+   StartPrintCapture();
+
+# // fehelp.h: void feHelp(char* str = NULL);
+   if isempty(s)
+      (@cxx feHelp(Ptr{Cuchar}(C_NULL)));
+   else
+      (@cxx feHelp(pointer(s)));
+   end
+
+   EndPrintCapture();
+end
+
+PRINTHELP() = PRINTHELP("")
+
 function CALLPROC(h::idhdl, ___args...)
 
    @assert Cshort(@cxx errorreported) == Cshort(0)
@@ -521,7 +545,7 @@ function CALLPROC(h::idhdl, ___args...)
    (icxx""" iiRETURNEXPR.Init(); """);
 
 
-   StartPrintCapture();
+   StartPrintCapture(); #    EndPrintCapture();
    ### BOOLEAN iiMake_proc(idhdl pn, package pack, sleftv* sl);
    error_code = Cint(icxx""" return ((int)iiMake_proc($h, $pkg, (leftv)$_args)); """);
    EndPrintCapture();

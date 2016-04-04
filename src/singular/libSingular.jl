@@ -35,9 +35,13 @@ function __libSingular_init__()
    cxxinclude(joinpath("Singular", "subexpr.h"), isAngled=false); cxxinclude(joinpath("Singular", "lists.h"), isAngled=false); 
    cxxinclude(joinpath("Singular", "idrec.h"), isAngled=false); cxxinclude(joinpath("Singular", "tok.h"), isAngled=false); 
    cxxinclude(joinpath("Singular", "links", "silink.h"), isAngled=false);
+   cxxinclude(joinpath("Singular", "fehelp.h"), isAngled=false); 
    cxxinclude(joinpath("kernel_commands.h"), isAngled=false);
+
+
+
 ################# NOTE: make sure the line number is correct in case of any changes above here!!!! #################################
-cxx"""#line 40 "libSingular.jl"
+cxx"""#line 45 "libSingular.jl"
     #include "omalloc/omalloc.h"
     #include "gmp.h"
     #include "misc/intvec.h"
@@ -67,6 +71,7 @@ cxx"""#line 40 "libSingular.jl"
     #include "Singular/lists.h"
     #include "Singular/tok.h"
     #include "Singular/links/silink.h"
+    #include "Singular/fehelp.h"
 
     #include "kernel_commands.h"
 

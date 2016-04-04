@@ -528,9 +528,6 @@ function test_SINGULAR()
 
    println( "-> CALLPROC(HDL('myGetVersion')), result: ", Nemo.SingularKernel.CALLPROC( h ) ); 
 
-
-   println("Testing Standard__datetime(): ", Nemo.SingularKernel.Standard__datetime())
-
 ##  R=rDefault(32003,3,n);
    const R,zz = SingularPolynomialRing(Nemo.SingularZp(32003), "x,y,z"); 
    println("\nSingular RING: ", R, "... z: $zz");
@@ -736,6 +733,12 @@ function test_SINGULAR()
 
    println();
    println();
+
+
+   println("Testing Standard__datetime(): ", Nemo.SingularKernel.Standard__datetime())
+   Nemo.SingularKernel.PRINTHELP("datetime");
+   Nemo.SingularKernel.RUNEXAMPLE("datetime");
+
 
 end
 
